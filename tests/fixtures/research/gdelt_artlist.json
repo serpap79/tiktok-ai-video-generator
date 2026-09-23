@@ -1,0 +1,32 @@
+{
+  "articles": [
+    {
+      "url": "https://www.techveiculo.com/2026/09/bonsai-2-ternary-weights",
+      "title": "Ternary weights put a 27B model on a laptop",
+      "domain": "techveiculo.com",
+      "language": "English",
+      "sourcecountry": "US"
+    },
+    {
+      "url": "https://www.techveiculo.com/2026/09/bonsai-2-follow-up",
+      "title": "Follow-up: what Bonsai 2 does not tell you",
+      "domain": "techveiculo.com",
+      "language": "English",
+      "sourcecountry": "US"
+    },
+    {
+      "url": "https://www.techveiculo.com/2026/09/terceiro-do-mesmo-dominio",
+      "title": "Third piece from the same outlet",
+      "domain": "techveiculo.com",
+      "language": "English",
+      "sourcecountry": "US"
+    },
+    {
+      "url": "https://cienciahoje.com.br/ia/modelo-de-27b-em-59-gb",
+      "title": "Modelo de 27 bilhoes de parametros cabe em 5,9 GB",
+      "domain": "cienciahoje.com.br",
+      "language": "Portuguese",
+      "sourcecountry": "BR"
+    }
+  ]
+}

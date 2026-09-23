@@ -1,0 +1,97 @@
+{
+  "id": "theo",
+  "source": "brand/assets/presenters/source/theo.jpg",
+  "size": [
+    1144,
+    982
+  ],
+  "head_top": 59,
+  "face_height": 428.4,
+  "neck_y": 649,
+  "pivot": [
+    575.3,
+    970.3
+  ],
+  "points": {
+    "olho_esq_out": [
+      458.7,
+      352.9
+    ],
+    "olho_esq_in": [
+      530.2,
+      351.3
+    ],
+    "olho_esq_cima": [
+      486.9,
+      337.7
+    ],
+    "olho_esq_baixo": [
+      490.0,
+      356.6
+    ],
+    "olho_dir_in": [
+      618.7,
+      352.1
+    ],
+    "olho_dir_out": [
+      689.0,
+      353.8
+    ],
+    "olho_dir_cima": [
+      661.6,
+      338.4
+    ],
+    "olho_dir_baixo": [
+      658.8,
+      357.7
+    ],
+    "nariz_ponta": [
+      575.8,
+      436.6
+    ],
+    "subnasal": [
+      575.5,
+      456.6
+    ],
+    "labio_sup": [
+      574.2,
+      515.1
+    ],
+    "labio_inf": [
+      574.5,
+      514.9
+    ],
+    "boca_esq": [
+      503.0,
+      521.2
+    ],
+    "boca_dir": [
+      644.6,
+      520.7
+    ],
+    "queixo": [
+      575.3,
+      645.1
+    ],
+    "testa": [
+      573.5,
+      216.7
+    ],
+    "mand_esq": [
+      425.2,
+      569.8
+    ],
+    "mand_dir": [
+      721.1,
+      570.4
+    ],
+    "face_esq": [
+      389.7,
+      414.7
+    ],
+    "face_dir": [
+      755.5,
+      415.1
+    ]
+  }
+}

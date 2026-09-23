@@ -1,0 +1,12 @@
+[Unit]
+Description=Seu Canal - post das 19h (longo; dispara 35 min antes para produzir)
+
+[Timer]
+OnCalendar=*-*-* 18:25:00 America/Sao_Paulo
+# Maquina desligada na hora: roda ao ligar (o slot atrasado mais de 2h se pula).
+Persistent=true
+AccuracySec=1min
+Unit=seucanal-slot@1900.service
+
+[Install]
+WantedBy=timers.target

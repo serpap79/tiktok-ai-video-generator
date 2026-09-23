@@ -1,0 +1,97 @@
+{
+  "id": "iris",
+  "source": "brand/assets/presenters/source/iris.jpg",
+  "size": [
+    1072,
+    1053
+  ],
+  "head_top": 59,
+  "face_height": 402.7,
+  "neck_y": 682,
+  "pivot": [
+    532.7,
+    984.0
+  ],
+  "points": {
+    "olho_esq_out": [
+      424.6,
+      378.4
+    ],
+    "olho_esq_in": [
+      493.4,
+      385.6
+    ],
+    "olho_esq_cima": [
+      452.7,
+      365.3
+    ],
+    "olho_esq_baixo": [
+      455.0,
+      391.3
+    ],
+    "olho_dir_in": [
+      580.7,
+      386.1
+    ],
+    "olho_dir_out": [
+      648.8,
+      378.8
+    ],
+    "olho_dir_cima": [
+      621.4,
+      365.8
+    ],
+    "olho_dir_baixo": [
+      618.9,
+      391.5
+    ],
+    "nariz_ponta": [
+      537.1,
+      471.6
+    ],
+    "subnasal": [
+      536.6,
+      487.6
+    ],
+    "labio_sup": [
+      534.8,
+      542.4
+    ],
+    "labio_inf": [
+      534.5,
+      544.0
+    ],
+    "boca_esq": [
+      476.8,
+      544.1
+    ],
+    "boca_dir": [
+      591.1,
+      545.9
+    ],
+    "queixo": [
+      532.7,
+      648.3
+    ],
+    "testa": [
+      538.4,
+      245.6
+    ],
+    "mand_esq": [
+      401.0,
+      565.4
+    ],
+    "mand_dir": [
+      661.8,
+      567.8
+    ],
+    "face_esq": [
+      364.3,
+      417.2
+    ],
+    "face_dir": [
+      700.8,
+      420.9
+    ]
+  }
+}

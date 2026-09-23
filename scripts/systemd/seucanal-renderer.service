@@ -1,0 +1,15 @@
+[Unit]
+Description=Seu Canal - renderizador de video (MoneyPrinterTurbo, local)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@
+Environment=PATH=@HOME@/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=@ROOT@/scripts/serve_renderer.sh
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Bonsai 2 27B runs in 5.9 GB | PrismML Blog</title>
+  <meta property="og:title" content="Bonsai 2 27B: a 27B model that runs in 5.9 GB">
+  <style>.nav { color: red } /* 404 rules */</style>
+  <script>window.analytics = {pageviews: 99999, id: 12345};</script>
+</head>
+<body>
+  <nav><a href="/">Home</a> <a href="/pricing">Pricing from 29 USD</a></nav>
+  <header><span>Trusted by 4000 teams</span></header>
+  <article>
+    <h1>Bonsai 2 27B: a 27B model that runs in 5.9 GB</h1>
+    <p>We are releasing Bonsai 2 27B, a ternary-weight version of Qwen3.8 27B
+       that occupies <strong>5.9 GB</strong> on disk, more than 9x smaller than
+       the full-precision checkpoint.</p>
+    <p>Each weight is stored as one of three values (-1, 0, +1) with an FP16
+       scale per group of 64, which works out to 1.76 bits per weight in
+       practice.</p>
+    <p>On aggregate benchmarks the model retains 98.2% of the original score:
+       83.9 against 85.4 for the full-precision baseline.</p>
+    <p>Throughput reaches 143 tokens per second on a single RTX 5090, and
+       46.8 tokens per second on an M5 Max laptop.</p>
+  </article>
+  <footer><p>Copyright 2026 PrismML. Read our 7 principles.</p></footer>
+  <noscript>Enable JavaScript to see 300 comments.</noscript>
+</body>
+</html>

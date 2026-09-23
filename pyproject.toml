@@ -1,0 +1,55 @@
+[project]
+name = "tiktok-viral-generator"
+version = "0.1.0"
+description = "Agente que detecta assunto em alta em tech/IA/ciencia, ancora cada afirmacao numa fonte e produz video curto em pt-BR"
+readme = "README.md"
+authors = [
+    { name = "guilhermehrsilva", email = "guilhermehrsilva@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "edge-tts>=7.2.8",
+    "fonttools>=4.65.0",
+    "httpx>=0.28",
+    # Vinha de carona pelo onnxruntime do piper-tts. Duas pecas do render
+    # dependem dela agora (trilha sintetizada e apresentador animado), e
+    # dependencia de caminho critico nao pode ser transitiva.
+    "numpy>=2.0",
+    "pillow>=12.3.0",
+    "piper-tts>=1.8.0",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "typer>=0.15",
+]
+
+[project.scripts]
+agent = "agent.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-httpx>=0.35",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "agent"
+module-root = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# typer.Option em default de argumento e a forma idiomatica da biblioteca.
+"src/agent/cli.py" = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

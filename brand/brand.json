@@ -1,0 +1,420 @@
+{
+  "_meta": {
+    "canal": "Seu Canal",
+    "versao": "2.0",
+    "fonte": "guia de marca do canal (transcrito em 19/09/2026)",
+    "revisar_a_cada_dias": 90,
+    "nota": "Arquivo fixo do fluxo: injetado em todo prompt de geracao. Divergencia conhecida: o guia mira 20-45s por formato; o Creator Rewards exige >=60s, entao o modo long (60-90s) mantem a voz e as regras da marca com a duracao da monetizacao.",
+    "nota_historia": "Pilar historia adicionado em 20/09/2026 a pedido do autor (historia da tecnologia como tipo de conteudo). Nao esta no guia original: mesma voz, paleta e regras; tag HISTÓRIA, acento verde padrao."
+  },
+  "identity": {
+    "name": "Seu Canal",
+    "handle": "@seucanal",
+    "bio_default": "Sinais do futuro, decifrados agora. IA e tecnologia, sem ruído.",
+    "bios": {
+      "enigmatica": "Sinais do futuro, decifrados agora. IA e tecnologia, sem ruído.",
+      "provocadora": "A IA já ultrapassou você. Notícias e previsões sem filtro.",
+      "tecnica": "IA e tecnologia explicadas em 30 segundos. Todo dia, sem enrolação."
+    },
+    "tagline": "Sinais do futuro, decifrados agora.",
+    "language": "pt-BR",
+    "frame": "vertical 9:16",
+    "mode": "faceless / automated"
+  },
+  "constants": [
+    "Escuridao total: fundo quase-preto em 100% das pecas. Nunca claro, nunca colorido.",
+    "Um unico sinal: uma so cor neon por peca. Verde padrao, ciano para ruptura.",
+    "Sem rosto: nenhuma pessoa, nenhum avatar humano. A marca e o sinal, nao alguem.",
+    "Vazio proposital: metade do quadro respira. Nada de composicao poluida.",
+    "Frase curta: uma ideia por peca, no maximo 12 palavras na tela."
+  ],
+  "voice": {
+    "tone": [
+      "informativo",
+      "preciso",
+      "provocador sem raiva",
+      "enigmatico no gancho",
+      "futurista no fechamento"
+    ],
+    "rules": [
+      "frases curtas",
+      "no maximo um numero por frase",
+      "nunca emoji",
+      "nunca 'fala galera' nem 'se inscreva'",
+      "uma ideia por video",
+      "nunca prometa o que o video nao entrega",
+      "gancho com ate 12 palavras"
+    ],
+    "structure": [
+      "gancho (ate 12 palavras)",
+      "contexto",
+      "consequencia",
+      "fechamento de uma linha"
+    ],
+    "banned": [
+      "emoji",
+      "fala galera",
+      "se inscreva",
+      "clickbait sem entrega",
+      "mais de 1 ideia por video"
+    ]
+  },
+  "palette": {
+    "background": "#0A0A0C",
+    "surface": "#14171D",
+    "ink": "#E9EEF1",
+    "muted": "#8B93A1",
+    "accent_primary": "#39FF88",
+    "accent_secondary": "#00E0FF",
+    "rule": "exatamente 1 acento por peca"
+  },
+  "type": {
+    "display": "Space Grotesk 700",
+    "mono": "IBM Plex Mono 500/600",
+    "body": "Sora 400/500"
+  },
+  "mark": {
+    "concept": "pulso de dados entre dois pilares",
+    "stroke_only": true,
+    "min_size_px": 28,
+    "never": [
+      "preencher",
+      "inclinar",
+      "sombra",
+      "brilho externo"
+    ]
+  },
+  "imagery": {
+    "always": [
+      "fundo quase-preto",
+      "um unico acento neon",
+      "alto contraste",
+      "50% de espaco vazio"
+    ],
+    "never": [
+      "pessoas ou rostos",
+      "fundo claro",
+      "gradiente roxo-rosa",
+      "mais de 1 acento",
+      "texto gerado pela IA na imagem"
+    ]
+  },
+  "pillars": [
+    {
+      "id": "news",
+      "tag": "IA NEWS",
+      "accent": "#39FF88",
+      "duration": "25-35s",
+      "hook_formula": "Fato duro + consequência imediata + pergunta aberta",
+      "example": "Um modelo aprendeu a se corrigir sozinho. O que quebra primeiro?",
+      "beats": [
+        "O fato em uma frase, sem contexto antes",
+        "Por que isso só foi possível agora",
+        "O que muda para quem está assistindo"
+      ],
+      "visual": "Datacenter em penumbra, uma única linha de luz atravessando",
+      "cta": "Deixa sua aposta nos comentários.",
+      "keywords": [
+        "anuncia",
+        "lanca",
+        "chegou",
+        "novo",
+        "modelo",
+        "atualizacao",
+        "noticia"
+      ]
+    },
+    {
+      "id": "fato",
+      "tag": "FATO",
+      "accent": "#00E0FF",
+      "duration": "20-30s",
+      "hook_formula": "Número improvável + comparação física + virada",
+      "example": "Treinar um modelo consome mais energia que 120 casas em um ano.",
+      "beats": [
+        "O número que não cabe na cabeça",
+        "A comparação com algo tangível",
+        "A virada: e isso ainda vai dobrar"
+      ],
+      "visual": "Um objeto isolado flutuando em fundo vazio, luz de recorte",
+      "cta": "Salva para usar numa discussão.",
+      "keywords": [
+        "numero",
+        "por cento",
+        "%",
+        "vezes",
+        "bilh",
+        "milh",
+        "recorde",
+        "energia",
+        "custo"
+      ]
+    },
+    {
+      "id": "analise",
+      "tag": "ANÁLISE",
+      "accent": "#39FF88",
+      "duration": "35-45s",
+      "hook_formula": "Consenso + ruptura + posição do canal",
+      "example": "Dizem que a IA vai criar empregos. Os dados dizem outra coisa.",
+      "beats": [
+        "O que todo mundo repete sem checar",
+        "O furo no argumento, com um dado",
+        "A posição do canal, sem meio-termo"
+      ],
+      "visual": "Duas fontes de luz opostas, contraste duro, sombra longa",
+      "cta": "Discorda? Fala nos comentários.",
+      "keywords": [
+        "dizem",
+        "sera",
+        "sera que",
+        "na verdade",
+        "mito",
+        "verdade",
+        "opiniao",
+        "analise"
+      ]
+    },
+    {
+      "id": "tutorial",
+      "tag": "COMO FAZER",
+      "accent": "#39FF88",
+      "duration": "30-45s",
+      "hook_formula": "Resultado primeiro + três passos numerados",
+      "example": "Três comandos que transformam qualquer IA em pesquisador.",
+      "beats": [
+        "Mostra o resultado final logo de cara",
+        "Passos 1-2-3 em texto na tela",
+        "O erro comum que anula tudo"
+      ],
+      "visual": "Terminal escuro, texto alinhado em grade, zero pessoas",
+      "cta": "Salva antes que suma do feed.",
+      "keywords": [
+        "como",
+        "passo",
+        "tutorial",
+        "aprenda",
+        "faca",
+        "comando",
+        "prompt",
+        "dica"
+      ]
+    },
+    {
+      "id": "futuro",
+      "tag": "2030",
+      "accent": "#00E0FF",
+      "duration": "30-40s",
+      "hook_formula": "Data + cenário + o sinal que já existe hoje",
+      "example": "Até 2030 você não escolhe mais o que assiste. Já começou.",
+      "beats": [
+        "A previsão sem rodeio, com data",
+        "O sinal que já está acontecendo",
+        "O que fazer antes que chegue"
+      ],
+      "visual": "Horizonte escuro com uma luz distante, névoa baixa",
+      "cta": "Marca alguém que vai duvidar.",
+      "keywords": [
+        "2030",
+        "futuro",
+        "previsao",
+        "ate ",
+        "vai ",
+        "amanha",
+        "proximo"
+      ]
+    },
+    {
+      "id": "vs",
+      "tag": "VS",
+      "accent": "#39FF88",
+      "duration": "30-40s",
+      "hook_formula": "Duelo + um único critério + veredito seco",
+      "example": "Mesma tarefa, dois modelos. Um deles mentiu.",
+      "beats": [
+        "Os dois lados apresentados em 5 segundos",
+        "O teste, sempre um critério só",
+        "Veredito em uma frase, sem ressalva"
+      ],
+      "visual": "Divisão vertical do quadro, duas temperaturas de luz",
+      "cta": "Qual você usaria? Comenta.",
+      "keywords": [
+        "versus",
+        " vs ",
+        "contra",
+        "melhor",
+        "comparado",
+        "duelo",
+        "qual",
+        "x "
+      ]
+    },
+    {
+      "id": "historia",
+      "tag": "HISTÓRIA",
+      "accent": "#39FF88",
+      "duration": "45-90s",
+      "hook_formula": "Data + cena concreta + a consequência que chega até hoje",
+      "example": "Em 1947, três cientistas montaram um pedaço de germânio. Seu celular nasceu ali.",
+      "beats": [
+        "A cena no passado, em uma frase, com data e lugar",
+        "O que ninguém esperava que aquilo virasse",
+        "A ponte até hoje: onde isso está na vida de quem assiste"
+      ],
+      "visual": "Arquivo em penumbra, uma única luz sobre o objeto da época",
+      "cta": "Qual invenção você quer ver no próximo arquivo?",
+      "keywords": [
+        "historia",
+        "história",
+        "anos",
+        "primeiro",
+        "primeira",
+        "inventou",
+        "invencao",
+        "invenção",
+        "criado em",
+        "aniversario",
+        "aniversário",
+        "decada",
+        "década",
+        "origem",
+        "nasceu"
+      ]
+    }
+  ],
+  "caption": {
+    "format": [
+      "gancho em uma linha, sem repetir o audio",
+      "uma frase de contexto"
+    ],
+    "hashtags": [
+      "#ia",
+      "#inteligenciaartificial",
+      "#tecnologia",
+      "#ai",
+      "#seucanal"
+    ],
+    "rules": [
+      "no maximo 2 linhas de texto",
+      "5 hashtags",
+      "sem emoji",
+      "sem link"
+    ]
+  },
+  "image_prompt_base": "still cinematográfico, tema: {assunto}.\nfundo: quase-preto #0A0A0C, sombra profunda, sem elementos soltos.\nluz: um único recorte em {accent}, névoa volumétrica leve, alto contraste.\ncomposição: grande área vazia à {lado}, objeto ocupando um terço do quadro.\nformato: vertical 9:16, lente 35mm, grão de filme sutil.\nsem texto, sem pessoas, sem logotipos, sem interface.",
+  "image_prompt_negative": "fundo claro, paleta branca ou pastel, gradiente roxo-rosa de IA, pessoas sorrindo de banco de imagens, rostos, mãos, texto, marca d'água, logotipo, composição poluída, baixo contraste, render 3D plastificado, cartoon, excesso de flare.",
+  "presenters": {
+    "usage": {
+      "formats": [
+        "news",
+        "fato",
+        "analise",
+        "tutorial",
+        "futuro",
+        "vs",
+        "historia"
+      ],
+      "never": [
+        "foto de perfil",
+        "logo",
+        "capa",
+        "assinatura do canal"
+      ],
+      "note": "Desde 20/09/2026 o THEO apresenta TODOS os pilares: existe clipe base fotorrealista dele (piscada e balanco humanos, gerados como video) e nao existe o da Iris. Apresentador deixou de ser elenco por formato e virou assinatura do canal. Quando houver clipe base da Iris, o elenco por formato volta. Rosto nunca na foto de perfil."
+    },
+    "framing": {
+      "height_pct_chamada": 51,
+      "height_pct_corpo": 31,
+      "height_pct_fechamento": 33,
+      "align": "centro na chamada, canto esquerdo no resto",
+      "crop": "chest-up",
+      "background": "transparent cutout",
+      "staging": "chamada (ate o fim do gancho) -> canto durante o corpo -> volta no fechamento",
+      "text_side": "acima (cartao do gancho na chamada, legenda karaoke depois)",
+      "note_2026_09_20": "Reescrito na tarde de 20/09/2026. O desenho da manha (so na chamada, janela de crop passeando sobre o PNG) recortava a silhueta em retangulo e nao animava a pessoa -- o autor chamou de figurinha colada, com razao. Agora a silhueta e inteira e ela fala: boca no tempo da narracao, piscada, cabeca com balanco, e tamanho/lugar ditados pelo trecho do roteiro. Referencia: Lu do Magalu (#PayDayMagalu). Sintese em render/presenter.py.",
+      "limits_tela": "canto direito (x>860, y 1000-1750) e dos botoes do TikTok e a base (y>1700) da legenda do app: o apresentador nao entra nessas duas zonas",
+      "note_2026_09_20_noite": "Terceiro desenho, e o primeiro que nao sintetiza a pessoa. O clipe base do Hailuo da piscada, balanco de cabeca e respiracao humanos; nos sintetizamos so a boca, que e a unica coisa que depende da narracao. Ver render/presenter_video.py e render/visemes.py."
+    },
+    "consistency": {
+      "locked_prompt": true,
+      "fixed_seed": true,
+      "master_refs": [
+        "frontal",
+        "3/4",
+        "perfil"
+      ],
+      "variables_per_video": [
+        "angulo",
+        "expressao",
+        "gesto"
+      ]
+    },
+    "limits": [
+      "Nao se parecer com nenhuma pessoa real, publica ou privada.",
+      "Nunca afirmar ser humano; se o roteiro tocar no assunto, assume IA.",
+      "Rotulo AIGC sempre ligado na publicacao."
+    ],
+    "cast": [
+      {
+        "id": "iris",
+        "name": "Íris",
+        "role": "noticia e analise",
+        "formats": [],
+        "gender": "feminino",
+        "seed": 481502,
+        "voice": {
+          "lang": "pt-BR",
+          "pitch": "medio-grave",
+          "rate": 0.95,
+          "note": "pausa apos o gancho",
+          "library_voice": null
+        },
+        "identity_prompt": "ÍRIS — identidade travada, não editar.\nMulher brasileira, 29 anos, pele parda média, traços miscigenados suaves, cabelo castanho-escuro ondulado preso baixo com fios soltos na têmpora, olhos castanho-escuros, sobrancelhas naturais marcadas, sem maquiagem aparente.\nFigurino: gola alta preta lisa, sem estampa, sem joia, sem logotipo.\nLuz: chave fria suave à esquerda, recorte #39FF88 no ombro direito, fundo quase-preto #0A0A0C.\nEnquadramento: do peito para cima, 35mm, profundidade rasa, grão sutil, fotorrealista.\nseed: 481502 · mesmo seed em toda geração.",
+        "note_2026_09_20": "Sem formatos ate existir clipe base dela. O gap nao e de codigo: a identidade, o prompt travado e o recorte parado dela continuam aqui, e `presenter_for` volta a considera-la assim que brand/assets/presenters/iris_base.json existir."
+      },
+      {
+        "id": "theo",
+        "name": "Théo",
+        "role": "apresentador do canal (todos os pilares)",
+        "formats": [
+          "news",
+          "fato",
+          "analise",
+          "tutorial",
+          "futuro",
+          "vs",
+          "historia"
+        ],
+        "gender": "masculino",
+        "seed": 907314,
+        "voice": {
+          "lang": "pt-BR",
+          "pitch": "grave",
+          "rate": 1.0,
+          "note": "enfase nos numeros",
+          "library_voice": "jeff"
+        },
+        "identity_prompt": "THÉO — identidade travada, não editar.\nHomem brasileiro, 34 anos, pele parda clara, traços miscigenados, cabelo preto curto penteado para trás, barba curta aparada, olhos castanho-escuros, expressão neutra, sem sorriso de catálogo.\nFigurino: camiseta preta lisa de gola redonda, sem estampa, sem acessório.\nLuz: chave fria suave à direita, recorte #39FF88 no ombro esquerdo, fundo quase-preto #0A0A0C.\nEnquadramento: do peito para cima, 35mm, profundidade rasa, grão sutil, fotorrealista.\nseed: 907314 · mesmo seed em toda geração."
+      }
+    ],
+    "variation_prompt": "{prompt_de_identidade}\n\nângulo: {frontal | 3/4 esquerda | 3/4 direita}\nexpressão: {neutra | concentrada | uma sobrancelha erguida}\ngesto: {parada | leve inclinação de cabeça | mão aberta na altura do peito}\n\nTodo o resto permanece idêntico. Nunca alterar rosto, cabelo, figurino, luz ou seed.\nSaída: recorte com fundo transparente, vertical, do peito para cima.",
+    "variation_slots": {
+      "angulo": [
+        "frontal",
+        "3/4 esquerda",
+        "3/4 direita"
+      ],
+      "expressao": [
+        "neutra",
+        "concentrada",
+        "uma sobrancelha erguida"
+      ],
+      "gesto": [
+        "parada",
+        "leve inclinação de cabeça",
+        "mão aberta na altura do peito"
+      ]
+    },
+    "negative_prompt": "semelhança com pessoa real ou pública, rosto de celebridade, expressão de banco de imagens sorrindo, sorriso aberto com dentes, fundo claro ou branco, fundo com gradiente colorido, ciclorama de estúdio, óculos, chapéu, joia, camisa estampada, logotipo, tatuagem, maquiagem pesada, pele com filtro de beleza, render 3D plastificado, cartoon, anime, dedos a mais, mãos distorcidas, texto, marca d'água."
+  }
+}

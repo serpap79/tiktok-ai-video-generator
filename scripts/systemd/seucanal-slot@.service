@@ -1,0 +1,14 @@
+[Unit]
+Description=Seu Canal - slot %i (pauta, roteiro, render e publicacao)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT@
+Environment=PATH=@HOME@/.local/bin:/usr/local/bin:/usr/bin:/bin
+# O renderizador padrao e o proprio (ffmpeg); o MoneyPrinterTurbo e reserva e
+# nao precisa estar de pe para o slot comecar.
+ExecStart=@HOME@/.local/bin/uv run agent slot --slot %i
+TimeoutStartSec=3h
+Nice=5

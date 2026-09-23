@@ -1,0 +1,47 @@
+# Ambiente
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# O renderizador (MoneyPrinterTurbo) e clonado por scripts/setup_renderer.sh.
+# Nao versionamos: e dependencia externa, nao codigo nosso.
+.renderer/
+
+# Segredos e configuracao local (.env.example é modelo, versionado)
+.env
+!.env.example
+.env.*
+!.env.example
+data/.env*
+config.local.toml
+# Memoria operacional local do agente (diario de bordo, estado do piloto).
+# O README e a fonte de consulta do repo; isto aqui e contexto de trabalho.
+CLAUDE.md
+# Guia de marca original (HTML exportado): transcrito em brand/brand.json,
+# que e a fonte unica. O HTML fica so local.
+brand/*.html
+
+# Artefatos de execucao (roteiros, slides, pacotes do piloto: dado local,
+# não portfólio — como reports/ e state/ nos outros repos).
+output/
+storage/
+data/*.db
+data/*.db-journal
+data/voices/
+# Acumulado pelo piloto a cada narração conferida; o léxico curado vive em
+# voice/pronounce.py, não aqui.
+data/pronuncia_suspeita.txt
+# Gerados pelo piloto: cache de clipes/fotos, fonte instanciada, logs, audio.
+data/footage-cache/
+data/photos-cache/
+data/fonts/
+data/logs/
+data/tts/
+# Malha de rosto do MediaPipe, baixada por scripts/make_presenter_cutouts.py.
+# E artefato externo e o script rebaixa sozinho: nao entra no repo.
+data/models/
+*.mp4
+*.mp3
+*.srt
