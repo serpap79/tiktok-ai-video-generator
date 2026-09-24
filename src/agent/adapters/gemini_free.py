@@ -1,22 +1,22 @@
 """Adaptador da porta LLM para a API Gemini (free tier do AI Studio).
 
-Caminho padrao do projeto por tres razoes praticas, nao por preferencia:
+Ruta predeterminada del proyecto por tres razones prácticas, no por preferencia:
 
 1. chave gratuita sem cartao, com cota diaria que cobre folgado um video por dia;
-2. saida estruturada nativa (`responseSchema`), que e o que impede o pesquisador
+2. salida estructurada nativa (`responseSchema`), que impide que el investigador
    de receber prosa onde esperava uma lista de fatos;
-3. pt-BR decente -- o roteirista (M3, fatia 2) escreve narracao falada, e modelo
+3. castellano de España decente: el guionista (M3, parte 2) escribe narración hablada y el modelo
    que tropeca em concordancia gera audio que soa errado mesmo estando certo.
 
 A cota do free tier e por minuto **e** por dia. Estourar devolve 429, que sobe
-como LLMUnavailable: repetir na hora nao resolve e segurar a execucao esperando
-a janela abrir custaria mais que perder a fonte.
+como LLMUnavailable: repetir en el momento no resuelve y bloquear la ejecución esperando
+a que se abra la ventana costaría más que perder la fuente.
 
 O raciocinio interno do 2.5 Flash vem **desligado** por padrao aqui, e isso foi
 decidido medindo: com ele ligado, uma chamada do roteirista truncou o JSON no
 meio e outra estourou o timeout de leitura. Ele sai do mesmo orcamento de saida e
 do mesmo relogio da resposta, entao ligado ele troca previsibilidade por
-qualidade que ainda nao foi medida -- e medir isso e experimento do M5.
+calidad que aún no se ha medido; medirlo corresponde al experimento M5.
 """
 
 from __future__ import annotations
@@ -104,7 +104,7 @@ class GeminiFree:
         try:
             corpo = r.json()
         except ValueError as exc:
-            raise LLMError("gemini devolveu resposta nao-JSON") from exc
+            raise LLMError("gemini devolvió una respuesta que no es JSON") from exc
 
         return self.parse(corpo, model=self.model, latency_s=latencia)
 
@@ -120,7 +120,7 @@ class GeminiFree:
         }
         if thinking_budget >= 0:
             # Sem isso o raciocinio consome o maxOutputTokens e a resposta chega
-            # truncada, com o objeto JSON aberto e nao fechado. Orcamento
+            # truncada, con el objeto JSON abierto y sin cerrar. El presupuesto
             # negativo omite o campo e deixa o provedor decidir.
             config["thinkingConfig"] = {"thinkingBudget": thinking_budget}
         if schema is not None:
@@ -148,12 +148,12 @@ class GeminiFree:
         cand = candidatos[0]
         motivo = str(cand.get("finishReason") or "")
         if motivo.upper() == "SAFETY":
-            raise LLMBlocked("gemini bloqueou a resposta por filtro de conteudo")
+            raise LLMBlocked("gemini bloqueó la respuesta por un filtro de contenido")
 
         partes = (cand.get("content") or {}).get("parts") or []
         texto = "".join(p.get("text", "") for p in partes)
         if not texto.strip():
-            # Acontece com MAX_TOKENS logo apos o "thinking": o candidato volta
+            # Ocurre con MAX_TOKENS justo después de «thinking»: el candidato vuelve
             # sem parte de texto. Dizer isso e melhor que devolver string vazia
             # e deixar o parser de JSON reclamar de outra coisa.
             raise LLMError(f"gemini devolveu candidato sem texto (finishReason={motivo})")
@@ -186,7 +186,7 @@ def to_openapi_schema(schema: dict) -> dict:
             saida["type"] = _TIPOS.get(valor.lower(), valor.upper())
         elif chave == "properties" and isinstance(valor, dict):
             saida["properties"] = {k: to_openapi_schema(v) for k, v in valor.items()}
-            # Sem isso o modelo escolhe a ordem das chaves, e a ordem muda o que
+            # Sin esto, el modelo elige el orden de las claves y ese orden cambia lo que
             # ele escreve: pedir a afirmacao antes do numero produz fato solto.
             saida.setdefault("propertyOrdering", list(valor))
         elif chave == "items" and isinstance(valor, dict):
@@ -227,7 +227,7 @@ def quota_error(r: httpx.Response, model: str) -> LLMQuotaExhausted:
         valor = r.headers.get("retry-after")
         espera = _segundos(valor) if valor else None
     if teto == "0":
-        # Modelo fora do free tier (ex. lyria): nao volta no reset.
+        # Modelo fuera del nivel gratuito (p. ej., Lyria): no vuelve al reiniciar la cuota.
         escopo = "day"
     detalhe = f"; teto {teto}" if teto else ""
     if espera is not None:

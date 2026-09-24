@@ -1,21 +1,21 @@
-"""Pronuncia: o texto que a VOZ le nao e o texto que a LEGENDA mostra.
+"""Pronuncia: el texto que la VOZ lee no es el texto que la LEYENDA muestra.
 
-Reportado pelo autor no primeiro video do piloto (20/09/2026): a voz
-pt-BR leu "Gemini" como "Zemini" -- regra do portugues, G antes de E soa J --
-e disse "Discorda?" com sotaque de outra lingua. Sao dois defeitos diferentes:
+Reportado en el primer video del piloto (20/09/2026): la voz es-ES lee
+"Gemini" como "Jemini" -- regla del castellano, G antes de E suena J -- y dice
+"Discord?" con acento de otra lengua. Son dos defectos distintos:
 
-1. **nome estrangeiro lido com a fonetica do portugues**. Nao ha SSML no
-   endpoint gratuito do edge-tts (o `<phoneme>` e recusado), entao o unico
-   controle e a grafia: a voz recebe "Djemini"; a legenda, "Gemini". Este
-   modulo faz a troca palavra a palavra e devolve o alinhamento, para a
-   legenda voltar a grafia original com o tempo certo.
-2. **sotaque trocado no meio da frase**: e a voz *Multilingual*, que decide
-   o idioma por trecho e as vezes erra ("Discorda?" parece espanhol). Isso
-   se resolve na escolha da voz (monolingue pt-BR), nao aqui.
+1. **nombre extranjero leido con la fonetica del castellano**. No hay SSML en
+   el endpoint gratuito del edge-tts (el `<phoneme>` es rechazado), asi que el
+   unico control es la grafia: la voz recibe "Djemini"; la leyenda, "Gemini".
+   Este modulo hace el cambio palabra a palabra y devuelve el alineamiento,
+   para que la leyenda vuelva a la grafia original con el tiempo correcto.
+2. **acento cambiado en medio de la frase**: es la voz *Multilingual*, que
+   decide el idioma por trozo y a veces falla. Se resuelve en la eleccion de
+   voz (monolingue es-ES), no aqui.
 
-O lexico cobre o vocabulario do nicho (marcas, siglas, modelos). Sigla fora
-dele e soletrada so quando e sabidamente sigla tecnica -- soletrar "NASA"
-seria pior que o erro que se quer evitar.
+El lexico cubre el vocabulario del nicho (marcas, siglas, modelos). Sigla fuera
+de el se deletrea solo cuando es sabidamente sigla tecnica -- deletrear "NASA"
+seria peor que el error que se quiere evitar.
 """
 
 from __future__ import annotations
@@ -24,119 +24,120 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-# Grafia fonetica para voz pt-BR. Chave em minuscula e sem acento; valor e o
-# que a voz le. Nomes com mais de uma palavra entram inteiros ("hugging face").
+# Grafia fonetica para voz es-ES. Clave en minuscula y sin acento; el valor es
+# lo que la voz lee. Nombres de mas de una palabra entran enteros
+# ("hugging face").
 LEXICO: dict[str, str] = {
-    # IA e empresas
-    "gemini": "Djémini",
-    "google": "Gúgou",
-    "openai": "Ôupen Ei Ái",
-    "chatgpt": "Tchat Gê Pê Tê",
-    "gpt": "Gê Pê Tê",
-    "claude": "Clôd",
-    "anthropic": "Ântropic",
-    "deepseek": "Dip Síik",
-    "deepmind": "Dip Máind",
-    "qwen": "Tchuén",
-    "llama": "Lhama",
+    # IA y empresas
+    "gemini": "Yemini",
+    "google": "Gugol",
+    "openai": "Oupen EI Ei",
+    "chatgpt": "Chat YipiTi",
+    "gpt": "YipiTi",
+    "claude": "Clod",
+    "anthropic": "Antropik",
+    "deepseek": "Dip Sik",
+    "deepmind": "Dip Maind",
+    "qwen": "Cuuen",
+    "llama": "Lama",
     "copilot": "Cópailot",
-    # Achado pela conferencia do Whisper no slot de teste das 15h (20/09).
-    "cowork": "Côu Uôrk",
-    "midjourney": "Mid Djârni",
-    "perplexity": "Perpléxiti",
-    "hugging face": "Râguin Fêis",
-    "huggingface": "Râguin Fêis",
-    "nvidia": "Envídia",
-    "microsoft": "Máicrosoft",
-    "apple": "Épou",
-    "iphone": "Ái Fôun",
-    "ipad": "Ái Péd",
-    "youtube": "Iutúbi",
-    "tiktok": "Tíqui Tóqui",
-    "github": "Guít Râb",
-    "linux": "Línux",
+    # Hallado por la comprobacion del Whisper en el slot de test de las 15h (20/09).
+    "cowork": "Cóu Uerk",
+    "midjourney": "Mid Yorni",
+    "perplexity": "Perplesiti",
+    "hugging face": "Yaguin Fis",
+    "huggingface": "Yaguin Fis",
+    "nvidia": "Envidia",
+    "microsoft": "Máicrosof",
+    "apple": "Ápou",
+    "iphone": "Áifoun",
+    "ipad": "Áiped",
+    "youtube": "Yutú",
+    "tiktok": "Tiktók",
+    "github": "Guítjáb",
+    "linux": "Línuc",
     "windows": "Uíndous",
-    "android": "Ândroid",
+    "android": "Ándroid",
     "python": "Páiton",
-    "javascript": "Djava Scrípt",
-    "samsung": "Sâmsung",
+    "javascript": "Yávascrito",
+    "samsung": "Sámsun",
     "intel": "Íntel",
-    "spacex": "Spêis Éx",
-    "starlink": "Stár Link",
+    "spacex": "Espéi Ecs",
+    "starlink": "Star Linc",
     "elon": "Ílon",
-    "musk": "Mâsk",
+    "musk": "Másc",
     "altman": "Áltman",
-    "stanford": "Stênford",
-    "harvard": "Rárvard",
-    "wall street journal": "Uól Strít Djôrnal",
-    "the verge": "De Vérdj",
-    "techcrunch": "Tec Crântch",
-    "hacker news": "Réquer Níus",
-    # Apps e servicos que aparecem em tutorial (achado: "Zapier" e "n8n" no
-    # slot de teste das 15h de 20/09).
-    "zapier": "Zêipier",
-    "n8n": "êne oito êne",
-    "notion": "Nôuxan",
+    "stanford": "Stanford",
+    "harvard": "Yárvard",
+    "wall street journal": "Uól Strit Yórnal",
+    "the verge": "De Vérdy",
+    "techcrunch": "Tec Crántch",
+    "hacker news": "Yáquer Nius",
+    # Apps y servicios que aparecen en tutorial (hallado: "Zapier" y "n8n" en
+    # el slot de test de las 15h del 20/09).
+    "zapier": "Zéipier",
+    "n8n": "ene ocho ene",
+    "notion": "Nóchon",
     "slack": "Sléqui",
-    "whatsapp": "Uatsáp",
-    "facebook": "Feicibúqui",
+    "whatsapp": "Guatsáp",
+    "facebook": "Féisbuc",
     "twitter": "Tuíter",
-    "netflix": "Nétflix",
-    "spotify": "Spótifai",
+    "netflix": "Nétflics",
+    "spotify": "Espótifai",
     "amazon": "Ámazon",
-    "azure": "Ájur",
+    "azure": "Ásiur",
     "reddit": "Rédit",
     "discord": "Díscord",
-    "gmail": "Gê Mêil",
+    "gmail": "Yíméil",
     "excel": "Écsel",
-    "chrome": "Crôum",
-    "firefox": "Fáier Fóx",
-    "playstation": "Plêi Stêixan",
-    "xbox": "Équis Bóx",
-    "copilot+": "Cópailot Plâs",
+    "chrome": "Cróum",
+    "firefox": "Fáierfocs",
+    "playstation": "Pléistéichon",
+    "xbox": "Equis Bocs",
+    "copilot+": "Cópailot Plás",
     "sora": "Sóra",
-    "grok": "Grók",
-    "xai": "Éx Ei Ái",
-    # Achado pela conferencia no slot das 20h de 19/09 (video de Marte).
-    "high-resolution": "Rái Rezolúchan",
-    "mars express": "Márs Ecsprés",
-    "wi-fi": "Uai Fai",
-    "wifi": "Uai Fai",
-    "bluetooth": "Blutúf",
-    # Termos do nicho que o sintetizador le "em portugues"
-    "software": "Sóftuer",
-    "hardware": "Rárduer",
-    "startup": "Startâp",
-    "startups": "Startâps",
-    "deepfake": "Dip Fêik",
-    "deepfakes": "Dip Fêiks",
-    "prompt": "Prômpt",
-    "prompts": "Prômpts",
-    "online": "Onláin",
-    "benchmark": "Bêntchmark",
-    "benchmarks": "Bêntchmarks",
-    "machine learning": "Machín Lêrning",
-    "deep learning": "Dip Lêrning",
-    "open source": "Ôupen Sórs",
-    "chatbot": "Tchat Bót",
-    "chatbots": "Tchat Bóts",
-    "agents.md": "Êidjents ponto ême dê",
-    "claude.md": "Clôd ponto ême dê",
+    "grok": "Gróc",
+    "xai": "Equis Ei Ei",
+    # Hallado por la comprobacion en el slot de las 20h del 19/09 (video de Marte).
+    "high-resolution": "Yái Rezolútion",
+    "mars express": "Márs Exprés",
+    "wi-fi": "Uái Fái",
+    "wifi": "Uái Fái",
+    "bluetooth": "Blutú",
+    # Terminos del nicho que el sintetizador lee "en castellano"
+    "software": "Sófuer",
+    "hardware": "Yárduer",
+    "startup": "Estártaap",
+    "startups": "Estártaaps",
+    "deepfake": "Dip Fik",
+    "deepfakes": "Dip Fics",
+    "prompt": "Prómpt",
+    "prompts": "Prómpts",
+    "online": "onláin",
+    "benchmark": "Béntchmar",
+    "benchmarks": "Béntchmars",
+    "machine learning": "Máchin Lérnin",
+    "deep learning": "Dip Lérnin",
+    "open source": "Óupen Sors",
+    "chatbot": "Chátbot",
+    "chatbots": "Chátbots",
+    "agents.md": "Éidchents punto éme dé",
+    "claude.md": "Clód punto éme dé",
     "readme": "Rid Mi",
-    "token": "Tôken",
-    "tokens": "Tôkens",
-    "streaming": "Strímin",
-    "podcast": "Pódquést",
+    "token": "Tóquen",
+    "tokens": "Tóquens",
+    "streaming": "Estrímin",
+    "podcast": "Pódcást",
     "feed": "Fid",
     "cloud": "Cláud",
-    "firmware": "Fãrmuer",
-    "notebook": "Nôutbuk",
-    "smartphone": "Smárt Fôun",
-    "smartphones": "Smárt Fôuns",
+    "firmware": "Fírmer",
+    "notebook": "Nótbuc",
+    "smartphone": "Esmártfoun",
+    "smartphones": "Esmártfouns",
 }
 
-# Siglas tecnicas soletradas letra a letra. So as conhecidas: sigla lida
-# como palavra (NASA, OTAN) soletrada soaria errada.
+# Siglas tecnicas deletreadas letra a letra. Solo las conocidas: sigla leida
+# como palabra (NASA, OTAN) deletreada sonaria mal.
 SIGLAS = frozenset({
     "api", "apis", "gpu", "gpus", "cpu", "cpus", "npu", "tpu", "llm", "llms", "rtx",
     "amd", "ibm", "aws", "sdk", "cli", "url", "html", "css", "ssd", "hd", "ram",
@@ -144,36 +145,38 @@ SIGLAS = frozenset({
 })
 
 LETRAS = {
-    "a": "á", "b": "bê", "c": "cê", "d": "dê", "e": "é", "f": "éfe", "g": "gê",
-    "h": "agá", "i": "í", "j": "jota", "k": "cá", "l": "éle", "m": "ême", "n": "êne",
-    "o": "ó", "p": "pê", "q": "quê", "r": "érre", "s": "ésse", "t": "tê", "u": "ú",
-    "v": "vê", "w": "dáblio", "x": "xis", "y": "ípsilon", "z": "zê",
+    "a": "a", "b": "bé", "c": "cé", "d": "dé", "e": "e", "f": "éfe", "g": "ge",
+    "h": "aché", "i": "i", "j": "yota", "k": "ca", "l": "éle", "m": "éme", "n": "ene",
+    "o": "o", "p": "pé", "q": "cu", "r": "erre", "s": "ese", "t": "te", "u": "u",
+    "v": "uvé", "w": "doble uvé", "x": "equis", "y": "i griega", "z": "zeta",
 }
 
-_PONTUACAO_BORDA = re.compile(r"^([\"'“”‘’(\[]*)(.*?)([\"'“”‘’)\].,;:!?…]*)$")
+_PUNTUACION_BORDE = re.compile(
+    r"^([\"'\u201c\u201d\u2018\u2019(\[]*)(.*?)([\"'\u201c\u201d\u2018\u2019)\].,;:!?…]*)$"
+)
 
 
-def _chave(texto: str) -> str:
-    sem = unicodedata.normalize("NFD", texto.lower())
-    return "".join(c for c in sem if not unicodedata.combining(c))
+def _clave(texto: str) -> str:
+    sin = unicodedata.normalize("NFD", texto.lower())
+    return "".join(c for c in sin if not unicodedata.combining(c))
 
 
 def spell(sigla: str) -> str:
-    """'GPU' -> 'gê pê ú' (plural 's' final vira 'ésse' so se fizer parte)."""
+    """'GPU' -> 'ge pé u' (el plural 's' final se vuelve 'ese' solo si forma parte)."""
     base = sigla.lower()
     plural = base.endswith("s") and base[:-1] in SIGLAS
     letras = base[:-1] if plural else base
-    falado = " ".join(LETRAS.get(c, c) for c in letras)
-    return falado + ("s" if plural else "")
+    hablado = " ".join(LETRAS.get(c, c) for c in letras)
+    return hablado + ("s" if plural else "")
 
 
 @dataclass
 class Respelled:
-    """Texto para a voz + alinhamento com as palavras originais.
+    """Texto para la voz + alineamiento con las palabras originales.
 
-    `groups[i]` = quantas palavras do texto falado nasceram da palavra
-    original i. A legenda usa isso para devolver a grafia original com o
-    tempo das palavras faladas.
+    `groups[i]` = cuantas palabras del texto hablado nacieron de la palabra
+    original i. La leyenda usa esto para devolver la grafia original con el
+    tiempo de las palabras habladas.
     """
 
     original: list[str]
@@ -187,64 +190,64 @@ class Respelled:
 
 
 def respell(texto: str) -> Respelled:
-    palavras = texto.split()
-    saida = Respelled(original=palavras, spoken=[])
+    palabras = texto.split()
+    salida = Respelled(original=palabras, spoken=[])
     multi = sorted((k for k in LEXICO if " " in k), key=lambda k: -len(k.split()))
     i = 0
-    while i < len(palavras):
-        # Nome de varias palavras primeiro ("wall street journal").
-        casou = False
+    while i < len(palabras):
+        # Nombre de varias palabras primero ("wall street journal").
+        caso = False
         for k in multi:
             n = len(k.split())
-            trecho = palavras[i:i + n]
-            if len(trecho) < n:
+            trozo = palabras[i:i + n]
+            if len(trozo) < n:
                 continue
-            miolo = " ".join(_PONTUACAO_BORDA.match(p).group(2) for p in trecho)
-            if _chave(miolo) == k:
-                pre = _PONTUACAO_BORDA.match(trecho[0]).group(1)
-                pos = _PONTUACAO_BORDA.match(trecho[-1]).group(3)
-                falado = (pre + LEXICO[k] + pos).split()
-                # A legenda mostra as n palavras originais: a primeira leva o
-                # grupo falado inteiro, as outras ficam com zero.
-                saida.spoken.extend(falado)
-                saida.groups.append(len(falado))
-                saida.groups.extend([0] * (n - 1))
-                saida.changes.append((" ".join(trecho), LEXICO[k]))
+            centro = " ".join(_PUNTUACION_BORDE.match(p).group(2) for p in trozo)
+            if _clave(centro) == k:
+                pre = _PUNTUACION_BORDE.match(trozo[0]).group(1)
+                pos = _PUNTUACION_BORDE.match(trozo[-1]).group(3)
+                hablado = (pre + LEXICO[k] + pos).split()
+                # La leyenda muestra las n palabras originales: la primera se
+                # lleva el grupo hablado entero, las otras quedan con cero.
+                salida.spoken.extend(hablado)
+                salida.groups.append(len(hablado))
+                salida.groups.extend([0] * (n - 1))
+                salida.changes.append((" ".join(trozo), LEXICO[k]))
                 i += n
-                casou = True
+                caso = True
                 break
-        if casou:
+        if caso:
             continue
-        palavra = palavras[i]
-        pre, miolo, pos = _PONTUACAO_BORDA.match(palavra).groups()
-        falado_txt = _falar(miolo)
-        if falado_txt != miolo:
-            saida.changes.append((miolo, falado_txt))
-        falado = (pre + falado_txt + pos).split() or [palavra]
-        saida.spoken.extend(falado)
-        saida.groups.append(len(falado))
+        palabra = palabras[i]
+        pre, centro, pos = _PUNTUACION_BORDE.match(palabra).groups()
+        hablado_txt = _hablar(centro)
+        if hablado_txt != centro:
+            salida.changes.append((centro, hablado_txt))
+        hablado = (pre + hablado_txt + pos).split() or [palabra]
+        salida.spoken.extend(hablado)
+        salida.groups.append(len(hablado))
         i += 1
-    return saida
+    return salida
 
 
-def _falar(token: str) -> str:
-    """Uma palavra (sem pontuacao de borda) como a voz deve ler."""
+def _hablar(token: str) -> str:
+    """Una palabra (sin puntuacion de borde) como la voz debe leerla."""
     if not token:
         return token
-    chave = _chave(token)
-    if chave in LEXICO:
-        return LEXICO[chave]
-    # Hifenizado ("GPT-5", "Qwen3.8-27B"): cada parte pelo lexico, sem hifen.
+    clave = _clave(token)
+    if clave in LEXICO:
+        return LEXICO[clave]
+    # Con guion ("GPT-5", "Qwen3.8-27B"): cada parte por el lexico, sin guion.
     if "-" in token:
         partes = [p for p in token.split("-") if p]
-        faladas = [_falar(p) for p in partes]
-        if faladas != partes:
-            return " ".join(faladas)
-    # Letras coladas a numero ("RTX5090", "GPT5"): separa e resolve as letras.
+        habladas = [_hablar(p) for p in partes]
+        if habladas != partes:
+            return " ".join(habladas)
+    # Letras pegadas a numero ("RTX5090", "GPT5"): separa y resuelve las letras.
     m = re.fullmatch(r"([A-Za-z]+)(\d[\d.,]*)", token)
-    if m and (_chave(m.group(1)) in LEXICO or _chave(m.group(1)) in SIGLAS):
-        return f"{_falar(m.group(1))} {m.group(2)}"
-    if chave in SIGLAS and token.upper() == token or chave in SIGLAS and len(token) <= 4 \
+    if m and (_clave(m.group(1)) in LEXICO or _clave(m.group(1)) in SIGLAS):
+        return f"{_hablar(m.group(1))} {m.group(2)}"
+    if clave in SIGLAS and token.upper() == token or clave in SIGLAS and len(token) <= 4 \
             and token[:1].isupper():
         return spell(token)
     return token

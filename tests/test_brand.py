@@ -1,7 +1,7 @@
-"""Vetor de marca: uma fonte, portoes medidos, conformidade testada.
+"""Vector de marca: una fuente, puertas medidas, conformidad probada.
 
-Se o guia mudar, muda `brand/brand.json` e estes testes dizem onde o codigo
-divergiu -- em vez de a identidade apodrecer em silencio.
+Si la guía cambia, cambia `brand/brand.json` y estos tests dicen dónde el código
+divergió -- en vez de que la identidad se pudra en silencio.
 """
 
 from __future__ import annotations
@@ -15,103 +15,103 @@ from agent.brand.brand import (
     voice_brief,
 )
 from agent.brand.checks import (
-    check_emoji_bordao,
+    check_emoji_muletilla,
     check_hook,
     check_numbers,
 )
 
 
-class TestVetor:
-    def test_sete_pilares_um_acento_por_peca(self):
-        """Os seis do guia + historia (20/09/2026, pedido do autor)."""
+class TestVector:
+    def test_siete_pilares_un_acento_por_pieza(self):
+        """Los seis de la guía + historia (20/09/2026, petición del autor)."""
         brand = load()
-        assert sorted(brand.pillars) == ["analise", "fato", "futuro", "historia",
+        assert sorted(brand.pillars) == ["analisis", "dato", "futuro", "historia",
                                          "news", "tutorial", "vs"]
         for p in brand.pillars.values():
             assert re.fullmatch(r"#[0-9A-F]{6}", p.accent)
-        assert brand.accent_for("fato") == "#00E0FF"
+        assert brand.accent_for("dato") == "#00E0FF"
         assert brand.accent_for("news") == "#39FF88"
         assert brand.accent_for("inexistente") == "#39FF88"
 
-    def test_hashtags_e_bio(self):
+    def test_hashtags_y_bio(self):
         brand = load()
         assert brand.hashtags == ("#ia", "#inteligenciaartificial", "#tecnologia",
-                                  "#ai", "#seucanal")
-        assert "@seucanal" in brand.handle and "Sinais do futuro" in brand.tagline
+                                  "#ai", "#circuitocero")
+        assert "@circuitocero" in brand.handle and "Señales del futuro" in brand.tagline
 
-    def test_sugestao_por_assunto(self):
-        assert suggest_content_pillar("Como usar prompts no dia a dia") == "tutorial"
-        assert suggest_content_pillar("Modelo contra modelo: qual vence") == "vs"
-        assert suggest_content_pillar("Anuncio de modelo novo") == "news"
+    def test_sugerencia_por_asunto(self):
+        assert suggest_content_pillar("Cómo usar prompts en el día a día") == "tutorial"
+        assert suggest_content_pillar("Modelo contra modelo: cuál gana") == "vs"
+        assert suggest_content_pillar("Anuncio de modelo nuevo") == "news"
 
-    def test_voz_tem_as_regras(self):
+    def test_voz_tiene_las_reglas(self):
         texto = voice_brief()
-        assert "12 palavras" in texto and "emoji" in texto
+        assert "12 palabras" in texto and "emoji" in texto
 
 
-class TestApresentadores:
-    def test_elenco_com_seeds_e_formatos(self):
+class TestPresentadores:
+    def test_elenco_con_seeds_y_formatos(self):
         brand = load()
         assert sorted(brand.presenters) == ["iris", "theo"]
         assert brand.presenters["iris"].seed == 481502
         assert brand.presenters["theo"].seed == 907314
-        # Desde a noite de 20/09/2026 o THEO apresenta TODOS os pilares: so
-        # ele tem clipe base filmado, e misturar um apresentador filmado com um
-        # sintetizado no mesmo canal seria uma diferenca de qualidade visivel.
-        for pilar in ("analise", "tutorial", "news", "futuro", "historia",
-                      "fato", "vs"):
+        # Desde la noche del 20/09/2026 ATLAS presenta TODOS los pilares: solo
+        # él tiene clip base filmado, y mezclar un presentador filmado con uno
+        # sintetizado en el mismo canal sería una diferencia de calidad visible.
+        for pilar in ("analisis", "tutorial", "news", "futuro", "historia",
+                      "dato", "vs"):
             assert brand.presenter_for(pilar).id == "theo", pilar
-        # A Iris nao foi removida, so ficou sem formato -- ela volta a disputar
-        # pilar sozinha quando `iris_base.json` existir.
+        # Nova no se eliminó, se quedó sin formato -- vuelve a disputar pilar
+        # sola cuando `nova_base.json` exista.
         assert brand.presenters["iris"].formats == ()
 
-    def test_vozes_mapeadas_sem_invencao(self):
+    def test_voces_mapeadas_sin_invencion(self):
         brand = load()
-        assert brand.presenters["theo"].library_voice == "jeff"
+        assert brand.presenters["theo"].library_voice == "atlas"
         assert brand.presenters["iris"].library_voice is None
 
-    def test_prompt_travado_com_variaveis(self):
-        texto = avatar_prompt("iris", expressao="concentrada")
+    def test_prompt_travado_con_variables(self):
+        texto = avatar_prompt("iris", expresion="concentrada")
         assert "seed: 481502" in texto and "concentrada" in texto
-        assert "fundo transparente" in texto
+        assert "fondo transparente" in texto
 
-    def test_variavel_fora_da_lista_falha(self):
+    def test_variable_fuera_de_lista_falla(self):
         import pytest
         with pytest.raises(ValueError):
-            avatar_prompt("theo", gesto="dancando")
+            avatar_prompt("theo", gesto="bailando")
 
 
-class TestPortoes:
-    def test_gancho_ate_12(self):
-        assert check_hook(" ".join(["palavra"] * 12)) is None
-        falha = check_hook(" ".join(["palavra"] * 13))
-        assert falha is not None and "12" in falha
+class TestPuertas:
+    def test_gancho_hasta_12(self):
+        assert check_hook(" ".join(["palabra"] * 12)) is None
+        fallo = check_hook(" ".join(["palabra"] * 13))
+        assert fallo is not None and "12" in fallo
 
-    def test_nome_proprio_nao_conta_como_numero(self):
-        assert check_numbers("O Bonsai 27B roda na RTX 5090.") == []
-        assert check_numbers("Escala FP16 com 1.76 bits.") == []
+    def test_nombre_propio_no_cuenta_como_numero(self):
+        assert check_numbers("El Bonsai 27B corre en la RTX 5090.") == []
+        assert check_numbers("Escala FP16 con 1.76 bits.") == []
 
-    def test_intervalo_conta_como_um(self):
-        assert check_numbers("Suporta de 25 a 300 contas por chave.") == []
+    def test_intervalo_cuenta_como_uno(self):
+        assert check_numbers("Soporta de 25 a 300 cuentas por clave.") == []
 
-    def test_dois_numeros_pedem_duas_frases(self):
-        texto = "Ocupa 5,9 GB e retem 98,2% do desempenho."
-        (falha,) = check_numbers(texto)
-        assert "um por frase" in falha
-        assert check_numbers("Ocupa 5,9 GB no disco. Retem quase tudo.") == []
+    def test_dos_numeros_piden_dos_frases(self):
+        texto = "Ocupa 5,9 GB y retiene 98,2% del rendimiento."
+        (fallo,) = check_numbers(texto)
+        assert "uno por frase" in fallo
+        assert check_numbers("Ocupa 5,9 GB en disco. Retiene casi todo.") == []
 
-    def test_emoji_e_bordao(self):
-        assert any("emoji" in p for p in check_emoji_bordao("Olha isso \U0001F600"))
-        assert any("fala galera" in p for p in check_emoji_bordao("Fala galera!"))
-        assert check_emoji_bordao("Texto limpo.") == []
+    def test_emoji_y_muletilla(self):
+        assert any("emoji" in p for p in check_emoji_muletilla("Mira esto \U0001F600"))
+        assert any("que pasa gente" in p for p in check_emoji_muletilla("¿Qué pasa gente!"))
+        assert check_emoji_muletilla("Texto limpio.") == []
 
 
-class TestSlidesNaMarca:
-    def test_legenda_leva_hashtags(self, tmp_path):
+class TestDiapositivasEnLaMarca:
+    def test_leyenda_lleva_hashtags(self, tmp_path):
         from agent.models import Carousel
         from agent.render.carousel import render_carousel
         from tests.test_carousel import slides
-        carrossel = Carousel.model_validate_json(slides())
-        render_carousel(carrossel, tmp_path / "car", "fato")
+        carrusel = Carousel.model_validate_json(slides())
+        render_carousel(carrusel, tmp_path / "car", "dato")
         caption = (tmp_path / "car" / "caption.txt").read_text(encoding="utf-8")
-        assert "#seucanal" in caption
+        assert "#circuitocero" in caption

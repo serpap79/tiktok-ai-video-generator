@@ -1,15 +1,15 @@
-"""Avisos do piloto: o que saiu, o que falta fazer no app, o que falhou.
+"""Avisos del piloto: qué se publicó, qué falta hacer en la app y qué falló.
 
-Dois canais, os dois opcionais e nenhum bloqueante (aviso que falha nao pode
+Dos canales, ambos opcionales y ninguno bloqueante (un aviso que falla no puede
 derrubar um post que deu certo):
 
-- `notify-send`: notificacao na area de trabalho, quando ha sessao grafica;
+- `notify-send`: notificación en el área de trabajo cuando hay sesión gráfica;
 - ntfy (https://ntfy.sh): push gratuito no celular, sem conta -- so com
   `AGENT_NTFY_TOPIC` no `.env`. O topico funciona como senha: quem souber o
-  nome le as mensagens, entao use um nome longo e aleatorio. Nao vai segredo
+  nombre puede leer los mensajes, así que usa uno largo y aleatorio. No se incluye ningún secreto
   nenhum na mensagem, so tema, formato e legenda.
 
-Sempre fica tambem o `aviso.txt` dentro do pacote: o registro que nao
+Siempre queda también `aviso.txt` dentro del paquete: el registro que no
 depende de nenhum dos dois.
 """
 
@@ -24,7 +24,7 @@ import httpx
 
 def notify(title: str, body: str, *, ntfy_topic: str = "", ntfy_server: str = "https://ntfy.sh",
            package_dir: Path | None = None, urgent: bool = False) -> list[str]:
-    """Envia pelos canais disponiveis; devolve quais funcionaram."""
+    """Envía por los canales disponibles; devuelve los que funcionaron."""
     enviados: list[str] = []
     if package_dir is not None:
         try:
@@ -35,7 +35,7 @@ def notify(title: str, body: str, *, ntfy_topic: str = "", ntfy_server: str = "h
             pass
     if shutil.which("notify-send"):
         try:
-            subprocess.run(["notify-send", "-a", "Seu Canal",
+            subprocess.run(["notify-send", "-a", "Circuito Cero",
                             "-u", "critical" if urgent else "normal", title, body[:400]],
                            check=True, capture_output=True, timeout=10)
             enviados.append("desktop")
@@ -43,8 +43,8 @@ def notify(title: str, body: str, *, ntfy_topic: str = "", ntfy_server: str = "h
             pass
     if ntfy_topic:
         try:
-            # Publicacao em JSON: titulo com acento em cabecalho HTTP nao e
-            # seguro, e o JSON do ntfy aceita UTF-8 inteiro.
+            # Publicación en JSON: un título con acento en una cabecera HTTP no es
+            # seguro, y el JSON de ntfy acepta UTF-8 completo.
             r = httpx.post(ntfy_server.rstrip("/"), json={
                 "topic": ntfy_topic, "title": title, "message": body[:3500],
                 "priority": 4 if urgent else 3,

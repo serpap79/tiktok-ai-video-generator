@@ -1,12 +1,13 @@
-"""Roteirista de carrossel: dossie para 5 slides + legenda.
+"""Guionista de carrusel: dossier para 5 diapositivas + caption.
 
-Receita validada dos canais (2026): slide 1 com promessa numerada, revelacao
-progressiva com value bomb no meio, slide 5 com conclusao + CTA de save, 10-15
-palavras por slide, legenda com pergunta para puxar comentario. Tudo que e
-contavel vira portao mecanico aqui; gancho e progressao sao do juiz.
+Receta validada de los canales (2026): diapositiva 1 con promesa numerada,
+revelación progresiva con bomba de valor en medio, diapositiva 5 con
+conclusión + CTA de guardado, 10-15 palabras por diapositiva, caption con
+pregunta para arrastrar comentario. Todo lo que es contable se convierte en
+puerta mecánica aquí; gancho y progresión son del juez.
 
-Mesmo laco do roteirista de video: ate 3 tentativas, defeito medido de volta
-ao modelo em texto, tentativa reprovada gravada para calibrar o prompt.
+Mismo bucle que el guionista de vídeo: hasta 3 intentos, defecto medido de
+vuelta al modelo en texto, intento reprobado grabado para calibrar el prompt.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from agent.brand.brand import pillar_brief, voice_brief
-from agent.brand.checks import check_emoji_bordao, check_numbers
+from agent.brand.checks import check_emoji_muletilla, check_numbers
 from agent.models import (
     CAROUSEL_MAX_WORDS_PER_SLIDE,
     CAROUSEL_SLIDES,
@@ -31,17 +32,17 @@ from agent.research.grounding import missing_numbers
 from agent.research.subject import missing_subject
 from agent.writer.humanize import scan as scan_tells
 from agent.writer.visuals import compact_brief, suggest_pillar, validate_broll, validate_terms
-from agent.writer.writer import _resolver_fatos
+from agent.writer.writer import _resolver_hechos
 
-MAX_TENTATIVAS = 3
+MAX_INTENTOS = 3
 
 SISTEMA = (
-    "Voce roteiriza carrosseis de um canal brasileiro dark de tech, IA e "
-    "ciencia. Cada slide e uma frase curta que se le em 3 segundos. Voce so "
-    "afirma o que esta no dossie que recebe."
+    "Escribes guiones de carruseles de un canal español dark de tech, IA y "
+    "ciencia. Cada diapositiva es una frase corta que se lee en 3 segundos. "
+    "Solo afirmas lo que está en el dossier que recibes."
 )
 
-SCHEMA_CARROSSEL: dict[str, Any] = {
+SCHEMA_CARRUSEL: dict[str, Any] = {
     "type": "object",
     "properties": {
         "slides": {
@@ -68,7 +69,8 @@ class CarouselAttempt:
     violations: list[str] = field(default_factory=list)
     usage: Usage = field(default_factory=Usage)
     latency_s: float = 0.0
-    # Os slides reprovados em texto, para a correcao ajustar em vez de refazer.
+    # Las diapositivas reprobadas en texto, para que la corrección ajuste en
+    # vez de rehacer.
     text: str = ""
 
 
@@ -98,10 +100,10 @@ class CarouselReport:
 
 
 def write_carousel(dossier: Dossier, llm: LLM,
-                   max_attempts: int = MAX_TENTATIVAS,
+                   max_attempts: int = MAX_INTENTOS,
                    notes: list[str] | None = None,
                    pillar: str = "") -> CarouselReport:
-    """Escreve o carrossel com correcao propria do que e mecanico."""
+    """Escribe el carrusel con autocorrección de lo que es mecánico."""
     report = CarouselReport(
         topic=dossier.topic,
         model=getattr(llm, "model", ""),
@@ -112,164 +114,174 @@ def write_carousel(dossier: Dossier, llm: LLM,
     if report.refusal:
         return report
 
-    correcao: list[str] = list(notes or [])
+    correccion: list[str] = list(notes or [])
     anterior = ""
     for _ in range(max_attempts):
         try:
-            resposta = llm.complete(
-                build_prompt(dossier, correcao, pillar=pillar,
-                             previous=anterior if correcao else ""),
+            respuesta = llm.complete(
+                build_prompt(dossier, correccion, pillar=pillar,
+                             previous=anterior if correccion else ""),
                 system=SISTEMA,
-                schema=SCHEMA_CARROSSEL,
+                schema=SCHEMA_CARRUSEL,
                 temperature=0.6,
                 max_output_tokens=2048,
             )
         except LLMError:
             raise
-        report.model, report.provider = resposta.model, resposta.provider
-        tentativa, carrossel = _avaliar(resposta, dossier, pillar)
-        report.attempts.append(tentativa)
-        if not tentativa.violations:
-            report.carousel = carrossel
+        report.model, report.provider = respuesta.model, respuesta.provider
+        intento, carrusel = _evaluar(respuesta, dossier, pillar)
+        report.attempts.append(intento)
+        if not intento.violations:
+            report.carousel = carrusel
             return report
-        correcao = tentativa.violations
-        anterior = tentativa.text or anterior
+        correccion = intento.violations
+        anterior = intento.text or anterior
     return report
 
 
-def _avaliar(resposta: Completion, dossier: Dossier, pillar: str = ""
+def _evaluar(respuesta: Completion, dossier: Dossier, pillar: str = ""
              ) -> tuple[CarouselAttempt, Carousel | None]:
-    tentativa = CarouselAttempt(usage=resposta.usage, latency_s=resposta.latency_s)
-    if resposta.truncated:
-        tentativa.violations.append(
-            "a resposta foi cortada por limite de tokens; escreva mais curto")
-        return tentativa, None
+    intento = CarouselAttempt(usage=respuesta.usage, latency_s=respuesta.latency_s)
+    if respuesta.truncated:
+        intento.violations.append(
+            "la respuesta se cortó por límite de tokens; escribe más corto")
+        return intento, None
     try:
-        corpo = parse_json_object(resposta.text)
+        cuerpo = parse_json_object(respuesta.text)
     except LLMError as exc:
-        tentativa.violations.append(f"a resposta nao veio como objeto JSON: {exc}")
-        return tentativa, None
+        intento.violations.append(f"la respuesta no llegó como objeto JSON: {exc}")
+        return intento, None
 
-    usados, fora = _resolver_fatos(corpo.get("used_facts"), dossier.facts)
+    usados, fuera = _resolver_hechos(cuerpo.get("used_facts"), dossier.facts)
     try:
         slides = [Slide(n=int(s.get("n", i + 1)),
                         headline=_texto(s.get("headline")),
                         text=_texto(s.get("text")),
                         visual=_texto(s.get("visual")))
-                  for i, s in enumerate(corpo.get("slides") or [])]
-        broll = [_texto(t) for t in (corpo.get("broll") or []) if isinstance(t, str)]
-        carrossel = Carousel(topic=dossier.topic, slides=slides,
-                             caption=_texto(corpo.get("caption")), facts=usados,
-                             broll=[t for t in broll if t][:3], pillar=pillar)
+                  for i, s in enumerate(cuerpo.get("slides") or [])]
+        broll = [_texto(t) for t in (cuerpo.get("broll") or []) if isinstance(t, str)]
+        carrusel = Carousel(topic=dossier.topic, slides=slides,
+                            caption=_texto(cuerpo.get("caption")), facts=usados,
+                            broll=[t for t in broll if t][:3], pillar=pillar)
     except (ValidationError, ValueError, AttributeError) as exc:
-        tentativa.violations.append(f"o carrossel nao respeita o contrato: {exc}")
-        return tentativa, None
-    tentativa.text = "\n".join(
-        f"[{s.n}] {s.headline} / {s.text} ~ {s.visual}" for s in carrossel.slides
-    ) + f"\nlegenda: {carrossel.caption}"
+        intento.violations.append(f"el carrusel no respeta el contrato: {exc}")
+        return intento, None
+    intento.text = "\n".join(
+        f"[{s.n}] {s.headline} / {s.text} ~ {s.visual}" for s in carrusel.slides
+    ) + f"\ncaption: {carrusel.caption}"
 
-    tentativa.violations.extend(_violacoes(carrossel, dossier, fora))
-    return tentativa, (carrossel if not tentativa.violations else None)
+    intento.violations.extend(_violaciones(carrusel, dossier, fuera))
+    return intento, (carrusel if not intento.violations else None)
 
 
-def _violacoes(carrossel: Carousel, dossier: Dossier, fora: list[int]) -> list[str]:
+def _violaciones(carrusel: Carousel, dossier: Dossier, fuera: list[int]) -> list[str]:
     problemas: list[str] = []
-    for s in carrossel.slides:
+    for s in carrusel.slides:
         if s.word_count > CAROUSEL_MAX_WORDS_PER_SLIDE:
             problemas.append(
-                f"slide {s.n} tem {s.word_count} palavras (teto "
-                f"{CAROUSEL_MAX_WORDS_PER_SLIDE}): corte "
-                f"{s.word_count - CAROUSEL_MAX_WORDS_PER_SLIDE} palavras, "
-                "slide se le em 3 segundos.")
-    s1 = carrossel.slides[0]
+                f"la diapositiva {s.n} tiene {s.word_count} palabras (techo "
+                f"{CAROUSEL_MAX_WORDS_PER_SLIDE}): corta "
+                f"{s.word_count - CAROUSEL_MAX_WORDS_PER_SLIDE} palabras, "
+                "la diapositiva se lee en 3 segundos.")
+    s1 = carrusel.slides[0]
     if not _DIGITO.search(f"{s1.headline} {s1.text}"):
         problemas.append(
-            "slide 1 sem numero: a promessa numerada ('5 IAs que...') e o que "
-            "faz a pessoa arrastar. Sem numero nao ha payoff finito.")
-    s5 = carrossel.slides[-1]
-    if "salv" not in f"{s5.headline} {s5.text}".lower():
+            "diapositiva 1 sin número: la promesa numerada ('5 IAs que...') es "
+            "lo que hace deslizar a la gente. Sin número no hay recompensa "
+            "finita.")
+    s5 = carrusel.slides[-1]
+    if not any(palabra in f"{s5.headline} {s5.text}".lower()
+               for palabra in ("guard", "salv", "graba")):
         problemas.append(
-            "slide 5 sem CTA de save ('salve'): save/view e o indicador lider "
-            "do formato; sem ele o carrossel nao acumula distribuicao.")
-    if "?" not in carrossel.caption:
+            "diapositiva 5 sin CTA de guardado ('guárdalo'): save/view es el "
+            "indicador líder del formato; sin él el carrusel no acumula "
+            "distribución.")
+    if "?" not in carrusel.caption:
         problemas.append(
-            "legenda sem pergunta: a legenda carrega o convite ao comentario, "
-            "e comentario e onde o carrossel ganha do video.")
-    if fora:
+            "caption sin pregunta: la caption lleva la invitación al "
+            "comentario, y el comentario es donde el carrusel gana al vídeo.")
+    if fuera:
         problemas.append(
-            f"used_facts aponta indice que nao existe no dossie: {fora}.")
-    if not carrossel.facts:
-        problemas.append("used_facts vazio: carrossel tambem ancora em fonte.")
+            f"used_facts apunta a un índice que no existe en el dossier: {fuera}.")
+    if not carrusel.facts:
+        problemas.append("used_facts vacío: el carrusel también se ancla en fuente.")
     problemas.extend(
-        "visual: " + v for v in validate_terms([s.visual for s in carrossel.slides]))
-    problemas.extend(validate_broll(carrossel.broll, "carousel"))
-    texto = "\n".join(f"{s.headline} {s.text}" for s in carrossel.slides)
-    fontes = "\n".join(f"{f.claim}\n{f.quote}" for f in dossier.facts)
-    sem_sujeito = missing_subject(texto, dossier.topic, minimum=1)
-    if sem_sujeito:
+        "visual: " + v for v in validate_terms([s.visual for s in carrusel.slides]))
+    problemas.extend(validate_broll(carrusel.broll, "carousel"))
+    texto = "\n".join(f"{s.headline} {s.text}" for s in carrusel.slides)
+    fuentes = "\n".join(f"{f.claim}\n{f.quote}" for f in dossier.facts)
+    sin_sujeto = missing_subject(texto, dossier.topic, minimum=1)
+    if sin_sujeto:
         problemas.append(
-            "carrossel sem sujeito: nenhum slide nomeia "
-            + ", ".join(f"{t!r}" for t in sem_sujeito) + ". Quem assiste "
-            "precisa saber sobre O QUE sao os 5 slides.")
-    # Contagem estrutural (o "5" da promessa) nao e afirmacao factual: sao os
-    # proprios slides, verificados acima pela ordem 1-5. So numero acima disso
-    # precisa existir no dossie.
-    soltos = [n for n in missing_numbers(texto, fontes)
-              if not (n.isdigit() and int(n) <= CAROUSEL_SLIDES)]
-    if soltos:
+            "carrusel sin sujeto: ninguna diapositiva nombra "
+            + ", ".join(f"{t!r}" for t in sin_sujeto) + ". Quien mira "
+            "necesita saber sobre QUÉ son las 5 diapositivas.")
+    # El recuento estructural (el "5" de la promesa) no es afirmación factual:
+    # son las propias diapositivas, verificadas arriba por el orden 1-5. Solo
+    # un número por encima de eso debe existir en el dossier.
+    sueltos = [n for n in missing_numbers(texto, fuentes)
+               if not (n.isdigit() and int(n) <= CAROUSEL_SLIDES)]
+    if sueltos:
         problemas.append(
-            f"slide cita numero que nao esta no dossie: {', '.join(soltos)}.")
+            f"la diapositiva cita un número que no está en el dossier: "
+            f"{', '.join(sueltos)}.")
     tells = scan_tells(texto)
     if tells:
         problemas.append(
-            "slide com vicio de IA (" + "; ".join(tells[:3]) + "): reescreva "
-            "como fala curta de pessoa.")
-    problemas.extend(check_numbers(texto, ignorar_ate=CAROUSEL_SLIDES))
-    problemas.extend(check_emoji_bordao(texto))
+            "diapositiva con vicio de IA (" + "; ".join(tells[:3]) + "): "
+            "reescribe como habla corta de persona.")
+    problemas.extend(check_numbers(texto, ignorar_hasta=CAROUSEL_SLIDES))
+    problemas.extend(check_emoji_muletilla(texto))
     return problemas
 
 
-def build_prompt(dossier: Dossier, correcoes: list[str] | None = None,
+def build_prompt(dossier: Dossier, correcciones: list[str] | None = None,
                  pillar: str = "", previous: str = "") -> str:
-    fatos = "\n".join(
-        f"[{i}] {f.claim}\n    fonte: {f.source_name}"
+    hechos = "\n".join(
+        f"[{i}] {f.claim}\n    fuente: {f.source_name}"
         for i, f in enumerate(dossier.facts))
     partes = [
         f"TEMA: {dossier.topic}\n",
-        f"DOSSIE (use o indice para citar):\n{fatos}\n",
-        "TAREFA\nEscreva um carrossel de 5 slides para TikTok photo mode.\n"
-        "- slide 1: promessa NUMERADA ('5 IAs que...', '3 comandos...'). Sem numero, sem swipe.\n"
-        "- slides 2-4: revelacao progressiva, um dado novo por slide; o melhor "
-        "dado no 3 ou 4 (value bomb).\n"
-        "- slide 5: conclusao + 'salve para depois'.\n"
-        "- cada slide: headline de 2 a 5 palavras + text de ate 7 palavras. Juntos, no "
-        "maximo 12 (teto da marca): conte antes de responder. Medido em 20/09: pedir "
-        "'mire 10 no total' deu slides de 13-14 palavras em tres tentativas seguidas.\n"
-        "- caption: uma linha com a palavra-chave + UMA pergunta.\n"
-        "- visual: tag COPIADA da lista de ESTETICA, um pilar so.\n"
-        "- broll: termos EM INGLES do objeto concreto do assunto, para a foto da capa.\n"
-        "- used_facts: indices do dossie.\n"
-        "- Nomeie o assunto (nome + quem construiu, SE o dossie disser) ja no "
-        "slide 1 ou 2: slide anonimo nao tem busca nem credibilidade.\n"
-        "- Fio: cada slide continua o anterior E se entende sozinho -- nomeie "
-        "o sujeito ou retome ('essa tecnica', 'o modelo') + dado novo. Slide "
-        "que so faz sentido colado no vizinho ('Segundo artigo em 2025') "
-        "reprova no juiz: diga O QUE aconteceu, nao so QUANDO.\n"
-        "- UM dado numerico por linha: '143 tokens/s na RTX 5090' quebra a "
-        "regra da marca (dois numeros numa frase) -- ponha '143 tokens por "
-        "segundo' numa linha e o nome da placa na outra.\n",
+        f"DOSSIER (usa el índice para citar):\n{hechos}\n",
+        "TAREA\nEscribe un carrusel de 5 diapositivas para TikTok photo mode.\n"
+        "- diapositiva 1: promesa NUMERADA ('5 IAs que...', '3 comandos...'). "
+        "Sin número, sin swipe.\n"
+        "- diapositivas 2-4: revelación progresiva, un dato nuevo por "
+        "diapositiva; el mejor dato en la 3 o 4 (bomba de valor).\n"
+        "- diapositiva 5: conclusión + 'guárdalo para después'.\n"
+        "- cada diapositiva: headline de 2 a 5 palabras + text de hasta 7 "
+        "palabras. Juntas, como máximo 12 (techo de la marca): cuenta antes "
+        "de responder. Medido en 20/09: pedir 'apunta a 10 en total' dio "
+        "diapositivas de 13-14 palabras en tres intentos seguidos.\n"
+        "- caption: una línea con la palabra clave + UNA pregunta.\n"
+        "- visual: etiqueta COPIADA de la lista de ESTÉTICA, un pilar solo.\n"
+        "- broll: términos EN INGLÉS del objeto concreto del tema, para la "
+        "foto de portada.\n"
+        "- used_facts: índices del dossier.\n"
+        "- Nombra el tema (nombre + quién lo construyó, SI el dossier lo "
+        "dice) ya en la diapositiva 1 o 2: diapositiva anónima no tiene "
+        "búsqueda ni credibilidad.\n"
+        "- Hilo: cada diapositiva continúa la anterior Y se entiende sola -- "
+        "nombra el sujeto o retómalo ('esa técnica', 'el modelo') + dato "
+        "nuevo. La diapositiva que solo tiene sentido pegada a la vecina "
+        "('Segundo artículo en 2025') reprueba en el juez: di QUÉ pasó, no "
+        "solo CUÁNDO.\n"
+        "- UN dato numérico por línea: '143 tokens/s en la RTX 5090' rompe la "
+        "regla de la marca (dos números en una frase) -- pon '143 tokens por "
+        "segundo' en una línea y el nombre de la gráfica en la otra.\n",
         pillar_brief(pillar or "news", "carousel"),
         compact_brief(suggest_pillar(dossier.topic), "carousel"),
         voice_brief(),
-        "REGRAS\n"
-        "- So dado do dossie. Sem emoji, sem hashtag no slide.\n"
-        "- pt-BR falado, frase curta.",
+        "REGLAS\n"
+        "- Solo dato del dossier. Sin emoji, sin hashtag en la diapositiva.\n"
+        "- Castellano de España hablado, frase corta.",
     ]
-    if correcoes:
-        bloco = "CORRIJA A TENTATIVA ANTERIOR\n" + "\n".join(f"- {c}" for c in correcoes)
+    if correcciones:
+        bloque = "CORRIGE EL INTENTO ANTERIOR\n" + "\n".join(f"- {c}" for c in correcciones)
         if previous:
-            bloco += f"\nSLIDES ANTERIORES (ajuste estes, nao comece do zero):\n{previous}"
-        partes.append(bloco + "\nMantenha o que estava bom e conserte apenas o apontado.")
+            bloque += (f"\nDIAPOSITIVAS ANTERIORES (ajusta estas, no empieces "
+                       f"desde cero):\n{previous}")
+        partes.append(bloque + "\nMantén lo que estaba bien y arregla solo lo señalado.")
     return "\n".join(partes)
 
 

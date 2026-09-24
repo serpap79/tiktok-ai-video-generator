@@ -6,7 +6,7 @@
 # uv sync e reescreve chaves no .env a cada subida: certo para instalar, errado
 # para um servico que reinicia sozinho -- um pull do upstream as 3h da manha
 # poderia quebrar o render das 9h, e o .env tambem e escrito pela renovacao do
-# token do TikTok. Aqui so se le o .env e se executa.
+# token de TikTok. Aquí solo se lee `.env` y se ejecuta.
 #
 set -euo pipefail
 

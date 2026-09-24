@@ -1,13 +1,14 @@
-"""Testes do roteirista -- fatia 2 do M3.
+"""Tests del guionista -- porción 2 del M3.
 
-O criterio aqui e que **nada mecanico chegue ao juiz**: contagem de palavra fora
-da faixa de monetizacao, termo de busca em portugues, indice de fato inexistente
-e numero que nao esta no dossie sao defeitos verificaveis sem julgamento. Gastar
-uma rodada de revisao do juiz com esses erros seria queimar cota do free tier.
+El criterio aquí es que **nada mecánico llegue al juez**: conteo de palabras
+fuera de la franja de monetización, término de búsqueda en portugués, índice de
+hecho inexistente y número que no está en el dossier son defectos verificables
+sin juicio. Gastar una ronda de revisión del juez con esos errores sería
+quemar cuota del free tier.
 
-O que este arquivo NAO testa, de proposito: se o hook e bom, se o fechamento tem
-ponto de vista proprio, se o portugues soa falado. Isso e a rubrica do juiz
-(fatia 3) e nao da para afirmar por regra.
+Lo que este archivo NO comprueba, a propósito: si el hook es bueno, si el
+cierre tiene punto de vista propio, si el castellano suena hablado. Eso es la
+rúbrica del juez (porción 3) y no se puede afirmar por regla.
 """
 
 from __future__ import annotations
@@ -21,18 +22,18 @@ from agent.adapters.scripted_llm import ScriptedLLM
 from agent.models import Dossier, Fact, Script
 from agent.ports.llm import LLMUnavailable
 from agent.writer.writer import (
-    MAX_PALAVRAS,
-    MIN_PALAVRAS,
+    MAX_PALABRAS,
+    MIN_PALABRAS,
     Screenwriter,
     build_prompt,
 )
 
-AGORA = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+AHORA = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
 
-HOOK = "Um modelo gigante agora cabe no seu bolso."
-FECHAMENTO = ("Numero sem base de comparacao nao e medicao, e marketing. Leve essa "
-              "pergunta para o proximo anuncio que voce ler.")
-TERMOS = [
+HOOK = "Un modelo gigante ahora cabe en tu bolsillo."
+CIERRE = ("Número sin base de comparación no es medición, es marketing. Lleva esa "
+          "pregunta al próximo anuncio que leas.")
+TERMINOS = [
     "neural network nodes",
     "ai deep learning loop",
     "data stream tunnel",
@@ -40,334 +41,339 @@ TERMOS = [
 ]
 
 
-def dossie() -> Dossier:
+def dossier() -> Dossier:
     return Dossier(
-        topic="Bonsai 2 27B: modelo de 27B em 5,9 GB",
+        topic="Bonsai 2 27B: modelo de 27B en 5,9 GB",
         facts=[
-            Fact(claim="O Bonsai 2 27B ocupa 5,9 GB, mais de 9x menor que o original",
+            Fact(claim="El Bonsai 2 27B ocupa 5,9 GB, más de 9x menor que el original",
                  source_url="https://prismml.com/news/bonsai-2-27b", source_name="PrismML",
                  quote="that occupies 5.9 GB on disk, more than 9x smaller"),
-            Fact(claim="Retem 98,2% do desempenho agregado nos benchmarks",
+            Fact(claim="Retiene el 98,2% del rendimiento agregado en los benchmarks",
                  source_url="https://prismml.com/news/bonsai-2-27b", source_name="PrismML",
                  quote="the model retains 98.2% of the original score"),
-            Fact(claim="Roda a 143 tokens por segundo numa RTX 5090",
+            Fact(claim="Funciona a 143 tokens por segundo en una RTX 5090",
                  source_url="https://cienciahoje.com.br/ia/bonsai",
-                 source_name="Ciencia Hoje",
+                 source_name="Ciencia Hoy",
                  quote="Throughput reaches 143 tokens per second on a single RTX 5090"),
         ],
-        collected_at=AGORA,
+        collected_at=AHORA,
     )
 
 
-def resposta(
+def respuesta(
     total: int = 187,
     used: tuple[int, ...] = (0, 1),
-    termos: list[str] | None = None,
+    terminos: list[str] | None = None,
     extra: str = "",
     hook: str = HOOK,
-    closing: str = FECHAMENTO,
+    closing: str = CIERRE,
 ) -> str:
-    """Resposta do modelo no formato do schema, com contagem de palavras exata."""
-    sujeito = "O Bonsai 27B e um modelo. "
-    fixos = len((hook + " " + sujeito + closing + " " + extra).split())
-    corpo = sujeito + " ".join(["detalhe"] * max(total - fixos, 1))
+    """Respuesta del modelo en el formato del schema, con conteo de palabras exacto."""
+    sujeto = "El Bonsai 27B es un modelo. "
+    fijas = len((hook + " " + sujeto + closing + " " + extra).split())
+    cuerpo = sujeto + " ".join(["detalle"] * max(total - fijas, 1))
     return json.dumps({
         "hook": hook,
-        "body": (extra + " " + corpo).strip(),
+        "body": (extra + " " + cuerpo).strip(),
         "closing": closing,
-        "search_terms": TERMOS if termos is None else termos,
-        "caption": "Modelo gigante, disco pequeno.\nO Bonsai 27B mostra o que a compressao ja faz.",
+        "search_terms": TERMINOS if terminos is None else terminos,
+        "caption": "Modelo gigante, disco pequeño.\nEl Bonsai 27B muestra lo que la "
+                   "compresión ya hace.",
         "used_facts": list(used),
     }, ensure_ascii=False)
 
 
-def escrever(llm, **kwargs):
-    return Screenwriter(llm, **kwargs).write(dossie())
+def escribir(llm, **kwargs):
+    return Screenwriter(llm, **kwargs).write(dossier())
 
 
-class TestAceiteDaFatia:
-    def test_roteiro_valido_na_primeira_tentativa(self):
-        report = escrever(ScriptedLLM(responses=[resposta()]))
+class TestAceptacionDeLaPorcion:
+    def test_guion_valido_en_el_primer_intento(self):
+        report = escribir(ScriptedLLM(responses=[respuesta()]))
         assert report.ok
         assert len(report.attempts) == 1
-        assert MIN_PALAVRAS <= report.script.word_count <= MAX_PALAVRAS
+        assert MIN_PALABRAS <= report.script.word_count <= MAX_PALABRAS
         assert 60 <= report.script.estimated_duration_s <= 90
 
-    def test_o_modelo_aponta_o_fato_e_nao_reescreve(self):
-        """Se o modelo pudesse redigir o fato, a afirmacao do roteiro deixaria de
-        ser rastreavel ao que a fonte diz -- todo o ponto de haver dossie."""
-        report = escrever(ScriptedLLM(responses=[resposta(used=(0, 2))]))
-        d = dossie()
+    def test_el_modelo_apunta_el_hecho_y_no_lo_reescribe(self):
+        """Si el modelo pudiera redactar el hecho, la afirmación del guion dejaría
+        de ser rastreable a lo que la fuente dice -- todo el punto de haber
+        dossier."""
+        report = escribir(ScriptedLLM(responses=[respuesta(used=(0, 2))]))
+        d = dossier()
         assert [f.claim for f in report.script.facts] == [
             d.facts[0].claim, d.facts[2].claim,
         ]
         assert all(str(f.source_url).startswith("http") for f in report.script.facts)
 
-    def test_roteiro_serve_de_entrada_para_o_renderizador(self):
-        """O contrato Script e o mesmo que o M0 ja renderiza: o que sai daqui
-        entra no `render` sem adaptacao."""
-        report = escrever(ScriptedLLM(responses=[resposta()]))
+    def test_guion_sirve_de_entrada_para_el_renderizador(self):
+        """El contrato Script es el mismo que el M0 ya renderiza: lo que sale de
+        aquí entra en el `render` sin adaptación."""
+        report = escribir(ScriptedLLM(responses=[respuesta()]))
         assert report.script.narration.startswith(HOOK.split(".")[0])
         assert len(report.script.search_terms) >= 3
         assert all(t.isascii() for t in report.script.search_terms)
 
 
-class TestFaixaDeDuracao:
-    def test_curto_demais_volta_com_a_contagem_medida(self):
-        """Abaixo de 60s o video nao e elegivel ao Creator Rewards. O defeito e
-        contavel, entao o roteirista corrige sozinho em vez de ocupar o juiz."""
-        llm = ScriptedLLM(responses=[resposta(total=90), resposta(total=180)])
-        report = escrever(llm)
+class TestFranjaDeDuracion:
+    def test_demasiado_corto_vuelve_con_el_conteo_medido(self):
+        """Por debajo de 60s el vídeo no es elegible al Creator Rewards. El defecto
+        es contable, así que el guionista corrige solo en vez de ocupar al juez."""
+        llm = ScriptedLLM(responses=[respuesta(total=90), respuesta(total=180)])
+        report = escribir(llm)
         assert report.ok
         assert len(report.attempts) == 2
-        (violacao,) = report.attempts[0].violations
-        assert "90 palavras" in violacao
-        assert f"{MIN_PALAVRAS}" in violacao and f"{MAX_PALAVRAS}" in violacao
-        # A correcao medida volta ao modelo em texto, na segunda chamada.
-        assert "90 palavras" in llm.calls[1].prompt
-        assert "CORRIJA A TENTATIVA ANTERIOR" in llm.calls[1].prompt
+        (violacion,) = report.attempts[0].violations
+        assert "90 palabras" in violacion
+        assert f"{MIN_PALABRAS}" in violacion and f"{MAX_PALABRAS}" in violacion
+        # La corrección medida vuelve al modelo en texto, en la segunda llamada.
+        assert "90 palabras" in llm.calls[1].prompt
+        assert "CORRIGE EL INTENTO ANTERIOR" in llm.calls[1].prompt
 
-    def test_longo_demais_tambem_e_corrigido(self):
-        report = escrever(ScriptedLLM(responses=[resposta(total=400), resposta(total=200)]))
+    def test_demasiado_largo_tambien_se_corrige(self):
+        report = escribir(ScriptedLLM(responses=[respuesta(total=400), respuesta(total=200)]))
         assert report.ok
-        assert "400 palavras" in report.attempts[0].violations[0]
+        assert "400 palabras" in report.attempts[0].violations[0]
 
-    def test_teto_de_tentativas_nao_entrega_roteiro_ruim(self):
-        """Tres tentativas erradas e problema de instrucao, nao de sorte.
-        Insistir queima cota; entregar fora da faixa quebraria a monetizacao."""
-        llm = ScriptedLLM(responses=[resposta(total=90)] * 3)
-        report = escrever(llm)
+    def test_techo_de_intentos_no_entrega_guion_malo(self):
+        """Tres intentos errados son problema de instrucción, no de suerte.
+        Insistir quema cuota; entregar fuera de la franja rompería la
+        monetización."""
+        llm = ScriptedLLM(responses=[respuesta(total=90)] * 3)
+        report = escribir(llm)
         assert not report.ok
         assert len(report.attempts) == 3
         assert len(llm.calls) == 3
-        assert report.violations  # o motivo da ultima reprovacao fica no relatorio
+        assert report.violations  # el motivo de la última reprobación queda en el informe
 
 
-class TestAncoragemNoDossie:
-    def test_numero_em_digito_fora_do_dossie_reprova(self):
+class TestAnclajeEnElDossier:
+    def test_numero_en_digito_fuera_del_dossier_reprueba(self):
         llm = ScriptedLLM(responses=[
-            resposta(extra="O treinamento usou 12000 GPUs."),
-            resposta(),
+            respuesta(extra="El entrenamiento usó 12000 GPUs."),
+            respuesta(),
         ])
-        report = escrever(llm)
+        report = escribir(llm)
         assert report.ok
         assert "12000" in report.attempts[0].violations[0]
 
-    def test_numero_do_dossie_passa_mesmo_em_notacao_pt_br(self):
-        report = escrever(ScriptedLLM(responses=[
-            resposta(extra="Ele ocupa 5,9 GB no disco. Retem quase tudo."),
+    def test_numero_del_dossier_pasa_incluso_en_notacion_es(self):
+        report = escribir(ScriptedLLM(responses=[
+            respuesta(extra="Ocupa 5,9 GB en el disco. Retiene casi todo."),
         ]))
         assert report.ok
 
-    def test_indice_inexistente_reprova_dizendo_a_faixa_valida(self):
-        llm = ScriptedLLM(responses=[resposta(used=(0, 9)), resposta()])
-        report = escrever(llm)
-        (violacao,) = llm_violacoes(report, 0)
-        assert "[9]" in violacao
-        assert "0 a 2" in violacao
+    def test_indice_inexistente_reprueba_diciendo_la_franja_valida(self):
+        llm = ScriptedLLM(responses=[respuesta(used=(0, 9)), respuesta()])
+        report = escribir(llm)
+        (violacion,) = llm_violaciones(report, 0)
+        assert "[9]" in violacion
+        assert "0 a 2" in violacion
 
-    def test_roteiro_sem_fato_reprova(self):
-        """Roteiro sem fonte e exatamente o que o projeto existe para nao fazer."""
-        llm = ScriptedLLM(responses=[resposta(used=()), resposta()])
-        report = escrever(llm)
-        assert any("used_facts esta vazio" in v for v in llm_violacoes(report, 0))
+    def test_guion_sin_hecho_reprueba(self):
+        """Guion sin fuente es exactamente para lo que existe este proyecto."""
+        llm = ScriptedLLM(responses=[respuesta(used=()), respuesta()])
+        report = escribir(llm)
+        assert any("used_facts esta vacio" in v for v in llm_violaciones(report, 0))
 
-    def test_indice_repetido_nao_duplica_o_fato(self):
-        report = escrever(ScriptedLLM(responses=[resposta(used=(1, 1, 1))]))
+    def test_indice_repetido_no_duplica_el_hecho(self):
+        report = escribir(ScriptedLLM(responses=[respuesta(used=(1, 1, 1))]))
         assert len(report.script.facts) == 1
 
 
-class TestContratoDoScript:
-    def test_termo_de_busca_em_portugues_reprova(self):
-        """Os termos vao direto para o Pexels, sem traducao: acento quase sempre
-        significa que o modelo respondeu em pt-BR, e o material volta errado."""
+class TestContratoDelScript:
+    def test_termino_de_busqueda_en_portugues_reprueba(self):
+        """Los términos van directos a Pexels, sin traducción: acento casi siempre
+        significa que el modelo respondió en pt-BR, y el material vuelve mal."""
         llm = ScriptedLLM(responses=[
-            resposta(termos=["placa de vídeo", "chip de memória", "sala de servidores"]),
-            resposta(),
+            respuesta(terminos=["placa de vídeo", "chip de memória", "sala de servidores"]),
+            respuesta(),
         ])
-        report = escrever(llm)
+        report = escribir(llm)
         assert report.ok
-        assert any("search_terms" in v for v in llm_violacoes(report, 0))
+        assert any("search_terms" in v for v in llm_violaciones(report, 0))
 
-    def test_termos_de_menos_reprova(self):
-        llm = ScriptedLLM(responses=[resposta(termos=["one term"]), resposta()])
-        report = escrever(llm)
-        assert any("search_terms" in v for v in llm_violacoes(report, 0))
+    def test_terminos_de_menos_reprueban(self):
+        llm = ScriptedLLM(responses=[respuesta(terminos=["one term"]), respuesta()])
+        report = escribir(llm)
+        assert any("search_terms" in v for v in llm_violaciones(report, 0))
 
-    def test_campo_faltando_reprova_com_o_nome_do_campo(self):
-        llm = ScriptedLLM(responses=[json.dumps({"hook": "curto"}), resposta()])
-        report = escrever(llm)
-        violacoes = " ".join(llm_violacoes(report, 0))
-        assert "body" in violacoes and "search_terms" in violacoes
+    def test_campo_faltante_reprueba_con_el_nombre_del_campo(self):
+        llm = ScriptedLLM(responses=[json.dumps({"hook": "corto"}), respuesta()])
+        report = escribir(llm)
+        violaciones = " ".join(llm_violaciones(report, 0))
+        assert "body" in violaciones and "search_terms" in violaciones
 
 
-class TestRespostaDefeituosa:
-    def test_json_quebrado_e_violacao_corrigivel_e_nao_falha_do_estagio(self):
-        report = escrever(ScriptedLLM(responses=["nao consigo ajudar", resposta()]))
+class TestRespuestaDefectuosa:
+    def test_json_roto_es_violacion_corregible_y_no_fallo_de_etapa(self):
+        report = escribir(ScriptedLLM(responses=["no puedo ayudar", respuesta()]))
         assert report.ok
-        assert "nao veio como objeto JSON" in report.attempts[0].violations[0]
+        assert "no vino como objeto JSON" in report.attempts[0].violations[0]
 
-    def test_resposta_truncada_pede_texto_mais_curto(self):
-        """Truncamento e orcamento de token, nao erro de escrita: mandar o
-        modelo 'corrigir o JSON' nao resolveria nada."""
+    def test_respuesta_truncada_pide_texto_mas_corto(self):
+        """Truncamiento es presupuesto de token, no error de escritura: mandar al
+        modelo 'corregir el JSON' no resolvería nada."""
+
         class Truncado(ScriptedLLM):
             def complete(self, prompt, **kwargs):
                 c = super().complete(prompt, **kwargs)
                 return c.model_copy(update={"finish_reason": "length"})
 
-        report = escrever(Truncado(responses=[resposta()] * 3))
+        report = escribir(Truncado(responses=[respuesta()] * 3))
         assert not report.ok
         assert "cortada por limite de tokens" in report.attempts[0].violations[0]
 
-    def test_cota_estourada_sobe_para_quem_chamou(self):
-        """Nao ha o que corrigir no prompt: repetir so gasta a cota que falta."""
+    def test_cuota_agotada_sube_a_quien_llamo(self):
+        """No hay qué corregir en el prompt: repetir solo gasta la cuota que falta."""
         def responder(prompt: str) -> str:
-            raise LLMUnavailable("cota diaria estourada (429)")
+            raise LLMUnavailable("cuota diaria agotada (429)")
 
         with pytest.raises(LLMUnavailable):
-            escrever(ScriptedLLM(responder=responder))
+            escribir(ScriptedLLM(responder=responder))
 
 
-class TestCustoEHistorico:
-    def test_custo_soma_as_tentativas_que_falharam(self):
-        """Tentativa reprovada tambem foi cobrada. Contar so a que passou
-        subestimaria o custo do roteiro no eval do M5."""
-        report = escrever(ScriptedLLM(responses=[resposta(total=90), resposta()]))
-        primeira, segunda = report.attempts
+class TestCosteEHistorial:
+    def test_coste_suma_los_intentos_que_fallaron(self):
+        """El intento reprobado también se cobró. Contar solo el que pasó
+        subestimaría el coste del guion en la eval del M5."""
+        report = escribir(ScriptedLLM(responses=[respuesta(total=90), respuesta()]))
+        primero, segundo = report.attempts
         assert report.usage.input_tokens == (
-            primeira.usage.input_tokens + segunda.usage.input_tokens
+            primero.usage.input_tokens + segundo.usage.input_tokens
         )
         assert report.usage.output_tokens > 0
 
-    def test_tentativas_ficam_no_relatorio_mesmo_no_sucesso(self):
-        """E o que revela prompt fraco: se toda execucao gasta duas rodadas no
-        mesmo defeito, o problema e a instrucao, nao o modelo."""
-        report = escrever(ScriptedLLM(responses=[resposta(total=90), resposta()]))
+    def test_intentos_quedan_en_el_informe_incluso_con_exito(self):
+        """Es lo que revela prompt débil: si toda ejecución gasta dos rondas en el
+        mismo defecto, el problema es la instrucción, no el modelo."""
+        report = escribir(ScriptedLLM(responses=[respuesta(total=90), respuesta()]))
         assert len(report.attempts) == 2
         assert report.attempts[0].violations and not report.attempts[1].violations
         assert report.attempts[0].word_count == 90
 
-    def test_modelo_e_provedor_ficam_registrados(self):
-        report = escrever(ScriptedLLM(responses=[resposta()]))
+    def test_modelo_y_proveedor_quedan_registrados(self):
+        report = escribir(ScriptedLLM(responses=[respuesta()]))
         assert report.model == "scripted-1"
         assert report.provider == "scripted"
 
 
 class TestPrompt:
-    def test_fatos_vao_indexados_com_fonte_e_trecho(self):
-        prompt = build_prompt(dossie())
-        assert "[0] O Bonsai 2 27B ocupa 5,9 GB" in prompt
-        assert "fonte: PrismML" in prompt
+    def test_hechos_van_indexados_con_fuente_y_fragmento(self):
+        prompt = build_prompt(dossier())
+        assert "[0] El Bonsai 2 27B ocupa 5,9 GB" in prompt
+        assert "fuente: PrismML" in prompt
         assert "that occupies 5.9 GB on disk" in prompt
 
-    def test_faixa_de_palavras_e_a_regra_de_monetizacao_no_texto(self):
-        prompt = build_prompt(dossie())
-        assert str(MIN_PALAVRAS) in prompt and str(MAX_PALAVRAS) in prompt
-        assert "monetizacao" in prompt
+    def test_franja_de_palabras_es_la_regla_de_monetizacion_en_el_texto(self):
+        prompt = build_prompt(dossier())
+        assert str(MIN_PALABRAS) in prompt and str(MAX_PALABRAS) in prompt
+        assert "monetizacion" in prompt
 
-    def test_termos_em_ingles_e_ordem_cronologica_sao_pedidos(self):
-        prompt = build_prompt(dossie())
-        assert "EM INGLES" in prompt
-        assert "cronologica" in prompt
+    def test_terminos_en_ingles_y_orden_cronologico_se_piden(self):
+        prompt = build_prompt(dossier())
+        assert "EN INGLES" in prompt
+        assert "cronologico" in prompt
 
-    def test_primeira_tentativa_nao_tem_secao_de_correcao(self):
-        assert "CORRIJA" not in build_prompt(dossie())
+    def test_primer_intento_no_tiene_seccion_de_correccion(self):
+        assert "CORRIGE" not in build_prompt(dossier())
 
 
-def llm_violacoes(report, indice: int) -> list[str]:
+def llm_violaciones(report, indice: int) -> list[str]:
     return report.attempts[indice].violations
 
 
-class TestMarcadorDeCitacao:
-    """Defeito medido em execucao real, nao imaginado.
+class TestMarcadorDeCita:
+    """Defecto medido en ejecución real, no imaginado.
 
-    O modelo escreveu "...no seu projeto [0]." e "...em um projeto [0, 3]." --
-    echoando no texto FALADO o indice que devia ir so em used_facts. O
-    sintetizador leria "zero" e "tres" em voz alta no video.
+    El modelo escribió "...en tu proyecto [0]." y "...en un proyecto [0, 3]." --
+    dejando escapar en el texto HABLADO el índice que debía ir solo en
+    used_facts. El sintetizador diría "cero" y "tres" en voz alta en el vídeo.
     """
 
-    def test_marcador_no_texto_reprova_com_o_motivo_certo(self):
+    def test_marcador_en_el_texto_reprueba_con_el_motivo_correcto(self):
         llm = ScriptedLLM(responses=[
-            resposta(extra="A leitura muda sem CLAUDE.md [0] e isso vale para todos [1, 3]."),
-            resposta(),
+            respuesta(extra="La lectura cambia sin CLAUDE.md [0] y eso vale para todos [1, 3]."),
+            respuesta(),
         ])
-        report = escrever(llm)
+        report = escribir(llm)
         assert report.ok
-        (violacao,) = [v for v in report.attempts[0].violations if "marcador" in v]
-        assert "[0]" in violacao and "[1, 3]" in violacao
-        assert "voz alta" in violacao
+        (violacion,) = [v for v in report.attempts[0].violations if "marcador" in v]
+        assert "[0]" in violacion and "[1, 3]" in violacion
+        assert "voz alta" in violacion
 
-    def test_marcador_nao_vira_acusacao_de_numero_inventado(self):
-        """A mensagem errada era "numero 0, 1, 2 sem respaldo": verdadeira e
-        inutil para saber o que fazer."""
-        llm = ScriptedLLM(responses=[resposta(extra="Vale para o projeto [0]."), resposta()])
-        report = escrever(llm)
-        assert not any("numero que nao esta no dossie" in v
+    def test_marcador_no_se_convierte_en_acusacion_de_numero_inventado(self):
+        """El mensaje equivocado era "número 0, 1, 2 sin respaldo": verdad e
+        inútil para saber qué hacer."""
+        llm = ScriptedLLM(responses=[respuesta(extra="Vale para el proyecto [0]."),
+                                     respuesta()])
+        report = escribir(llm)
+        assert not any("numero que no esta en el dossier" in v
                        for v in report.attempts[0].violations)
 
-    def test_numero_inventado_de_verdade_continua_sendo_pego(self):
+    def test_numero_inventado_de_verdad_sigue_siendo_cazado(self):
         llm = ScriptedLLM(responses=[
-            resposta(extra="Segundo o fato [0], foram 12000 GPUs."), resposta(),
+            respuesta(extra="Según el hecho [0], fueron 12000 GPUs."), respuesta(),
         ])
-        report = escrever(llm)
-        violacoes = " ".join(report.attempts[0].violations)
-        assert "marcador" in violacoes
-        assert "12000" in violacoes
+        report = escribir(llm)
+        violaciones = " ".join(report.attempts[0].violations)
+        assert "marcador" in violaciones
+        assert "12000" in violaciones
 
-    def test_ano_no_texto_nao_e_confundido_com_marcador(self):
+    def test_ano_en_el_texto_no_se_confunde_con_marcador(self):
         llm = ScriptedLLM(responses=[
-            resposta(extra="Ele ocupa 5,9 GB desde 2026."),
-            resposta(),
+            respuesta(extra="Ocupa 5,9 GB desde 2026."),
+            respuesta(),
         ])
-        report = escrever(llm)
+        report = escribir(llm)
         assert report.ok
-        violacoes = " ".join(report.attempts[0].violations)
-        assert "marcador" not in violacoes
-        assert "2026" in violacoes
+        violaciones = " ".join(report.attempts[0].violations)
+        assert "marcador" not in violaciones
+        assert "2026" in violaciones
 
-    def test_o_prompt_proibe_o_marcador(self):
+    def test_el_prompt_prohibe_el_marcador(self):
         from agent.writer.writer import build_prompt
-        prompt = build_prompt(dossie())
+        prompt = build_prompt(dossier())
         assert "'[0]'" in prompt and "used_facts" in prompt
 
 
-class TestDossieFino:
-    """Medir antes de pagar, como o curador e o juiz fazem.
+class TestDossierFino:
+    """Medir antes de pagar, como hacen el curador y el juez.
 
-    Um dossie de 4 fatos tirados de UMA frase levou o roteirista a tres
-    tentativas, todas entre 104 e 157 palavras: faltava assunto, nao instrucao.
+    Un dossier de 4 hechos sacados de UNA frase llevó al guionista a tres
+    intentos, todos entre 104 y 157 palabras: faltaba asunto, no instrucción.
     """
 
-    def test_dossie_com_menos_de_tres_fatos_nao_gasta_chamada(self):
+    def test_dossier_con_menos_de_tres_hechos_no_gasta_llamada(self):
         from agent.models import Dossier
         from agent.writer.writer import Screenwriter
 
-        magro = Dossier(topic="t", facts=dossie().facts[:2], collected_at=AGORA)
+        fino = Dossier(topic="t", facts=dossier().facts[:2], collected_at=AHORA)
         llm = ScriptedLLM(responses=[])
-        report = Screenwriter(llm).write(magro)
+        report = Screenwriter(llm).write(fino)
 
         assert not report.ok
         assert llm.calls == []
         assert report.attempts == []
-        assert "dossie fino: 2 fato(s)" in report.refusal
+        assert "dossier fino: 2 hecho(s)" in report.refusal
         assert report.usage.total_tokens == 0
 
-    def test_recusa_diz_o_que_fazer(self):
+    def test_recusa_diciendo_que_hacer(self):
         from agent.models import Dossier
         from agent.writer.writer import Screenwriter
 
-        magro = Dossier(topic="t", facts=dossie().facts[:1], collected_at=AGORA)
-        report = Screenwriter(ScriptedLLM()).write(magro)
-        assert "Pesquise outras fontes" in report.refusal
+        fino = Dossier(topic="t", facts=dossier().facts[:1], collected_at=AHORA)
+        report = Screenwriter(ScriptedLLM()).write(fino)
+        assert "Investiga otras fuentes" in report.refusal
 
-    def test_tres_fatos_ja_autorizam_a_tentativa(self):
-        report = escrever(ScriptedLLM(responses=[resposta()]))
+    def test_tres_hechos_ya_autorizan_el_intento(self):
+        report = escribir(ScriptedLLM(responses=[respuesta()]))
         assert report.ok
         assert report.refusal == ""
 
-    def test_o_roteiro_de_referencia_do_m0_nao_seria_recusado(self):
-        """Cinco fatos de uma unica fonte rendem roteiro: o numero de FONTES nao
-        entra na regra, o de fatos distintos entra."""
+    def test_el_guion_de_referencia_del_m0_no_seria_recusado(self):
+        """Cinco hechos de una única fuente rinden guion: el número de FUENTES no
+        entra en la regla, el de hechos distintos sí."""
         import json
         from pathlib import Path
 
@@ -375,41 +381,41 @@ class TestDossieFino:
         from agent.writer.writer import thin_dossier_reason
 
         bruto = json.loads(
-            (Path(__file__).resolve().parent.parent / "fixtures" / "roteiro_manual.json")
+            (Path(__file__).resolve().parent.parent / "fixtures" / "guion_manual.json")
             .read_text(encoding="utf-8")
         )
         bruto.pop("_comment", None)
         referencia = Script.model_validate(bruto)
         assert thin_dossier_reason(
-            Dossier(topic=referencia.topic, facts=referencia.facts, collected_at=AGORA)
+            Dossier(topic=referencia.topic, facts=referencia.facts, collected_at=AHORA)
         ) == ""
 
 
-class TestLegendaDoPost:
-    """Guia da marca: gancho escrito SEM repetir o audio + contexto; sem link/hashtag."""
+class TestCaptionDelPost:
+    """Guía de la marca: gancho escrito SIN repetir el audio + contexto; sin link/hashtag."""
 
     def _script(self, caption: str) -> Script:
-        return Script(topic="Tema", hook="Um modelo gigante agora cabe num pendrive.",
-                      body=" ".join(["palavra"] * 60), closing="E voce, confia?",
+        return Script(topic="Tema", hook="Un modelo gigante ahora cabe en un pendrive.",
+                      body=" ".join(["palabra"] * 60), closing="Y tu, confias?",
                       search_terms=["neural network nodes", "data stream tunnel"],
                       caption=caption)
 
-    def test_legenda_boa_passa(self):
+    def test_caption_buena_pasa(self):
         from agent.writer.writer import caption_problems
         assert caption_problems(self._script(
-            "Disco pequeno, modelo enorme.\nO Bonsai 27B reduz 9x o tamanho.")) == []
+            "Disco pequeño, modelo enorme.\nEl Bonsai 27B reduce 9x el tamaño.")) == []
 
-    def test_repetir_o_hook_reprova(self):
+    def test_repetir_el_hook_reprueba(self):
         from agent.writer.writer import caption_problems
-        (p,) = caption_problems(self._script("Um modelo gigante agora cabe num pendrive."))
-        assert "repete o hook" in p
+        (p,) = caption_problems(self._script("Un modelo gigante ahora cabe en un pendrive."))
+        assert "repite el hook" in p
 
-    def test_hashtag_link_e_tres_linhas_reprovam(self):
+    def test_hashtag_link_y_tres_lineas_reprueban(self):
         from agent.writer.writer import caption_problems
         problemas = " ".join(caption_problems(self._script(
-            "Linha um #ia\nveja em prismml.com\nlinha tres")))
-        assert "hashtag" in problemas and "link" in problemas and "linha" in problemas
+            "Linea uno #ia\nmira en prismml.com\nlinea tres")))
+        assert "hashtag" in problemas and "link" in problemas and "linea" in problemas
 
-    def test_vazia_reprova_com_instrucao(self):
+    def test_vacia_reprueba_con_instruccion(self):
         from agent.writer.writer import caption_problems
-        assert "2 linhas" in caption_problems(self._script(""))[0]
+        assert "2 lineas" in caption_problems(self._script(""))[0]

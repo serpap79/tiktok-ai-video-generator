@@ -1,9 +1,10 @@
-"""Wikipedia pageviews em pt. Sem chave, sem conta.
+"""Pageviews de Wikipedia en espanol. Sin clave, sin cuenta.
 
-Serve de **confirmacao**, nao de descoberta: a API so publica o dia fechado, com
-atraso de ate ~48h. Um assunto que ja esta no topo aqui provavelmente ja passou
-do pico de novidade. O valor e outro -- distinguir termo que o Trends mostra em
-alta momentanea de assunto com interesse real e sustentado em portugues.
+Sirve de **confirmacion**, no de descubrimiento: la API solo publica el dia
+cerrado, con retraso de hasta ~48h. Un asunto que ya esta arriba aqui
+probablemente ya paso el pico de novedad. El valor es otro -- distinguir termino
+que Trends muestra en alta momentanea de asunto con interes real y sostenido
+en castellano.
 """
 
 from __future__ import annotations
@@ -16,51 +17,55 @@ from agent.models import Signal
 from agent.ports.radar import SourceUnavailable
 
 ENDPOINT = "https://wikimedia.org/api/rest_v1/metrics/pageviews/top"
-HEADERS = {"User-Agent": "tiktok-viral-generator/0.1 (github.com/guilhermehrsilva)"}
+HEADERS = {"User-Agent": "tiktok-viral-generator/0.1"}
 
-# Paginas de servico do proprio projeto: sempre no topo, nunca sao assunto.
+# Paginas de servicio de la propia enciclopedia: siempre arriba, nunca son
+# asunto. En la Wikipedia en espanol el namespace de proyectos es "Wikipedia:"
+# y la ayuda es "Ayuda:"; "Ficheiro" y "Predefinição" son de la edicion en
+# portugues y se conservan por si el proyecto cambia.
 _PREFIXOS_IGNORADOS = (
-    "Especial:", "Wikipédia:", "Wikipedia:", "Ajuda:", "Portal:",
-    "Categoria:", "Ficheiro:", "Predefinição:", "Anexo:",
+    "Especial:", "Wikipedia:", "Wikipédia:", "Ayuda:", "Portal:",
+    "Categoría:", "Categoria:", "Archivo:", "Plantilla:", "Ficheiro:",
+    "Predefinição:", "Anexo:",
 )
-_TITULOS_IGNORADOS = {"Página_principal", "Main_Page"}
+_TITULOS_IGNORADOS = {"Portada", "Página_principal", "Main_Page"}
 
-# A Wikipedia tem artigos de um caractere ("Q", "A"). Sao titulos legitimos la e
-# inuteis como tema de video -- e estouram o min_length do contrato Signal. Um
-# unico artigo assim derrubava a fonte inteira por ValidationError.
+# La Wikipedia tiene articulos de un caracter ("Q", "A"). Son titulos legitimos
+# alli e inutiles como tema de video -- y rebasan el min_length del contrato
+# Signal. Un solo articulo asi tiraba abajo la fuente entera por ValidationError.
 _TAMANHO_MINIMO_TERMO = 2
 
 
 class WikipediaPageviews:
     name = "wikipedia"
 
-    def __init__(self, client: httpx.Client | None = None, project: str = "pt.wikipedia",
+    def __init__(self, client: httpx.Client | None = None, project: str = "es.wikipedia",
                  top: int = 40):
         self._client = client or httpx.Client(timeout=httpx.Timeout(20.0), headers=HEADERS)
         self._project = project
         self._top = top
 
     def collect(self) -> list[Signal]:
-        # A API so publica dia fechado; ontem costuma ainda nao existir.
+        # La API solo publica el dia cerrado; ayer suele todavia no existir.
         dia = datetime.now(UTC) - timedelta(days=2)
         url = f"{ENDPOINT}/{self._project}/all-access/{dia:%Y/%m/%d}"
         try:
             r = self._client.get(url, headers=HEADERS)
         except httpx.HTTPError as exc:
-            raise SourceUnavailable(f"wikipedia inacessivel: {exc}") from exc
+            raise SourceUnavailable(f"wikipedia inaccesible: {exc}") from exc
         if r.status_code != 200:
-            raise SourceUnavailable(f"wikipedia devolveu {r.status_code} para {dia:%Y-%m-%d}")
+            raise SourceUnavailable(f"wikipedia devolvio {r.status_code} para {dia:%Y-%m-%d}")
         try:
             payload = r.json()
         except ValueError as exc:
-            raise SourceUnavailable("wikipedia devolveu resposta nao-JSON") from exc
+            raise SourceUnavailable("wikipedia devolvio respuesta no-JSON") from exc
         return self.parse(payload, now=datetime.now(UTC), top=self._top)
 
     @staticmethod
     def parse(payload: dict, now: datetime, top: int = 40) -> list[Signal]:
         itens = payload.get("items") or []
         if not itens:
-            raise SourceUnavailable("wikipedia devolveu payload sem 'items'")
+            raise SourceUnavailable("wikipedia devolvio payload sin 'items'")
 
         sinais: list[Signal] = []
         for artigo in itens[0].get("articles") or []:
@@ -82,10 +87,10 @@ class WikipediaPageviews:
                     source=WikipediaPageviews.name,
                     volume=float(views),
                     unit="pageviews",
-                    # Nivel diario, nao taxa: a velocidade vem da coleta anterior.
+                    # Nivel diario, no tasa: la velocidad viene de la recolecta anterior.
                     velocity=None,
                     seen_at=now,
-                    url=f"https://pt.wikipedia.org/wiki/{titulo}",
+                    url=f"https://es.wikipedia.org/wiki/{titulo}",
                 )
             )
             if len(sinais) >= top:

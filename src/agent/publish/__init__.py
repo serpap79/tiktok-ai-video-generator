@@ -1,1 +1,1 @@
-"""Camada final antes de producao: preflight do pacote publicavel."""
+"""Última capa antes de la producción: comprobaciones previas del paquete publicable."""

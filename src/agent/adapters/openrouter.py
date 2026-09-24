@@ -3,7 +3,7 @@
 Principal desde 20/09/2026, por decisao do autor: a cota do Gemini no AI
 Studio (20 pedidos/dia no free tier) disputa requisicao com outras automacoes
 dele, e o endpoint pago do OpenRouter nao consome aquela cota. O Gemini continua
-na rota, mas POR ULTIMO -- reserva que nao disputa nada enquanto houver
+en la ruta, pero el último: una reserva que no compite mientras haya
 credito.
 
 Uso consciente do credito ($100 ate 03/2027): os modelos baratos vao primeiro
@@ -20,11 +20,11 @@ Diferencas que importam contra o Groq:
   so com modelo MEDIDO aqui -- assumir que funciona e como o
   `json_validate_failed` voltou da ultima vez.
 - erros proprios: 402 (credito esgotado) vira cota do dia com espera longa --
-  nao adianta repetir hoje, segue para groq/gemini; 429 vira minuto com
+  no conviene repetir hoy; pasa a groq/gemini. Un 429 se convierte en cuota de minutos con
   `retry-after`, igual ao Groq.
 - `reasoning.effort` (low/medium/high) e o dialeto do OpenRouter para esforco
   de raciocinio; so vai no payload quando a rota pede (`@low`), porque modelo
-  que nao raciocina ignora -- ou cobra -- o parametro.
+  los modelos que no razonan ignoran —o cobran— el parámetro.
 """
 
 from __future__ import annotations
@@ -49,8 +49,8 @@ BASE_URL = "https://openrouter.ai/api/v1"
 # Modelos com `json_schema` estrito MEDIDO por aqui (decodificacao restrita ao
 # schema). Medido em 20/09/2026 com a chave do projeto: os quatro responderam
 # 200 com JSON valido e aderente ao schema pedido (flash e lite no primeiro
-# teste; 2.5-flash e v4-pro no segundo). Neles o schema nao vai como texto no
-# prompt -- vai no `response_format`, o que tambem economiza tokens de entrada
+# prueba; 2.5-flash y v4-pro en la segunda). En ellos el esquema no se incluye como texto en el
+# prompt: se envía en `response_format`, lo que además ahorra tokens de entrada
 # (credito) em toda chamada.
 STRICT_SCHEMA_MODELS = frozenset({
     "deepseek/deepseek-v4-flash",
@@ -59,7 +59,7 @@ STRICT_SCHEMA_MODELS = frozenset({
     "deepseek/deepseek-v4-pro",
 })
 # Effort so e enviado quando a rota pede; o OpenRouter repassa ao modelo e os
-# que nao raciocinam o ignoram.
+# que no razonan lo ignoran.
 REASONING_PARAM = "reasoning"
 
 
@@ -127,7 +127,7 @@ class OpenRouter:
         try:
             corpo = r.json()
         except ValueError as exc:
-            raise LLMError("openrouter devolveu resposta nao-JSON") from exc
+            raise LLMError("openrouter devolvió una respuesta que no es JSON") from exc
 
         return self.parse(corpo, model=self.model, latency_s=latencia)
 
@@ -177,7 +177,7 @@ class OpenRouter:
         escolhas = corpo.get("choices") or []
         if not escolhas:
             # O OpenRouter devolve o erro do provedor final em `error` quando
-            # nao ha choice -- repassar a mensagem economiza uma adivinhacao.
+            # no hay choices: reenviar el mensaje evita una suposición.
             erro = corpo.get("error") or {}
             detalhe = str(erro.get("message") or "")[:200]
             sufixo = f": {detalhe}" if detalhe else ""
@@ -186,11 +186,11 @@ class OpenRouter:
         escolha = escolhas[0]
         motivo = str(escolha.get("finish_reason") or "")
         if motivo == "content_filter":
-            raise LLMBlocked("openrouter bloqueou a resposta por filtro de conteudo")
+            raise LLMBlocked("openrouter bloqueó la respuesta por un filtro de contenido")
 
         texto = ((escolha.get("message") or {}).get("content") or "")
         if not texto.strip():
-            raise LLMError(f"openrouter devolveu choice sem conteudo (finish_reason={motivo})")
+            raise LLMError(f"openrouter devolvió una opción sin contenido (finish_reason={motivo})")
 
         uso = corpo.get("usage") or {}
         return Completion(
@@ -208,7 +208,7 @@ class OpenRouter:
 def quota_error(r: httpx.Response, model: str) -> LLMQuotaExhausted:
     """402/429 do OpenRouter traduzido em alcance.
 
-    402 e credito esgotado: repetir hoje nao adianta, entao escopo do dia com
+    402 es crédito agotado: repetir hoy no sirve, así que queda en el ámbito diario con
     espera de 24h -- a rota segue para groq/gemini e o livro registra. 429 e
     limite de requisicoes por minuto: espera o `retry-after` e repete.
     """

@@ -1,1 +1,1 @@
-"""Render local do canal: carrossel em PNG, video via MoneyPrinterTurbo."""
+"""Renderizado local del canal: carrusel en PNG y vídeo mediante MoneyPrinterTurbo."""

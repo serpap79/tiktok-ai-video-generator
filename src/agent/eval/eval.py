@@ -1,18 +1,18 @@
 """Agregacao offline do eval: escritor x juiz com custo medido, sem gastar cota.
 
-O eval nao chama modelo nenhum. Ele le os roteiros e pareceres que `write`,
+La evaluación no llama a ningún modelo. Lee los guiones e informes que producen `write`,
 `judge` e `produce` ja gravaram e tabula por (provedor, modelo). O juiz nunca
-recebe quem escreveu o roteiro -- a cegueira e estrutural, nao promessa -- e a
+`judge` y quien escribió el guion; la parcialidad es estructural, no una promesa. La
 matriz pareada so usa parecer com `script_id` conhecido; parecer orfao (do
-`judge --script <arquivo>`, sem linha de roteiro) entra no agregado do juiz,
-mas nao na matriz.
+`judge --script <archivo>`, sin línea de guion) entra en el agregado del juez,
+pero no en la matriz.
 
 Comparacao deliberadamente free tier x free tier (gemini x groq). O braco pago
-(Claude) esta fora de escopo: sem API paga nesta maquina, nao ha numero a
-publicar -- e numero ausente nao e zero, e por isso nem aparece na tabela.
+(Claude) queda fuera del alcance: sin API de pago en esta máquina no hay una cifra que
+publicar. Una cifra ausente no es cero, por lo que ni siquiera aparece en la tabla.
 
-Nota interrompida (`short_circuited`) nao entra em media nem em taxa de
-aprovacao: o total dela nao e comparavel ao de um parecer completo, e mistura
+La nota interrumpida (`short_circuited`) no entra en la media ni en la tasa de
+aprobación: su total no es comparable con el de un informe completo y mezclarlo
 os dois faria um juiz que reprova na medida parecer mais rigoroso do que e.
 """
 

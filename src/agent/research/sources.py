@@ -1,25 +1,28 @@
-"""De onde saem as 3-5 fontes de um tema, sem chave e sem buscador pago.
+"""De donde salen las 3-5 fuentes de un tema, sin clave y sin buscador de pago.
 
-Nao existe API de busca web gratuita que sirva: Google e Bing cobram, e raspar
-SERP quebra em uma semana. O que existe de graca, e ja esta na stack, e:
+No existe API de busqueda web gratuita que sirva: Google y Bing cobran, y
+raspar SERP se rompe en una semana. Lo que existe gratis, y ya esta en la
+stack, es:
 
-1. **as materias que o Google Trends RSS anexa** a cada tema (titulo, veiculo e
-   URL). Vem de graca na propria coleta do radar -- e a razao de `NewsItem`
-   existir desde o M1.
-2. **a URL do artigo por tras do item do Hacker News**, via a API do Algolia.
-   O `Signal` do HN guarda o link da discussao, que e onde estao os comentarios;
-   o artigo em si sai de `/items/{id}`, tambem sem chave.
-3. **o GDELT DOC 2.0 em modo artlist**, que responde consulta por palavra-chave
-   sobre cobertura jornalistica global. Ele ja entra no radar como fonte de
-   volume; aqui responde "quem mais escreveu sobre isso".
+1. **las noticias que el RSS de Google Trends anexa** a cada tema (titulo,
+   medio y URL). Vienen gratis en la propia recolecta del radar -- y es la
+   razon de que `NewsItem` exista desde el M1.
+2. **la URL del articulo detras del item de Hacker News**, via la API de
+   Algolia. El `Signal` del HN guarda el link de la discusion, que es donde
+   estan los comentarios; el articulo en si sale de `/items/{id}`, tambien sin
+   clave.
+3. **el GDELT DOC 2.0 en modo artlist**, que responde consulta por palabra
+   clave sobre cobertura periodistica global. Ya entra en el radar como fuente
+   de volumen; aqui responde "quien mas escribio sobre esto".
 
-Nenhuma sozinha cobre todo tema: item do HN nao tem materia associada, tema do
-Trends nao passa pelo Algolia, e o GDELT devolve 429 com frequencia. Por isso as
-tres rodam e o relatorio diz quais falharam, em vez de uma delas ser obrigatoria.
+Ninguna por si sola cubre todo tema: item del HN sin noticia asociada, tema de
+Trends no pasa por Algolia, y el GDELT devuelve 429 con frecuencia. Por eso las
+tres corren y el informe dice cuales fallaron, en vez de que una de ellas sea
+obligatoria.
 
-O teto de fontes por dominio existe porque cinco paginas do mesmo site nao sao
-cinco fontes -- e uma fonte contada cinco vezes, e o juiz nao tem como saber a
-diferenca olhando so o dossie.
+El techo de fuentes por dominio existe porque cinco paginas del mismo sitio no
+son cinco fuentes -- es una fuente contada cinco veces, y el juez no tiene como
+saber la diferencia mirando solo el dossier.
 """
 
 from __future__ import annotations
@@ -34,9 +37,9 @@ from agent.text import tokens
 
 ALGOLIA_ITEM = "https://hn.algolia.com/api/v1/items"
 
-# Fontes cuja URL de sinal nao e texto sobre o tema: o verbete mais visto da
-# Wikipedia e sobre o assunto, mas o sinal do Trends nao tem URL, e o GDELT
-# aponta para a consulta. So essas ficam de fora da fonte primaria.
+# Fuentes cuya URL de senal no es texto sobre el tema: la entrada mas vista de
+# la Wikipedia si es sobre el asunto, pero la senal de Trends no tiene URL, y
+# el GDELT apunta a la consulta. Solo estas quedan fuera de la fuente primaria.
 _SEM_PAGINA_PROPRIA = frozenset({"google_trends", "gdelt"})
 GDELT_DOC = "https://api.gdeltproject.org/api/v2/doc/doc"
 
@@ -73,12 +76,12 @@ def discover(
     limit: int = 5,
     per_domain: int = 2,
 ) -> DiscoveryReport:
-    """Junta as tres estrategias, na ordem em que a fonte e mais confiavel.
+    """Junta las tres estrategias, en el orden en que la fuente es mas fiable.
 
-    A ordem importa: o que vem primeiro e lido primeiro e, se o orcamento de
-    fontes acabar, e o que sobra no dossie. Primeiro a fonte primaria do tema
-    (o artigo que originou a discussao, ou a materia que a propria fonte
-    associou); o GDELT entra por ultimo, como corroboracao.
+    El orden importa: lo que viene primero se lee primero y, si el presupuesto
+    de fuentes se acaba, es lo que queda en el dossier. Primero la fuente
+    primaria del tema (el articulo que origino la discusion, o la noticia que
+    la propia fuente asocio); el GDELT entra al final, como corroboracion.
     """
     report = DiscoveryReport()
     cliente = client or httpx.Client(timeout=httpx.Timeout(20.0))
@@ -93,8 +96,9 @@ def discover(
             if primaria:
                 brutos.append(primaria)
     elif decision.url and decision.source not in _SEM_PAGINA_PROPRIA:
-        # RSS, Hugging Face, Wikipedia (neste dia / arquivo): a URL do sinal
-        # JA e a materia, o model card ou o verbete -- a fonte primaria.
+        # RSS, Hugging Face, Wikipedia (un dia como hoy / archivo): la URL de
+        # la senal YA es la noticia, el model card o la entrada -- la fuente
+        # primaria.
         url = str(decision.url)
         brutos.append(Candidate(url=url, title=decision.term,
                                 source_name=_dominio(url), origin=decision.source))
@@ -119,14 +123,14 @@ def discover(
 
 
 class SourceLookupFailed(RuntimeError):
-    """A estrategia de descoberta nao respondeu. Nao derruba as outras."""
+    """La estrategia de descubrimiento no respondio. No tira abajo las otras."""
 
 
 def hn_story(item_url: str, *, client: httpx.Client) -> Candidate | None:
-    """Do link da discussao para o artigo que ela discute.
+    """Del link de la discusion al articulo que discute.
 
-    Devolve None para Ask HN e Show HN sem link: ai a discussao **e** a fonte, e
-    ja esta no dossie pela propria URL do sinal.
+    Devuelve None para Ask HN y Show HN sin link: ahi la discusion **es** la
+    fuente, y ya esta en el dossier por la propia URL de la senal.
     """
     m = _ID_HN.search(item_url)
     if not m:
@@ -134,20 +138,20 @@ def hn_story(item_url: str, *, client: httpx.Client) -> Candidate | None:
     try:
         r = client.get(f"{ALGOLIA_ITEM}/{m.group(1)}")
     except httpx.HTTPError as exc:
-        raise SourceLookupFailed(f"algolia inacessivel: {exc}") from exc
+        raise SourceLookupFailed(f"algolia inaccesible: {exc}") from exc
     if r.status_code != 200:
-        raise SourceLookupFailed(f"algolia devolveu {r.status_code}")
+        raise SourceLookupFailed(f"algolia devolvio {r.status_code}")
     try:
-        corpo = r.json() or {}
+        cuerpo = r.json() or {}
     except ValueError as exc:
-        raise SourceLookupFailed("algolia devolveu resposta nao-JSON") from exc
+        raise SourceLookupFailed("algolia devolvio respuesta no-JSON") from exc
 
-    url = (corpo.get("url") or "").strip()
+    url = (cuerpo.get("url") or "").strip()
     if not url:
         return None
     return Candidate(
         url=url,
-        title=(corpo.get("title") or "").strip(),
+        title=(cuerpo.get("title") or "").strip(),
         source_name=_dominio(url),
         origin="hacker_news",
     )
@@ -156,18 +160,18 @@ def hn_story(item_url: str, *, client: httpx.Client) -> Candidate | None:
 def gdelt_articles(
     term: str, *, client: httpx.Client, max_records: int = 10
 ) -> list[Candidate]:
-    """Quem mais escreveu sobre o tema, segundo o GDELT.
+    """Quien mas escribio sobre el tema, segun el GDELT.
 
-    A consulta e montada com os tokens mais distintivos do termo, e nao com o
-    titulo inteiro: titulo de materia em AND nao casa com nada. Se tres tokens
-    devolverem vazio, tenta com dois -- uma segunda chamada e mais barata que um
-    dossie sem corroboracao.
+    La consulta se monta con los tokens mas distintivos del termino, y no con
+    el titulo entero: titulo de noticia en AND no casa con nada. Si tres tokens
+    devuelven vacio, prueba con dos -- una segunda llamada es mas barata que un
+    dossier sin corroboracion.
     """
     consultas = _consultas(term)
     if not consultas:
         return []
 
-    ultimo_erro = ""
+    ultimo_error = ""
     for consulta in consultas:
         try:
             r = client.get(GDELT_DOC, params={
@@ -175,47 +179,47 @@ def gdelt_articles(
                 "format": "json", "timespan": "7d", "sort": "hybridrel",
             })
         except httpx.HTTPError as exc:
-            ultimo_erro = f"gdelt inacessivel: {exc}"
+            ultimo_error = f"gdelt inaccesible: {exc}"
             continue
         if r.status_code != 200:
-            ultimo_erro = f"gdelt devolveu {r.status_code} (429 e comum sem chave)"
+            ultimo_error = f"gdelt devolvio {r.status_code} (429 es comun sin clave)"
             continue
         try:
-            artigos = (r.json() or {}).get("articles") or []
+            articulos = (r.json() or {}).get("articles") or []
         except ValueError:
-            # 200 com corpo vazio e o jeito do GDELT dizer "consulta sem match".
-            artigos = []
+            # 200 con cuerpo vacio es la manera del GDELT de decir "consulta sin match".
+            articulos = []
 
-        achados = [
+        hallados = [
             Candidate(
                 url=(a.get("url") or "").strip(),
                 title=(a.get("title") or "").strip(),
                 source_name=(a.get("domain") or "").strip(),
                 origin="gdelt",
             )
-            for a in artigos
+            for a in articulos
             if (a.get("url") or "").startswith("http")
         ]
-        if achados:
-            return achados
+        if hallados:
+            return hallados
 
-    if ultimo_erro:
-        raise SourceLookupFailed(ultimo_erro)
+    if ultimo_error:
+        raise SourceLookupFailed(ultimo_error)
     return []
 
 
 def _consultas(term: str) -> list[str]:
-    """Tokens distintivos primeiro, em duas larguras: tres termos e dois."""
-    # "5,9 GB" tokeniza em "5" e "9": digito solto casa com qualquer materia e
-    # so gasta uma posicao da consulta. Piso de dois caracteres para quem tem
-    # digito, tres para o resto.
+    """Tokens distintivos primero, en dos anchuras: tres terminos y dos."""
+    # "5,9 GB" se tokeniza en "5" y "9": digito suelto casa con cualquier
+    # noticia y solo gasta una posicion de la consulta. Suelo de dos caracteres
+    # para quien tiene digito, tres para el resto.
     candidatos = [
         t for t in tokens(term)
         if len(t) >= 3 or (len(t) >= 2 and any(c.isdigit() for c in t))
     ]
-    # Token longo distingue mais que token curto, e digito dentro de token longo
-    # costuma ser nome de produto ou versao ("27b", "5090") -- que e justamente o
-    # que separa esta historia de outra sobre o mesmo assunto.
+    # Token largo distingue mas que token corto, y digito dentro de token largo
+    # suele ser nombre de producto o version ("27b", "5090") -- que es justo lo
+    # que separa esta historia de otra sobre el mismo asunto.
     distintivos = sorted(
         dict.fromkeys(candidatos),
         key=lambda t: len(t) + (2 if any(c.isdigit() for c in t) else 0),
@@ -223,36 +227,36 @@ def _consultas(term: str) -> list[str]:
     )[:MAX_TERMOS_CONSULTA]
     if not distintivos:
         return []
-    largas = [" ".join(distintivos)]
+    anchas = [" ".join(distintivos)]
     if len(distintivos) > 2:
-        largas.append(" ".join(distintivos[:2]))
-    return largas
+        anchas.append(" ".join(distintivos[:2]))
+    return anchas
 
 
 def _peneirar(brutos: list[Candidate], *, limit: int, per_domain: int) -> list[Candidate]:
     vistos: set[str] = set()
     por_dominio: dict[str, int] = {}
-    saida: list[Candidate] = []
+    salida: list[Candidate] = []
 
     for c in brutos:
         if not c.url.startswith("http"):
             continue
-        chave = _chave(c.url)
-        if chave in vistos:
+        clave = _clave(c.url)
+        if clave in vistos:
             continue
         dominio = _dominio(c.url)
         if por_dominio.get(dominio, 0) >= per_domain:
             continue
-        vistos.add(chave)
+        vistos.add(clave)
         por_dominio[dominio] = por_dominio.get(dominio, 0) + 1
-        saida.append(c)
-        if len(saida) >= limit:
+        salida.append(c)
+        if len(salida) >= limit:
             break
-    return saida
+    return salida
 
 
-def _chave(url: str) -> str:
-    """URL sem esquema, sem www, sem barra final e sem query de rastreio."""
+def _clave(url: str) -> str:
+    """URL sin esquema, sin www, sin barra final y sin query de rastreo."""
     resto = url.split("://", 1)[-1].removeprefix("www.")
     return resto.split("?", 1)[0].rstrip("/").casefold()
 

@@ -1,9 +1,9 @@
-"""Porta TTS + adaptador Piper (ONNX local, CPU).
+"""Puerta TTS + adaptador Piper (ONNX local, CPU).
 
-O adaptador e fino de proposito: carrega o `.onnx` (+ `.onnx.json` irmao),
-sintetiza um trecho e devolve PCM. Pausa, ordem e concatenacao moram em
-`narrate.py`, que e testavel com qualquer backend -- inclusive um falso, o
-que mantem a suite hermetica sem baixar 200 MB de modelo.
+El adaptador es fino a proposito: carga el `.onnx` (+ su `.onnx.json`),
+sintetiza un pasaje y devuelve PCM. Pausa, orden y concatenacion viven en
+`narrate.py`, que es comprobable con cualquier backend -- incluido uno falso,
+lo que mantiene la suite hermetica sin descargar 200 MB de modelo.
 """
 
 from __future__ import annotations
@@ -29,18 +29,18 @@ class TTS(Protocol):
 
 
 class PiperTTS:
-    """Voz Piper via `piper-tts`. Exige espeak-ng no sistema (Fedora: dnf)."""
+    """Voz Piper via `piper-tts`. Exige espeak-ng en el sistema (Debian: apt)."""
 
     def __init__(self, model_path: str | Path, sample_rate: int = 22050):
-        from piper import PiperVoice  # import tardio: suite nao paga o import
+        from piper import PiperVoice  # import tardio: la suite no paga el import
         self._voice = PiperVoice.load(str(model_path))
         self._rate = sample_rate
 
     def speak(self, text: str, *, speed: float = 1.0, noise: float = 0.667,
               seed: int | None = None) -> Utterance:
         from piper import config as piper_config
-        # length_scale e o inverso da velocidade; noise_scale da a variacao
-        # entre geracoes. seed nao existe no Piper: variacao natural do VITS.
+        # length_scale es el inverso de la velocidad; noise_scale da la variacion
+        # entre generaciones. seed no existe en el Piper: variacion natural del VITS.
         _ = seed
         chunks = self._voice.synthesize(
             text,

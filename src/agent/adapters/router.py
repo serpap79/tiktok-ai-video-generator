@@ -1,13 +1,14 @@
 """Roteador de LLM: uma porta, varios modelos gratuitos, cota como criterio.
 
 Implementa a porta `LLM` sobre uma lista ORDENADA de modelos. Nenhum estagio
-sabe que existe mais de um: o pesquisador continua chamando `complete()`.
+sabe que existe más de uno: el investigador sigue llamando a `complete()`.
 
-Por que existe (medido em 19/09/2026, nao suposto):
+Por qué existe (medido el 19/09/2026, no supuesto):
 
 - o gemini-2.5-flash, padrao ate aqui, tem **20 pedidos por dia** no free
-  tier. Um video consome ~10 (pesquisa por fonte + roteiro + juiz), entao o
-  padrao antigo nao sustentava nem dois posts por dia;
+  nivel gratuito. Un vídeo consume ~10 llamadas (investigación por fuente +
+  guion + juez), por lo que el modelo anterior no sostenía ni dos
+  publicaciones diarias;
 - cada modelo tem cota PROPRIA: 3.8-flash, 3.5-flash, os flash-lite e os
   modelos do Groq sao baldes separados. Trocar de modelo quando um esgota
   multiplica a capacidade diaria sem custar nada;
@@ -25,9 +26,9 @@ Entao cada negativa vira uma acao diferente:
 | 503 (sobrecarga)             | fora da rota por 10 min, segue a rota         |
 | timeout / rede               | uma nova tentativa, depois segue a rota      |
 | modelo inexistente (404)     | grava por 24h e segue a rota                 |
-| filtro de conteudo           | sobe: outro modelo nao torna o tema publicavel|
+| filtro de contenido         | sube: otro modelo no hace publicable el tema|
 
-Toda decisao vira linha no livro (`llm_calls`) e no `trail`, que a execucao
+Toda decisión genera una fila en el libro (`llm_calls`) y en el `trail`, que la ejecución
 do slot grava junto do roteiro -- "por que este texto saiu do modelo X" tem
 resposta.
 """
@@ -50,7 +51,7 @@ from agent.ports.llm import (
 )
 
 # Espera maxima que vale a pena por cota do minuto. Acima disso, um slot de
-# 40 minutos de producao prefere o proximo modelo a ficar parado.
+# tras 40 minutos de producción, conviene probar el siguiente modelo antes que quedarse parado.
 MAX_WAIT_S = 45.0
 # Quantas vezes esperar pelo mesmo modelo numa mesma chamada.
 MAX_WAITS = 2
@@ -104,7 +105,7 @@ class RoutedLLM:
     _cache: dict[str, LLM] = field(default_factory=dict, repr=False)
     _last: Route | None = field(default=None, repr=False)
     # Rotas que falharam nesta instancia sem marcar o livro (413, chave
-    # ausente): nao adianta tenta-las de novo no mesmo processo.
+    # ausente): no conviene volver a intentarlo en el mismo proceso.
     _skip: set[str] = field(default_factory=set, repr=False)
 
     @property
@@ -214,9 +215,9 @@ class RoutedLLM:
                 motivos.append(f"{rota.key}: {exc}")
                 return None
             except LLMError as exc:
-                # 400/404 e resposta inutilizavel (candidato sem texto): nao e
+                # 400/404 es una respuesta inutilizable (candidato sin texto): no es
                 # cota, mas outro modelo pode responder. 404 e id descontinuado
-                # -- fica fora por um dia para nao pagar o erro a cada chamada.
+                # queda fuera un día para no pagar el error en cada llamada.
                 self._registrar(rota, ok=False, erro=str(exc))
                 if " 404" in str(exc) or "not found" in str(exc).lower():
                     if self.ledger is not None:

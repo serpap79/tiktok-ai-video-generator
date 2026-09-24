@@ -1,15 +1,16 @@
-"""Curador: transforma sinais brutos numa decisao justificada.
+"""Curador: convierte senales crudas en una decision justificada.
 
-A ordem dos estagios e deliberada e barata primeiro:
+El orden de las etapas es deliberado y barato primero:
 
-  1. politica   -- bloqueia antes de qualquer calculo; tema vetado nao pode
-                   ganhar no ranking por ter velocidade alta
-  2. nicho      -- portao, nao tempero
-  3. duplicata  -- so entre os que sobraram, porque comparar com o ledger custa
-  4. score      -- ranqueia o que passou nos tres portoes
+  1. politica    -- bloquea antes de cualquier calculo; tema vetado no puede
+                    ganar en el ranking por tener velocidad alta
+  2. nicho       -- puerta, no condimento
+  3. duplicado   -- solo entre los que quedaron, porque comparar con el ledger
+                    cuesta
+  4. score       -- rankea lo que paso las tres puertas
 
-Toda decisao, inclusive as rejeitadas, e devolvida com motivo. O que nao foi
-escolhido hoje e material para calibrar o score amanha.
+Toda decision, incluidas las rechazadas, se devuelve con motivo. Lo que no fue
+elegido hoy es material para calibrar el score manana.
 """
 
 from __future__ import annotations
@@ -22,11 +23,11 @@ from agent.curator.dedup import LexicalDeduplicator
 from agent.models import Decision, Signal, Verdict
 from agent.ports.dedup import Deduplicator
 
-# Pesos do score. Velocidade pesa mais que volume porque o que interessa e o
-# assunto que esta subindo, nao o que ja e grande ha tempo -- assunto grande e
-# estavel costuma estar saturado de conteudo.
-PESO_VELOCIDADE = 0.55
-PESO_VOLUME = 0.20
+# Pesos del score. La velocidad pesa mas que el volumen porque lo que interesa
+# es el asunto que esta subiendo, no el que ya es grande desde hace tiempo --
+# asunto grande y estable suele estar saturado de contenido.
+PESO_VELOCIDAD = 0.55
+PESO_VOLUMEN = 0.20
 PESO_NICHO = 0.25
 
 
@@ -43,11 +44,12 @@ class CurationReport:
         return [d for d in self.decisions if d.verdict in (Verdict.selected, Verdict.not_selected)]
 
     def top(self, n: int) -> list[Decision]:
-        """Os n melhores elegiveis, o escolhido primeiro.
+        """Los n mejores elegibles, el elegido primero.
 
-        A rotina publica 3 pecas/dia em temas diferentes: o top-3 da mesma
-        coleta ja vem deduplicado entre si (o laco anexa o escolhido ao
-        ledger), entao pesquisar os 3 nao repete assunto no mesmo dia.
+        La rutina publica 3 piezas/dia en temas diferentes: el top-3 de la
+        misma recolecta ya viene deduplicado entre si (el lazo anade el
+        elegido al ledger), asi que investigar los 3 no repite asunto en el
+        mismo dia.
         """
         ordenados = sorted(
             self.eligible,
@@ -67,123 +69,125 @@ class Curator:
     def __init__(
         self,
         deduplicator: Deduplicator | None = None,
-        niche_threshold: float = niche.LIMIAR_PADRAO,
+        niche_threshold: float = niche.UMBRAL_DEFECTO,
     ):
         self._dedup = deduplicator or LexicalDeduplicator()
         self._niche_threshold = niche_threshold
 
     def curate(self, signals: list[Signal], ledger: list[str] | None = None) -> CurationReport:
-        agora = datetime.now(UTC)
+        ahora = datetime.now(UTC)
         ledger = list(ledger or [])
-        percentis = _percentis_por_fonte(signals)
+        percentiles = _percentiles_por_fuente(signals)
 
         decisions: list[Decision] = []
-        sobreviventes: list[tuple[Signal, float]] = []
+        supervivientes: list[tuple[Signal, float]] = []
 
         for s in signals:
-            veredito = policy.check(s.term)
-            if not veredito.allowed:
-                decisions.append(_decisao(
-                    s, Verdict.rejected_policy, agora,
-                    reason=f"politica/{veredito.rule}: '{veredito.matched}' — {veredito.reason}",
+            veredicto = policy.check(s.term)
+            if not veredicto.allowed:
+                decisions.append(_decision(
+                    s, Verdict.rejected_policy, ahora,
+                    reason=f"politica/{veredicto.rule}: '{veredicto.matched}' — {veredicto.reason}",
                     score=0.0, niche_fit=niche.fit(s.term, s.source),
                 ))
                 continue
 
-            encaixe = niche.fit(s.term, s.source)
-            if encaixe < self._niche_threshold:
-                decisions.append(_decisao(
-                    s, Verdict.rejected_niche, agora,
-                    reason=f"fora do nicho tech/IA/ciencia (encaixe {encaixe:.2f} < "
+            encaje = niche.fit(s.term, s.source)
+            if encaje < self._niche_threshold:
+                decisions.append(_decision(
+                    s, Verdict.rejected_niche, ahora,
+                    reason=f"fuera del nicho tech/IA/ciencia (encaje {encaje:.2f} < "
                            f"{self._niche_threshold:.2f})",
-                    score=0.0, niche_fit=encaixe,
+                    score=0.0, niche_fit=encaje,
                 ))
                 continue
 
-            duplicata = self._dedup.find_duplicate(s.term, ledger)
-            if duplicata is not None:
-                original, sim = duplicata
-                decisions.append(_decisao(
-                    s, Verdict.rejected_duplicate, agora,
-                    reason=f"ja coberto (similaridade {sim:.2f} com '{original[:60]}')",
-                    score=0.0, niche_fit=encaixe, duplicate_of=original,
+            duplicado = self._dedup.find_duplicate(s.term, ledger)
+            if duplicado is not None:
+                original, sim = duplicado
+                decisions.append(_decision(
+                    s, Verdict.rejected_duplicate, ahora,
+                    reason=f"ya cubierto (similaridad {sim:.2f} con '{original[:60]}')",
+                    score=0.0, niche_fit=encaje, duplicate_of=original,
                 ))
                 continue
 
-            sobreviventes.append((s, encaixe))
+            supervivientes.append((s, encaje))
 
-        # O score so e calculado entre quem passou nos tres portoes: ranquear
-        # candidatos vetados seria trabalho jogado fora.
-        pontuados = sorted(
-            ((s, e, self._score(s, e, percentis)) for s, e in sobreviventes),
+        # El score solo se calcula entre quien paso las tres puertas: rankear
+        # candidatos vetados seria trabajo tirado a la basura.
+        puntuados = sorted(
+            ((s, e, self._score(s, e, percentiles)) for s, e in supervivientes),
             key=lambda t: t[2],
             reverse=True,
         )
 
-        for posicao, (s, encaixe, score) in enumerate(pontuados):
-            # Reconfere contra o ledger corrido (originais + ja ranqueados):
-            # duas fontes podem trazer a mesma historia, e o top-3 do dia
-            # precisa de 3 assuntos diferentes, nao 3 titulos do mesmo.
-            duplicata = self._dedup.find_duplicate(s.term, ledger)
-            if duplicata is not None:
-                original, sim = duplicata
-                decisions.append(_decisao(
-                    s, Verdict.rejected_duplicate, agora,
-                    reason=f"ja coberto (similaridade {sim:.2f} com '{original[:60]}')",
-                    score=0.0, niche_fit=encaixe, duplicate_of=original,
+        for posicion, (s, encaje, score) in enumerate(puntuados):
+            # Reconfirma contra el ledger corrido (originales + ya rankeados):
+            # dos fuentes pueden traer la misma historia, y el top-3 del dia
+            # necesita 3 asuntos diferentes, no 3 titulos del mismo.
+            duplicado = self._dedup.find_duplicate(s.term, ledger)
+            if duplicado is not None:
+                original, sim = duplicado
+                decisions.append(_decision(
+                    s, Verdict.rejected_duplicate, ahora,
+                    reason=f"ya cubierto (similaridad {sim:.2f} con '{original[:60]}')",
+                    score=0.0, niche_fit=encaje, duplicate_of=original,
                 ))
                 continue
             ledger.append(s.term)
-            decisions.append(_decisao(
+            decisions.append(_decision(
                 s,
-                Verdict.selected if posicao == 0 else Verdict.not_selected,
-                agora,
-                reason=(_justificativa(s, encaixe, score) if posicao == 0
-                        else f"passou nos portoes, ficou em {posicao + 1}o (score {score:.3f})"),
+                Verdict.selected if posicion == 0 else Verdict.not_selected,
+                ahora,
+                reason=(_justificacion(s, encaixe=encaje, score=score) if posicion == 0
+                        else f"paso las puertas, quedo en {posicion + 1}º (score {score:.3f})"),
                 score=score,
-                niche_fit=encaixe,
+                niche_fit=encaje,
             ))
 
         return CurationReport(decisions)
 
-    def _score(self, s: Signal, encaixe: float, percentis: _Percentis) -> float:
-        """Combina velocidade, volume e encaixe numa nota de 0 a 1.
+    def _score(self, s: Signal, encaje: float, percentiles: _Percentiles) -> float:
+        """Combina velocidad, volumen y encaje en una nota de 0 a 1.
 
-        Velocidade e volume entram como **percentil dentro da propria fonte**, e
-        nao como valor bruto. Ponto do Hacker News e pageview da Wikipedia nao
-        compartilham escala: somar os numeros crus faria a Wikipedia vencer
-        sempre, por ter unidade maior, e nao por ter assunto melhor.
+        Velocidad y volumen entran como **percentil dentro de la propia
+        fuente**, y no como valor bruto. Punto de Hacker News y pageview de
+        Wikipedia no comparten escala: sumar los numeros crudos haria que
+        Wikipedia ganara siempre, por tener unidad mayor, y no por tener
+        asunto mejor.
 
-        Velocidade desconhecida recebe 0.5 -- o meio da escala. Nao e 0 porque
-        "nao medi" nao e evidencia contra o tema; e assim ele compete pelo volume
-        e pelo nicho ate a segunda coleta dar a taxa.
+        Velocidad desconocida recibe 0.5 -- el medio de la escala. No es 0
+        porque "no medi" no es evidencia contra el tema; asi compite por el
+        volumen y por el nicho hasta que la segunda recolecta de la tasa.
         """
-        vel_pct = 0.5 if s.velocity is None else percentis.velocity(s)
-        vol_pct = percentis.volume(s)
+        vel_pct = 0.5 if s.velocity is None else percentiles.velocity(s)
+        vol_pct = percentiles.volume(s)
         return round(
-            PESO_VELOCIDADE * vel_pct + PESO_VOLUME * vol_pct + PESO_NICHO * encaixe, 4
+            PESO_VELOCIDAD * vel_pct + PESO_VOLUMEN * vol_pct + PESO_NICHO * encaje, 4
         )
 
 
-def _justificativa(s: Signal, encaixe: float, score: float) -> str:
+def _justificacion(s: Signal, *, encaixe: float, score: float) -> str:
     nucleo, _ = niche.matched_terms(s.term)
-    casou = ", ".join(sorted(nucleo)[:4]) or "sem termo de nucleo"
-    vel = f"{s.velocity:,.1f} {s.unit}/h" if s.velocity is not None else "velocidade nao medida"
-    return (f"score {score:.3f}; {vel}; volume {s.volume:,.0f} {s.unit}; "
-            f"nicho {encaixe:.2f} ({casou}); fonte {s.source}")
+    caso = ", ".join(sorted(nucleo)[:4]) or "sin termino del nucleo"
+    vel = (f"{s.velocity:,.1f} {s.unit}/h" if s.velocity is not None
+           else "velocidad no medida")
+    return (f"score {score:.3f}; {vel}; volumen {s.volume:,.0f} {s.unit}; "
+            f"nicho {encaixe:.2f} ({caso}); fuente {s.source}")
 
 
-def _decisao(s: Signal, verdict: Verdict, agora: datetime, *, reason: str,
-             score: float, niche_fit: float, duplicate_of: str | None = None) -> Decision:
+def _decision(s: Signal, verdict: Verdict, ahora: datetime, *, reason: str,
+              score: float, niche_fit: float, duplicate_of: str | None = None) -> Decision:
     return Decision(
         term=s.term, source=s.source, verdict=verdict, reason=reason,
         score=score, niche_fit=niche_fit, velocity=s.velocity, volume=s.volume,
-        url=s.url, duplicate_of=duplicate_of, decided_at=agora, news_items=s.news_items,
+        url=s.url, duplicate_of=duplicate_of, decided_at=ahora, news_items=s.news_items,
     )
 
 
-class _Percentis:
-    """Posicao relativa dentro da propria fonte, em [0, 1]."""
+class _Percentiles:
+    """Posicion relativa dentro de la propia fuente, en [0, 1]."""
 
     def __init__(self, signals: list[Signal]):
         self._vel: dict[str, list[float]] = {}
@@ -203,16 +207,16 @@ class _Percentis:
         return _pct(self._vol.get(s.source, []), s.volume)
 
 
-def _percentis_por_fonte(signals: list[Signal]) -> _Percentis:
-    return _Percentis(signals)
+def _percentiles_por_fuente(signals: list[Signal]) -> _Percentiles:
+    return _Percentiles(signals)
 
 
 def _pct(ordenados: list[float], valor: float) -> float:
-    """Fracao dos valores da fonte que `valor` supera ou iguala."""
+    """Fraccion de los valores de la fuente que `valor` supera o iguala."""
     if not ordenados:
         return 0.5
     if len(ordenados) == 1:
         return 0.5
-    abaixo = sum(1 for v in ordenados if v < valor)
-    iguais = sum(1 for v in ordenados if v == valor)
-    return round((abaixo + 0.5 * iguais) / len(ordenados), 4)
+    debajo = sum(1 for v in ordenados if v < valor)
+    iguales = sum(1 for v in ordenados if v == valor)
+    return round((debajo + 0.5 * iguales) / len(ordenados), 4)

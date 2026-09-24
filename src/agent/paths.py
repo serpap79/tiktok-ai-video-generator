@@ -1,8 +1,8 @@
-"""Onde cada artefato mora: dia/hora/tema/formato, sempre.
+"""Donde vive cada artefacto: dia/hora/tema/formato, siempre.
 
-`output/2026-09-19/1430-bonsai-2-27b-long/roteiro.json` se acha sem grep, e
-o tema repetido aparece na listagem antes de virar video repetido. O formato
-fecha o trio da rotina (long/short/carousel) no proprio caminho.
+`output/2026-09-19/1430-bonsai-2-27b-largo/roteiro.json` se encuentra sin grep, y
+el tema repetido aparece en el listado antes de convertirse en video repetido.
+El formato cierra el trio de la rutina (long/short/carousel) en la propia ruta.
 """
 
 from __future__ import annotations
@@ -11,19 +11,19 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
-_SUJO = re.compile(r"[^a-z0-9]+")
+_SUCIO = re.compile(r"[^a-z0-9]+")
 
 
-def slugify(topic: str, máximo: int = 40) -> str:
-    base = _SUJO.sub("-", topic.lower()).strip("-")
-    return base[:máximo].rstrip("-") or "tema"
+def slugify(topic: str, maximo: int = 40) -> str:
+    base = _SUCIO.sub("-", topic.lower()).strip("-")
+    return base[:maximo].rstrip("-") or "tema"
 
 
-def run_dir(formato: str, topic: str, agora: datetime | None = None,
+def run_dir(formato: str, topic: str, ahora: datetime | None = None,
             base: Path | str = "output") -> Path:
-    agora = agora or datetime.now(UTC)
-    dia = agora.strftime("%Y-%m-%d")
-    hora = agora.strftime("%H%M")
+    ahora = ahora or datetime.now(UTC)
+    dia = ahora.strftime("%Y-%m-%d")
+    hora = ahora.strftime("%H%M")
     return Path(base) / dia / f"{hora}-{slugify(topic)}-{formato}"
 
 

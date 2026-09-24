@@ -1,7 +1,7 @@
 """Adaptador da porta Renderer para o MoneyPrinterTurbo rodando local.
 
 O MPT (MIT, github.com/harry0703/MoneyPrinterTurbo) sobe um FastAPI em
-/api/v1. Passamos roteiro e termos de busca prontos, o que contorna o LLM dele
+/api/v1. Pasamos el guion y los términos de búsqueda listos, lo que evita el LLM de MPT
 por completo: `task.py:generate_script` so chama o LLM quando `video_script`
 chega vazio. Nosso agente e dono do julgamento; o MPT e a grafica.
 """
@@ -61,12 +61,12 @@ class MptRenderer:
                       voice: str | None = None) -> dict[str, Any]:
         """Monta o VideoParams do MPT. Separado de `render` para ser testavel.
 
-        `materials`: nomes de arquivos ja enviados ao renderizador, na ordem
-        da narracao (escolhidos por `render/footage.py`). Com eles o MPT nao
+        `materials`: nombres de archivos ya enviados al renderizador, en el orden
+        de la narración (elegidos por `render/footage.py`). Con ellos, MPT no
         busca nada: so corta 5s de cada um, em sequencia.
         """
         payload: dict[str, Any] = {
-            # Roteiro e termos prontos: o LLM do MPT nao e acionado.
+            # Guion y términos listos: no se activa el LLM de MPT.
             "video_subject": script.topic,
             "video_script": script.narration,
             "video_terms": script.search_terms,
@@ -81,8 +81,8 @@ class MptRenderer:
             "voice_name": voice or self.settings.voice_name,
             "voice_rate": 1.0,
             "voice_volume": 1.0,
-            # Legenda karaoke: os tempos por palavra vem do SubMaker do edge-tts,
-            # entao nao precisamos rodar Whisper (large-v3 por padrao, lento em CPU).
+            # Subtítulo karaoke: los tiempos por palabra proceden del SubMaker de edge-tts,
+            # así que no hace falta ejecutar Whisper (large-v3 por defecto, lento en CPU).
             "subtitle_enabled": True,
             "subtitle_display_mode": "word_by_word",
             "subtitle_animation": "pop_spring",
@@ -93,11 +93,11 @@ class MptRenderer:
             "text_fore_color": "#FFFFFF",
             "stroke_color": "#000000",
             "stroke_width": self.settings.subtitle_stroke_width,
-            # Trilha desligada no MPT. As musicas de `resource/songs` vieram de
+            # Pista desactivada en MPT. Las músicas de `resource/songs` proceden de
             # videos do YouTube ("If there are copyright issues, please delete
-            # them", no README deles): canal monetizado nao usa audio sem
+            # ellos», en su README): un canal monetizado no usa audio sin
             # licenca. A trilha entra depois, gerada localmente
-            # (`render/music.py`), na pos-producao.
+            # (`render/music.py`), en posproducción.
             "bgm_type": "",
             "bgm_volume": 0.0,
         }
@@ -111,9 +111,9 @@ class MptRenderer:
             return payload
 
         if self.settings.video_source == "local":
-            # get_video_materials do MPT so olha video_materials nesse modo;
+            # get_video_materials de MPT solo consulta video_materials en este modo;
             # os search_terms passam a ser ignorados. O `url` e o nome devolvido
-            # pelo upload, nao um caminho: o MPT resolve dentro de
+            # por la subida; no es un camino externo: MPT lo resuelve dentro de
             # storage/local_videos e rejeita qualquer path que escape dali.
             payload["video_materials"] = [
                 {"provider": "local", "url": nome, "duration": 0}
@@ -123,10 +123,10 @@ class MptRenderer:
         return payload
 
     def _upload_local_materials(self, paths: list[Path] | None = None) -> list[str]:
-        """Sobe os arquivos locais e devolve os nomes armazenados pelo renderizador.
+        """Sube los archivos locales y devuelve los nombres almacenados por el renderizador.
 
-        Vai por HTTP em vez de copiar para o disco dele de proposito: e o que
-        mantem a porta valida se o renderizador sair desta maquina.
+        Usa HTTP en lugar de copiar a su disco de forma intencionada: así
+        el puerto sigue siendo válido si el renderizador sale de esta máquina.
         """
         nomes: list[str] = []
         for caminho in (paths if paths is not None else self.settings.local_materials):
@@ -144,11 +144,12 @@ class MptRenderer:
                     raise RendererError(f"falha subindo {path.name}: {exc}") from exc
             if r.status_code >= 400:
                 raise RendererError(
-                    f"renderizador recusou {path.name} ({r.status_code}): {r.text[:200]}"
+                    f"el renderizador rechazó {path.name} ({r.status_code}): {r.text[:200]}"
                 )
             nome = _envelope(r).get("file")
             if not nome:
-                raise RendererError(f"upload de {path.name} nao devolveu nome de arquivo")
+                raise RendererError(
+                    f"la subida de {path.name} no devolvió ningún nombre de archivo")
             nomes.append(str(nome))
         return nomes
 
@@ -171,7 +172,7 @@ class MptRenderer:
             return RenderResult(
                 state=RenderState.failed,
                 task_id=task_id,
-                error=f"task concluida sem video: chaves={sorted(task)}",
+                error=f"task concluida sin video: chaves={sorted(task)}",
             )
 
         local_path = self._download(uri, task_id)
@@ -195,15 +196,15 @@ class MptRenderer:
                                   json=self.build_payload(script, materials, voice))
         except httpx.HTTPError as exc:
             raise RendererError(
-                f"renderizador inacessivel em {self._client.base_url}: {exc}"
+                f"renderizador inaccesible en {self._client.base_url}: {exc}"
             ) from exc
 
         if r.status_code == 429:
-            raise RendererError("fila do renderizador cheia (429)")
+            raise RendererError("la cola del renderizador está llena (429)")
         if r.status_code == 401:
-            raise RendererError("renderizador rejeitou a x-api-key (401)")
+            raise RendererError("el renderizador rechazó la x-api-key (401)")
         if r.status_code >= 400:
-            raise RendererError(f"renderizador devolveu {r.status_code}: {r.text[:300]}")
+            raise RendererError(f"el renderizador devolvió {r.status_code}: {r.text[:300]}")
 
         data = _envelope(r)
         task_id = data.get("task_id")
@@ -218,12 +219,13 @@ class MptRenderer:
             try:
                 r = self._client.get(f"{API}/tasks/{task_id}")
             except httpx.HTTPError as exc:
-                raise RendererError(f"perdi contato com o renderizador: {exc}") from exc
+                raise RendererError(f"se perdió la conexión con el renderizador: {exc}") from exc
 
             if r.status_code == 404:
-                raise RendererError(f"task {task_id} desapareceu do renderizador")
+                raise RendererError(f"la tarea {task_id} desapareció del renderizador")
             if r.status_code >= 400:
-                raise RendererError(f"consulta de task devolveu {r.status_code}: {r.text[:300]}")
+                raise RendererError(
+                    f"la consulta de la tarea devolvió {r.status_code}: {r.text[:300]}")
 
             task = _envelope(r)
             state = task.get("state")
@@ -242,7 +244,7 @@ class MptRenderer:
 
     @staticmethod
     def _pick_video_uri(task: dict[str, Any]) -> str | None:
-        # A ordem importa e nao e a intuitiva. No MPT:
+        # El orden importa y no es intuitivo. En MPT:
         #   combined_videos -> combined-N.mp4, o concat SO DE VIDEO (intermediario)
         #   videos          -> final-N.mp4, o corte com narracao e legenda
         # Preferir "combined" pelo nome entrega um MP4 mudo que passa em qualquer
@@ -262,15 +264,15 @@ class MptRenderer:
             value = task.get(key)
             if value:
                 return str(value)
-        return "renderizador reportou falha sem detalhe"
+        return "el renderizador informó de un fallo sin detalles"
 
     def _download(self, uri: str, task_id: str) -> Path:
         """Baixa o MP4 via HTTP.
 
         Sem `endpoint` configurado, o MPT devolve caminho relativo `/tasks/<...>`.
         Convertemos para o endpoint de download, que resolve a partir de
-        storage/tasks/. Usamos HTTP em vez de ler o arquivo direto de disco para
-        que a porta continue valida se o renderizador sair desta maquina.
+        storage/tasks/. Usamos HTTP en vez de leer el archivo directamente para que
+        el puerto siga siendo válido si el renderizador sale de esta máquina.
         """
         self.settings.ensure_dirs()
         dest = self.settings.output_dir / f"{task_id}.mp4"
@@ -284,7 +286,7 @@ class MptRenderer:
         try:
             with self._client.stream("GET", url, timeout=httpx.Timeout(30.0, read=300.0)) as r:
                 if r.status_code >= 400:
-                    raise RendererError(f"download de {url} devolveu {r.status_code}")
+                    raise RendererError(f"la descarga de {url} devolvió {r.status_code}")
                 with dest.open("wb") as fh:
                     for chunk in r.iter_bytes(chunk_size=1 << 16):
                         fh.write(chunk)
@@ -301,7 +303,8 @@ def _envelope(response: httpx.Response) -> dict[str, Any]:
     try:
         body = response.json()
     except ValueError as exc:
-        raise RendererError(f"resposta nao-JSON do renderizador: {response.text[:200]}") from exc
+        raise RendererError(
+            f"respuesta que no es JSON del renderizador: {response.text[:200]}") from exc
     if not isinstance(body, dict):
         raise RendererError(f"envelope inesperado: {body!r}")
     data = body.get("data")
@@ -326,9 +329,9 @@ def probe_video(path: Path) -> dict[str, Any]:
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=True)
     except FileNotFoundError as exc:
-        raise RendererError("ffprobe nao encontrado no PATH") from exc
+        raise RendererError("ffprobe no está en el PATH") from exc
     except subprocess.CalledProcessError as exc:
-        raise RendererError(f"ffprobe falhou em {path}: {exc.stderr[:200]}") from exc
+        raise RendererError(f"ffprobe falló con {path}: {exc.stderr[:200]}") from exc
 
     info = json.loads(out.stdout)
     streams = info.get("streams") or []

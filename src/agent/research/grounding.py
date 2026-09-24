@@ -1,53 +1,56 @@
-"""Portao deterministico: o numero que o fato cita existe na pagina lida?
+"""Puerta determinista: el numero que el hecho cita, existe en la pagina leida?
 
-Por que so numero, e nao a afirmacao inteira. O caminho obvio seria medir
-sobreposicao de vocabulario entre a afirmacao e a pagina -- e ele esta errado
-aqui: as fontes de tech sao majoritariamente em ingles e a afirmacao sai em
-pt-BR. "Retem 98,2% do desempenho" e "retains 98.2% of performance" nao
-compartilham nenhuma palavra, e o portao reprovaria justamente os fatos bem
-traduzidos. **Numero sobrevive a traducao; palavra nao.**
+Por que solo numero, y no la afirmacion entera. El camino obvio seria medir
+solapamiento de vocabulario entre la afirmacion y la pagina -- y esta mal aqui:
+las fuentes de tech son mayoritariamente en ingles y la afirmacion sale en
+castellano. "Retiene 98,2% del rendimiento" y "retains 98.2% of performance" no
+comparten ninguna palabra, y la puerta reprobaria justamente los hechos bien
+traducidos. **El numero sobrevive a la traduccion; la palabra no.**
 
-E por que vale a pena ter o portao. Numero e o que o roteiro usa para convencer,
-e numero e exatamente o que um modelo inventa com mais confianca. O criterio 2
-da rubrica do juiz (M3, fatia 3) pergunta se a afirmacao tem fonte; este portao
-pergunta antes, e sem gastar token, se o numero da afirmacao esta **naquela**
-fonte. Sao verificacoes diferentes e as duas precisam existir.
+Y por eso vale la pena tener la puerta. El numero es lo que el guion usa para
+convencer, y el numero es exactamente lo que un modelo inventa con mas
+confianza. El criterio 2 de la rubrica del juez (M3, porcion 3) pregunta si la
+afirmacion tiene fuente; esta puerta pregunta antes, y sin gastar token, si el
+numero de la afirmacion esta en **esa** fuente. Son verificaciones distintas y
+las dos tienen que existir.
 
-O que ele nao faz, de proposito: nao confere unidade nem contexto. "5,9 GB" casa
-com uma pagina que diz "5,9 milhoes de downloads". E aproximacao, e a alternativa
-seria pedir ao proprio modelo para se auditar -- o que nao e verificacao.
+Lo que no hace, a proposito: no comprueba unidad ni contexto. "5,9 GB" casa con
+una pagina que dice "5,9 millones de descargas". Es aproximacion, y la
+alternativa seria pedirle al propio modelo que se audite -- lo cual no es
+verificacion.
 """
 
 from __future__ import annotations
 
 import re
 
-# Numeros como aparecem em texto real: "5,9", "1.500", "98.2", "2026", "5090".
+# Numeros como aparecen en texto real: "5,9", "1.500", "98.2", "2026", "5090".
 _NUMERO = re.compile(r"\d+(?:[.,]\d+)*")
 
 
 def canonical_numbers(texto: str) -> list[str]:
-    """Numeros do texto, reduzidos a digitos, na ordem em que aparecem.
+    """Numeros del texto, reducidos a digitos, en el orden en que aparecen.
 
-    Separador e descartado em vez de interpretado: pt-BR escreve "5,9" e ingles
-    escreve "5.9" para o mesmo valor, e "1.500" e mil e quinhentos em pt e um e
-    meio em ingles. Decidir qual e qual exigiria saber o idioma da pagina; casar
-    so os digitos ("59", "1500") resolve os dois sentidos de uma vez e nao cria
-    falso negativo por virgula.
+    El separador se descarta en vez de interpretarse: el castellano escribe
+    "5,9" e ingles escribe "5.9" para el mismo valor, y "1.500" es mil
+    quinientos en castellano y uno y medio en ingles. Decidir cual es cual
+    exigiria saber el idioma de la pagina; casar solo los digitos ("59",
+    "1500") resuelve los dos sentidos de una vez y no crea falso negativo por
+    coma.
     """
     return [re.sub(r"[.,]", "", m.group()) for m in _NUMERO.finditer(texto)]
 
 
 def missing_numbers(claim: str, source_text: str) -> list[str]:
-    """Numeros citados na afirmacao que nao aparecem na fonte.
+    """Numeros citados en la afirmacion que no aparecen en la fuente.
 
-    Lista vazia significa "todo numero citado esta na pagina", que e o mais forte
-    que este portao consegue afirmar. Afirmacao sem numero nenhum passa: ela
-    ainda tem URL, e julgar o resto e trabalho do juiz.
+    Lista vacia significa "todo numero citado esta en la pagina", que es lo mas
+    fuerte que esta puerta puede afirmar. Afirmacion sin ningun numero pasa:
+    todavia tiene URL, y juzgar el resto es trabajo del juez.
     """
-    na_fonte = set(canonical_numbers(source_text))
+    en_fuente = set(canonical_numbers(source_text))
     ausentes: list[str] = []
     for numero in canonical_numbers(claim):
-        if numero not in na_fonte and numero not in ausentes:
+        if numero not in en_fuente and numero not in ausentes:
             ausentes.append(numero)
     return ausentes

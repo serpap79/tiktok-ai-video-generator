@@ -8,13 +8,13 @@ Fluxo, conforme a referencia `Upload` da API (atualizada em 04/08/2026):
    A API responde 206 por chunk parcial e 201 no ultimo.
 3. Opcional: `POST /v2/post/publish/status/fetch/` com o `publish_id`.
 
-Limites honrados aqui, nao na chamada (guia "Media Transfer" da API):
-`total_chunk_count` e `video_size // chunk_size` (piso, nao teto); cada chunk
+Los límites se respetan aquí, no en la llamada (guía «Media Transfer» de la API):
+`total_chunk_count` es `video_size // chunk_size` (mínimo, no máximo); cada fragmento
 de 5 MB a 64 MB, exceto o ultimo, que absorve o resto (ate 128 MB); abaixo de
-5 MB sobe inteiro com `chunk_size` igual ao arquivo; minimo 1, maximo 1000
+5 MB se envía entero con `chunk_size` igual al archivo; mínimo 1, máximo 1000
 chunks, sempre sequenciais.
 
-O que este adaptador NAO faz, de proposito: titulo, descricao e `is_aigc` nao
+Lo que este adaptador NO hace, de forma intencionada: el título, la descripción y `is_aigc` no
 existem no endpoint inbox -- tentar envia-los seria 400. Rotular como AIGC e
 etapa manual no app, e a CLI cobra isso em vez de fingir que a API resolve.
 """
@@ -39,7 +39,7 @@ from agent.ports.publisher import (
 
 BASE_URL = "https://open.tiktokapis.com"
 INIT_PATH = "/v2/post/publish/inbox/video/init/"
-# Foto (carrossel): endpoint de conteudo, so aceita PULL_FROM_URL de dominio ou
+# Foto (carrusel): endpoint de contenido; solo acepta PULL_FROM_URL de un dominio o
 # prefixo de URL verificado no portal. MEDIA_UPLOAD = vai para a inbox, como o
 # video; aqui titulo e descricao SAO aceitos pela API.
 PHOTO_INIT_PATH = "/v2/post/publish/content/init/"
@@ -47,7 +47,7 @@ TITULO_MAX = 90
 DESCRICAO_MAX = 4000
 STATUS_PATH = "/v2/post/publish/status/fetch/"
 
-# Abaixo disto, chunk unico com o tamanho do arquivo inteiro.
+# Por debajo, un único fragmento con el tamaño completo del archivo.
 SINGLE_CHUNK_MAX = 5 * 1024 * 1024
 # Acima disto, a API exige mais de um chunk.
 MULTI_CHUNK_MIN = 64 * 1024 * 1024
@@ -92,14 +92,14 @@ class TikTokPublisher:
             return PublishResult(
                 state=PublishState.failed,
                 video_path=video_path,
-                error=f"arquivo nao encontrado: {video_path}",
+                error=f"archivo no encontrado: {video_path}",
             )
         blob = path.read_bytes()
         if not blob:
             return PublishResult(
                 state=PublishState.failed,
                 video_path=video_path,
-                error=f"arquivo vazio: {video_path}",
+                error=f"archivo vacío: {video_path}",
             )
         chunk_size, total_chunks = self._plan(len(blob))
 
@@ -270,13 +270,13 @@ class TikTokPublisher:
     def _plan(self, total: int) -> tuple[int, int]:
         """`(chunk_size, total_chunk_count)` segundo o guia "Media Transfer".
 
-        Abaixo de 5 MB: inteiro, `chunk_size` igual ao arquivo. Acima: piso da
+        Por debajo de 5 MB: entero, `chunk_size` igual al archivo. Por encima: mínimo de
         divisao, com o ultimo chunk absorvendo o resto (sempre < 2x o chunk, e
         o chunk nunca passa de 64 MB, entao o teto de 128 MB do ultimo vale).
-        Excecao: quando o piso daria 1 chunk menor que o arquivo (5 MB <
+        Excepción: cuando el mínimo daría un fragmento menor que el archivo (5 MB <
         total < 2x o chunk), o init seria recusado com "chunk size is invalid"
         -- com `count=1` a API exige `chunk_size == video_size`, entao o chunk
-        unico sai do tamanho do arquivo. Configuracao fora da faixa 5-64 MB e
+        un único sale del tamaño del archivo. Una configuración fuera del rango 5-64 MB es
         trazida para dentro: chunk menor que 5 MB seria recusado chunk a chunk
         no servidor.
         """
@@ -299,9 +299,9 @@ class TikTokPublisher:
         return self._plan(total)[0]
 
     def _throttle(self) -> None:
-        """Dorme o necessario para nao passar de 6 req/min por token.
+        """Duerme lo necesario para no superar 6 peticiones/min por token.
 
-        `time_fn` e `sleeper` sao injetaveis para o teste nao dormir de verdade.
+        `time_fn` y `sleeper` son inyectables para que la prueba no duerma de verdad.
         """
         agora = self._now()
         self._api_calls = [t for t in self._api_calls if agora - t < RATE_WINDOW_S]
@@ -323,8 +323,8 @@ def chunk_ranges(total: int, chunk_size: int, total_chunks: int
     """Intervalos [primeiro, ultimo] inclusivos, sequenciais, sem buraco.
 
     Os `total_chunks - 1` primeiros tem exatamente `chunk_size`; o ultimo vai
-    ate o fim do arquivo, absorvendo o resto -- e o `total_chunk_count` do init
-    que manda, nao o teto da divisao.
+    hasta el final del archivo, absorbiendo el resto. El `total_chunk_count` del inicio
+    es el que manda, no el techo de la división.
     """
     return [
         (i * chunk_size,
@@ -338,7 +338,7 @@ def _corpo(resposta: httpx.Response) -> dict[str, Any]:
         corpo = resposta.json()
     except ValueError as exc:
         raise PublisherError(
-            f"resposta nao-JSON da API (HTTP {resposta.status_code})"
+            f"respuesta que no es JSON de la API (HTTP {resposta.status_code})"
         ) from exc
     return corpo if isinstance(corpo, dict) else {}
 

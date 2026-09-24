@@ -1,26 +1,26 @@
-"""Slides 1080x1920 do carrossel, no vetor de marca Seu Canal.
+"""Diapositivas 1080x1920 del carrusel, con el vector de marca de Circuito Cero.
 
-Uma peca, um acento: o pilar de conteudo decide (verde padrao, ciano nas
+Una pieza, un acento: el pilar de contenido decide (verde predeterminado, cian para
 pecas de ruptura fato/futuro). Fundo #0A0A0C sempre, metade do quadro
 respirando. Tipografia da marca (Space Grotesk nos titulos, Plex Mono nos
-numeros) com fallback para a BeVietnamPro quando o glifo nao existir -- tofu
-nunca, e fonte bitmap de 10px menos ainda (ver `render/typography.py`).
+números), con BeVietnamPro como alternativa cuando falte un glifo. Nunca tofu
+y menos aún una fuente de mapa de bits de 10 px (consulta `render/typography.py`).
 
-A distribuicao do conteudo veio de uma referencia que o autor trouxe em
+La distribución del contenido procede de una referencia aportada por el autor
 20/09/2026 (um kit de post de IA no Envato). O layout anterior era honesto e
 vazio: contador solto no topo, titulo e apoio no mesmo peso, um terco do quadro
-sem nada. O que a referencia faz e dar **hierarquia em cinco camadas**, e e
+sin nada más. La referencia aporta **jerarquía en cinco capas**, que es
 isso que esta aqui:
 
 1. chip da marca no topo (barra de acento + nome) e o contador do outro lado --
    o leitor sabe de quem e a peca e quanto falta antes de ler o titulo;
 2. banho de acento na diagonal, que amarra foto e cor do pilar;
-3. titulo grande com a **ultima linha no acento** -- na referencia e o que
-   separa a promessa do assunto, e e o unico lugar onde a cor toca o texto;
-4. apoio marcado por um quadrado de acento, nao solto sob o titulo;
-5. rodape com regua, arroba e a acao (deslizar, ou salvar no ultimo).
+3. título grande con la **última línea en el acento**; en la referencia es lo que
+   separa la promesa del asunto y el único lugar donde el color toca el texto;
+4. apoyo marcado con un cuadro de acento, no suelto bajo el título;
+5. rodape com regua, arroba e a accion (deslizar, ou salvar no ultimo).
 
-O aceite mede o texto no PNG (`ink_height`), nao so as dimensoes: foi um
+La aceptación mide el texto en el PNG (`ink_height`), no solo las dimensiones: fue un
 slide 1080x1920 com titulo ilegivel que passou no portao antigo.
 """
 
@@ -35,13 +35,13 @@ from agent.models import Carousel
 from agent.render.typography import DISPLAY, MONO, font, hex_rgb, wrap
 
 W, H = 1080, 1920
-MARGEM = 80
-LARGURA_TEXTO = W - 2 * MARGEM
+MARGEN = 80
+LARGURA_TEXTO = W - 2 * MARGEN
 
 # Faixa do titulo: o aceite mede tinta clara aqui. Um titulo legivel em
 # Space Grotesk 70-96px ocupa bem mais que 50px de altura nessa faixa.
 # O texto vive na metade escura de baixo: foto em cima, texto sobre fundo
-# da marca -- texto sobre foto movimentada foi o que se viu na rodada de
+# de la marca. El texto sobre una foto en movimiento fue lo observado en la ronda de
 # 19/09 (microscopio atras de "Identidade ancorada ao OS").
 TITULO_Y = 960
 ALTURA_MINIMA_TITULO_PX = 50
@@ -52,20 +52,20 @@ TAMANHOS_TITULO = (96, 88, 78, 70)
 MAX_LINHAS_TITULO = 4
 
 TOPO_CHIP = 110
-BARRA_ESQ = 12          # fita de acento na borda esquerda
+BARRA_IZQ = 12          # fita de acento na borda esquerda
 FOTO_FIM = 820          # onde a foto ja virou fundo da marca
-RODAPE_REGUA = 1640
-RODAPE_TEXTO = 1690
+RODAPIE_REGLA = 1640
+RODAPIE_TEXTO = 1690
 
 
 def _fundo(foto: Path | None, fundo: tuple[int, int, int],
             acento: tuple[int, int, int]) -> Image.Image:
     """Foto em 9:16 escurecida ate virar o fundo da marca, + banho de acento.
 
-    O banho na diagonal do topo e o que a referencia usa para a peca nao
+    El degradado diagonal superior es lo que usa la referencia para que la pieza no
     parecer um print de artigo: amarra a foto a cor do pilar. So entra **com
-    foto**: sobre o quase-preto puro ele nao vira banho, vira dominante verde
-    no quadro inteiro -- foi o que aconteceu na primeira tentativa, e a regra
+    sea una foto**: sobre un casi negro puro no se vuelve degradado, sino verde dominante
+    en todo el cuadro. Sucedió en el primer intento y la regla
     da marca e fundo quase-preto com 50% de vazio.
     """
     base = Image.new("RGB", (W, H), fundo)
@@ -126,10 +126,10 @@ def _titulo(draw: ImageDraw.ImageDraw, texto: str):
 def _destaque(linhas: list[str]) -> tuple[int, int]:
     """Onde o acento toca o titulo: (indice da linha, palavras coloridas do fim).
 
-    A referencia sempre acende alguma coisa no titulo -- e o que separa a
-    promessa do assunto. Com duas linhas ou mais, acende a ultima inteira; com
-    uma linha so, acende a ultima palavra, desde que ela se sustente (palavra
-    de tres letras colorida parece erro de digitacao, nao enfase).
+    La referencia siempre resalta algo en el título; es lo que separa la
+    promesa del asunto. Con dos líneas o más, resalta la última completa; con
+    una sola línea, resalta la última palabra si se sostiene (una palabra
+    de tres letras coloreada parece un error de escritura, no un énfasis).
     """
     if not linhas:
         return (-1, 0)
@@ -148,16 +148,16 @@ def _chip(draw: ImageDraw.ImageDraw, brand, acento, apagada, slide_n: int,
           total: int) -> None:
     """Barra de acento + nome da marca a esquerda; contador a direita."""
     f = font(MONO, 36)
-    draw.rectangle((MARGEM, TOPO_CHIP, MARGEM + 7, TOPO_CHIP + 40), fill=acento)
-    draw.text((MARGEM + 24, TOPO_CHIP + 2), brand.name.upper(), font=f, fill=apagada)
+    draw.rectangle((MARGEN, TOPO_CHIP, MARGEN + 7, TOPO_CHIP + 40), fill=acento)
+    draw.text((MARGEN + 24, TOPO_CHIP + 2), brand.name.upper(), font=f, fill=apagada)
     contador = f"{slide_n:02d}/{total:02d}"
     largura = draw.textbbox((0, 0), contador, font=f)[2]
-    draw.text((W - MARGEM - largura, TOPO_CHIP + 2), contador, font=f, fill=acento)
+    draw.text((W - MARGEN - largura, TOPO_CHIP + 2), contador, font=f, fill=acento)
 
 
 def render_slide(carrossel: Carousel, n: int, out: Path,
                  pillar: str = "news", photo: Path | None = None) -> Path:
-    """Um slide em PNG, no acento do pilar de conteudo."""
+    """Una diapositiva en PNG, con el acento del pilar de contenido."""
     brand = load_brand()
     slide = next(s for s in carrossel.slides if s.n == n)
     total = len(carrossel.slides)
@@ -173,14 +173,14 @@ def render_slide(carrossel: Carousel, n: int, out: Path,
     # o canal ja tinha, agora estreita, porque o chip assumiu o papel de dizer
     # de quem e a peca.
     for i in range(H):
-        draw.line([(0, i), (BARRA_ESQ, i)],
+        draw.line([(0, i), (BARRA_IZQ, i)],
                   fill=tuple(int(fundo[k] + (acento[k] - fundo[k]) * (1 - i / H) * 0.6)
                              for k in range(3)))
 
     _chip(draw, brand, acento, apagada, slide.n, total)
     if n == 1 and tag:
         f_tag = font(MONO, 44)
-        draw.text((MARGEM, TOPO_CHIP + 74), tag, font=f_tag, fill=acento)
+        draw.text((MARGEN, TOPO_CHIP + 74), tag, font=f_tag, fill=acento)
 
     f_head, linhas_titulo, tamanho = _titulo(draw, slide.headline)
     linha_acesa, palavras_acesas = _destaque(linhas_titulo)
@@ -189,42 +189,42 @@ def render_slide(carrossel: Carousel, n: int, out: Path,
         if i == linha_acesa and palavras_acesas:
             partes = linha.rsplit(" ", palavras_acesas)
             inicio = " ".join(partes[:-palavras_acesas]) + " "
-            draw.text((MARGEM, y), inicio, font=f_head, fill=tinta)
-            draw.text((MARGEM + draw.textlength(inicio, font=f_head), y),
+            draw.text((MARGEN, y), inicio, font=f_head, fill=tinta)
+            draw.text((MARGEN + draw.textlength(inicio, font=f_head), y),
                       " ".join(partes[-palavras_acesas:]), font=f_head, fill=acento)
         else:
-            draw.text((MARGEM, y), linha, font=f_head,
+            draw.text((MARGEN, y), linha, font=f_head,
                       fill=acento if i == linha_acesa else tinta)
         y += int(tamanho * 1.18)
 
     # Apoio marcado: o quadrado de acento amarra a frase ao titulo em vez de
-    # deixa-la boiando, e e o que a referencia faz em cada item da lista.
+    # la deja flotar, como hace la referencia con cada elemento de la lista.
     f_text = font(DISPLAY, 52, slide.text)
     y += 34
-    draw.rectangle((MARGEM, y + 14, MARGEM + 18, y + 32), fill=acento)
+    draw.rectangle((MARGEN, y + 14, MARGEN + 18, y + 32), fill=acento)
     for linha in wrap(draw, slide.text, f_text, LARGURA_TEXTO - 48):
-        draw.text((MARGEM + 48, y), linha, font=f_text, fill=apagada)
+        draw.text((MARGEN + 48, y), linha, font=f_text, fill=apagada)
         y += 68
 
     f_rodape = font(MONO, 34)
     if n == total:
-        # Credito da fonte na propria peca: conteudo assistido por IA so e
+        # Crédito de la fuente en la propia pieza: el contenido asistido por IA solo es
         # elegivel ao Rewards quando original e verificavel, e o dominio na
-        # tela e o que da para verificar sem link.
+        # una imagen completa y es lo que se puede verificar sin enlace.
         dominios = _dominios(carrossel)
         if dominios:
-            texto = "Fontes: " + " · ".join(dominios)
-            base = RODAPE_REGUA - 40 - 44 * min(2, len(wrap(draw, texto, f_rodape,
+            texto = "Fuentes: " + " · ".join(dominios)
+            base = RODAPIE_REGLA - 40 - 44 * min(2, len(wrap(draw, texto, f_rodape,
                                                             LARGURA_TEXTO)))
             for i, linha in enumerate(wrap(draw, texto, f_rodape, LARGURA_TEXTO)[:2]):
-                draw.text((MARGEM, base + i * 44), linha, font=f_rodape, fill=apagada)
+                draw.text((MARGEN, base + i * 44), linha, font=f_rodape, fill=apagada)
 
-    draw.line((MARGEM, RODAPE_REGUA, W - MARGEM, RODAPE_REGUA), fill=(*apagada, 90))
-    f_pe = font(MONO, 36)
-    draw.text((MARGEM, RODAPE_TEXTO), brand.handle, font=f_pe, fill=apagada)
-    acao = "DESLIZE →" if n < total else "SALVE ESTE POST"
-    largura = draw.textbbox((0, 0), acao, font=f_pe)[2]
-    draw.text((W - MARGEM - largura, RODAPE_TEXTO), acao, font=f_pe, fill=acento)
+    draw.line((MARGEN, RODAPIE_REGLA, W - MARGEN, RODAPIE_REGLA), fill=(*apagada, 90))
+    f_pie = font(MONO, 36)
+    draw.text((MARGEN, RODAPIE_TEXTO), brand.handle, font=f_pie, fill=apagada)
+    accion = "DESLIZE →" if n < total else "SALVE ESTE POST"
+    largura = draw.textbbox((0, 0), accion, font=f_pie)[2]
+    draw.text((W - MARGEN - largura, RODAPIE_TEXTO), accion, font=f_pie, fill=acento)
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out)
     return out
@@ -242,7 +242,7 @@ def _dominios(carrossel: Carousel) -> list[str]:
 def render_carousel(carrossel: Carousel, out_dir: Path | str,
                     pillar: str = "news",
                     photos: dict[int, Path | None] | None = None) -> list[Path]:
-    """Os 5 slides + caption.txt (gancho + contexto + fontes + hashtags)."""
+    """Las 5 diapositivas + caption.txt (gancho + contexto + fuentes + hashtags)."""
     destino = Path(out_dir)
     fotos = photos or {}
     slides = [render_slide(carrossel, s.n, destino / f"slide-{s.n}.png", pillar,
@@ -253,12 +253,12 @@ def render_carousel(carrossel: Carousel, out_dir: Path | str,
 
 
 def caption_text(carrossel: Carousel) -> str:
-    """Legenda do post: a linha do roteirista, as fontes e as 5 hashtags."""
+    """Descripción de la publicación: la línea del guionista, las fuentes y 5 hashtags."""
     brand = load_brand()
     partes = [carrossel.caption]
     dominios = _dominios(carrossel)
     if dominios:
-        partes.append("Fontes: " + ", ".join(dominios))
+        partes.append("Fuentes: " + ", ".join(dominios))
     partes.append(" ".join(brand.hashtags))
     return "\n\n".join(partes) + "\n"
 
@@ -267,12 +267,12 @@ def ink_height(png: Path | str, top: int = TITULO_Y, bottom: int = TITULO_Y + 48
                limiar: int = 170) -> int:
     """Altura, em px, da faixa com tinta clara entre `top` e `bottom`.
 
-    Mede o artefato, nao o codigo: titulo em fonte bitmap de 10px da ~10;
+    Mide el artefacto, no el código: un título con fuente de mapa de bits de 10 px da ~10;
     titulo legivel da centenas. Pixel "claro" e canal medio >= `limiar`
     sobre o fundo escurecido, que e onde o texto da marca vive.
     """
     with Image.open(png) as img:
-        cinza = img.convert("L").crop((MARGEM, top, W - MARGEM, bottom))
+        cinza = img.convert("L").crop((MARGEN, top, W - MARGEN, bottom))
     largura = cinza.width
     dados = cinza.load()
     linhas_com_tinta = [

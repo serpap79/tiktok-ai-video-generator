@@ -1,4 +1,4 @@
-"""Testes dos contratos entre estagios."""
+"""Tests de los contratos entre etapas."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from agent.models import (
     Script,
 )
 
-FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "roteiro_manual.json"
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "guion_manual.json"
 
 
 def load_fixture() -> Script:
@@ -27,82 +27,82 @@ def load_fixture() -> Script:
 
 
 class TestScript:
-    def test_fixture_e_valido(self):
+    def test_fixture_es_valido(self):
         script = load_fixture()
         assert script.topic
-        assert script.facts, "o fixture precisa carregar fatos com fonte"
+        assert script.facts, "el fixture necesita cargar hechos con fuente"
 
-    def test_fixture_cabe_na_faixa_monetizavel(self):
-        """A estimativa pre-TTS precisa cair na faixa do Creator Rewards.
+    def test_fixture_cabe_en_la_franja_monetizable(self):
+        """La estimación pre-TTS debe caer en la franja del Creator Rewards.
 
-        Nao substitui a medicao do MP4 - so evita mandar para render um roteiro
-        que ja nasce fora da faixa.
+        No sustituye la medición del MP4 -- solo evita mandar a render un
+        guion que ya nace fuera de la franja.
         """
         script = load_fixture()
         assert MIN_DURATION_S <= script.estimated_duration_s <= MAX_DURATION_S, (
-            f"{script.word_count} palavras => ~{script.estimated_duration_s:.0f}s, "
-            f"fora de {MIN_DURATION_S}-{MAX_DURATION_S}s"
+            f"{script.word_count} palabras => ~{script.estimated_duration_s:.0f}s, "
+            f"fuera de {MIN_DURATION_S}-{MAX_DURATION_S}s"
         )
 
-    def test_narracao_usa_portugues_acentuado(self):
-        """O fixture e o modelo do que o roteirista deve gerar no M3.
+    def test_narracion_usa_castellano_acentuado(self):
+        """El fixture es el modelo de lo que el guionista debe generar en el M3.
 
-        Portugues sem acento aparece na legenda palavra-por-palavra e parece
-        desleixo num canal. A fonte (BeVietnamPro-Bold) cobre todos os acentos,
-        entao nao ha desculpa tecnica para escrever sem eles.
+        Castellano sin acento aparece en la leyenda palabra por palabra y parece
+        descuido en un canal. La fuente (BeVietnamPro-Bold) cubre todos los
+        acentos, así que no hay excusa técnica para escribir sin ellos.
         """
         import unicodedata
 
-        narracao = load_fixture().narration
+        narracion = load_fixture().narration
         acentos = sum(
-            1 for c in unicodedata.normalize("NFD", narracao) if unicodedata.combining(c)
+            1 for c in unicodedata.normalize("NFD", narracion) if unicodedata.combining(c)
         )
-        assert acentos >= 20, f"apenas {acentos} acentos em {len(narracao)} caracteres"
+        assert acentos >= 20, f"solo {acentos} acentos en {len(narracion)} caracteres"
 
-    def test_narracao_preserva_a_ordem(self):
+    def test_narracion_preserva_el_orden(self):
         script = load_fixture()
         narration = script.narration
         assert narration.index(script.hook) < narration.index(script.closing)
 
-    def test_termo_de_busca_com_acento_e_rejeitado(self):
-        """Termo em pt-BR vai direto para o Pexels e devolve resultado vazio.
+    def test_termino_de_busqueda_con_acento_es_rechazado(self):
+        """Término en pt-BR va directo a Pexels y devuelve resultado vacío.
 
-        Falhar na validacao custa milissegundos; descobrir depois custa um render
-        inteiro com material errado.
+        Fallar en la validación cuesta milisegundos; descubrirlo después cuesta
+        un render entero con material equivocado.
         """
         with pytest.raises(ValidationError, match="ASCII"):
             Script(
-                topic="teste",
-                hook="um hook qualquer com tamanho suficiente",
-                body="um corpo de roteiro com pelo menos cinquenta caracteres para passar",
-                closing="um fechamento qualquer",
+                topic="prueba",
+                hook="un hook cualquiera con tamaño suficiente",
+                body="un cuerpo de guion con al menos cincuenta caracteres para pasar",
+                closing="un cierre cualquiera",
                 search_terms=["placa de vídeo", "data center", "código"],
             )
 
-    def test_poucos_termos_sao_rejeitados(self):
+    def test_pocos_terminos_son_rechazados(self):
         with pytest.raises(ValidationError):
             Script(
-                topic="teste",
-                hook="um hook qualquer com tamanho suficiente",
-                body="um corpo de roteiro com pelo menos cinquenta caracteres para passar",
-                closing="um fechamento qualquer",
+                topic="prueba",
+                hook="un hook cualquiera con tamaño suficiente",
+                body="un cuerpo de guion con al menos cincuenta caracteres para pasar",
+                closing="un cierre cualquiera",
                 search_terms=["only one"],
             )
 
-    def test_verificacao_de_fonte_nao_e_do_modelo(self):
-        """Casar afirmacao com fonte exige julgamento semantico, nao string match."""
+    def test_verificacion_de_fuente_no_es_del_modelo(self):
+        """Casar afirmación con fuente exige juicio semántico, no string match."""
         with pytest.raises(NotImplementedError):
             _ = load_fixture().unsourced
 
 
 class TestDossier:
-    def test_dossie_sem_fato_e_rejeitado(self):
+    def test_dossier_sin_hecho_es_rechazado(self):
         from datetime import datetime
 
-        with pytest.raises(ValidationError, match="sem fato"):
+        with pytest.raises(ValidationError, match="sin hecho"):
             Dossier(topic="t", facts=[], collected_at=datetime.now())
 
-    def test_fato_sem_url_e_rejeitado(self):
+    def test_hecho_sin_url_es_rechazado(self):
         from datetime import datetime
 
         with pytest.raises(ValidationError):
@@ -110,21 +110,21 @@ class TestDossier:
                 {
                     "topic": "t",
                     "collected_at": datetime.now(),
-                    "facts": [{"claim": "uma afirmacao qualquer", "source_name": "Fonte"}],
+                    "facts": [{"claim": "una afirmación cualquiera", "source_name": "Fuente"}],
                 }
             )
 
 
 class TestRenderResult:
-    def test_completo_sem_caminho_e_incoerente(self):
-        with pytest.raises(ValidationError, match="sem video_path"):
+    def test_completo_sin_camino_es_incoherente(self):
+        with pytest.raises(ValidationError, match="sin video_path"):
             RenderResult(state=RenderState.complete)
 
-    def test_falha_sem_motivo_e_incoerente(self):
-        with pytest.raises(ValidationError, match="sem mensagem de erro"):
+    def test_fallo_sin_motivo_es_incoherente(self):
+        with pytest.raises(ValidationError, match="sin mensaje de error"):
             RenderResult(state=RenderState.failed)
 
-    def test_aceite_do_m0(self):
+    def test_aceptacion_del_m0(self):
         ok = RenderResult(
             state=RenderState.complete,
             video_path="/tmp/x.mp4",
@@ -137,10 +137,11 @@ class TestRenderResult:
         assert ok.duration_in_monetizable_range
         assert ok.has_audio
 
-    def test_video_mudo_nao_e_aceite(self):
-        """Regressao de um caso real: o primeiro render saiu sem trilha de audio
-        e passou nas checagens de dimensao e duracao. `has_audio` e falso por
-        padrao justamente para que o silencio nunca seja o default aprovado."""
+    def test_video_mudo_no_es_aceptacion(self):
+        """Regresión de un caso real: el primer render salió sin pista de audio
+        y pasó las comprobaciones de dimensión y duración. `has_audio` es falso
+        por defecto justamente para que el silencio nunca sea el estado
+        aprobado por defecto."""
         mudo = RenderResult(
             state=RenderState.complete,
             video_path="/tmp/x.mp4",
@@ -152,18 +153,18 @@ class TestRenderResult:
         assert mudo.duration_in_monetizable_range
         assert not mudo.has_audio
 
-    def test_video_curto_demais_reprova(self):
-        """59s nao e elegivel ao Creator Rewards, por mais bonito que esteja."""
-        curto = RenderResult(
+    def test_video_demasiado_corto_reprueba(self):
+        """59s no es elegible al Creator Rewards, por más bonito que esté."""
+        corto = RenderResult(
             state=RenderState.complete,
             video_path="/tmp/x.mp4",
             width=1080,
             height=1920,
             duration_s=59.0,
         )
-        assert curto.is_portrait_1080x1920
-        assert not curto.duration_in_monetizable_range
+        assert corto.is_portrait_1080x1920
+        assert not corto.duration_in_monetizable_range
 
-    def test_duracao_ausente_nao_conta_como_aprovada(self):
-        sem_medida = RenderResult(state=RenderState.complete, video_path="/tmp/x.mp4")
-        assert not sem_medida.duration_in_monetizable_range
+    def test_duracion_ausente_no_cuenta_como_aprobada(self):
+        sin_medida = RenderResult(state=RenderState.complete, video_path="/tmp/x.mp4")
+        assert not sin_medida.duration_in_monetizable_range

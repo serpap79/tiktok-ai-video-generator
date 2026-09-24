@@ -65,8 +65,8 @@ class TestRecusas:
         with pytest.raises(PageUnavailable, match="403"):
             fetcher(responde(status=403)).fetch("https://paywall.com/x")
 
-    def test_pdf_nao_e_lido(self):
-        with pytest.raises(PageUnavailable, match="nao textual"):
+    def test_pdf_no_se_lee(self):
+        with pytest.raises(PageUnavailable, match="no textual"):
             fetcher(responde(tipo="application/pdf")).fetch("https://arxiv.org/pdf/1.pdf")
 
     def test_timeout_vira_pagina_indisponivel(self):

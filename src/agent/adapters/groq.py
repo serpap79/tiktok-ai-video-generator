@@ -1,23 +1,23 @@
 """Adaptador da porta LLM para o Groq (free tier, endpoint compativel com OpenAI).
 
-Existe junto do Gemini desde o M3, e nao depois, porque uma porta com um unico
-adaptador nao e porta -- e indirecao. Manter dois desde o inicio e o que prova
-que trocar de provedor nao vaza para os estagios, e ja entrega metade do braco
+Existe junto a Gemini desde M3, y no después, porque una puerta con un único
+adaptador no es una puerta: es indirección. Mantener dos desde el principio demuestra
+que cambiar de proveedor no se filtra a las etapas y ya aporta la mitad del brazo
 livre do eval do M5.
 
-Diferenca que importa contra o Gemini: aqui nao existe saida estruturada por
-schema em todos os modelos. O que existe sempre e `response_format=json_object`,
-que garante JSON valido mas **nao** garante o formato pedido. Entao o schema vai
+Diferencia importante frente a Gemini: aquí no existe salida estructurada mediante
+esquema en todos los modelos. Lo que siempre existe es `response_format=json_object`,
+lo que garantiza JSON válido, pero **no** el formato solicitado. Por eso el esquema se incluye
 tambem no prompt, como texto, e quem chama valida com Pydantic do mesmo jeito.
 
 Os modelos sao open weights (GPT-OSS, Qwen). A latencia medida aqui e muito menor
 que a do Gemini Flash -- 1,0s contra 6,6s na mesma chamada de teste, em
-18/09/2026 -- e o custo no free tier e o mesmo zero. Se a escrita em pt-BR
-compensa a diferenca e o que o eval do M5 mede; por enquanto e impressao, nao
+18/09/2026: el coste en el nivel gratuito también es cero. Si la escritura en castellano de España
+compensa la diferencia es lo que mide la evaluación M5; por ahora es una impresión, no
 resultado.
 
 Id de modelo aqui e volatil: o padrao anterior (`llama-3.3-70b-versatile`) foi
-descontinuado e devolve 404. Por isso ele vem da configuracao e existe o
+descontinuado y devuelve 404. Por eso procede de la configuración y existe el
 `agent llm-health`, que confere contra o provedor em vez de confiar no padrao.
 """
 
@@ -112,7 +112,7 @@ class Groq:
         try:
             corpo = r.json()
         except ValueError as exc:
-            raise LLMError("groq devolveu resposta nao-JSON") from exc
+            raise LLMError("groq devolvió una respuesta que no es JSON") from exc
 
         return self.parse(corpo, model=self.model, latency_s=latencia)
 
@@ -126,9 +126,9 @@ class Groq:
         instrucao = system
         estrito = schema is not None and model in STRICT_SCHEMA_MODELS
         if schema is not None and not estrito:
-            # O modo JSON do endpoint exige a palavra "json" no prompt e nao
-            # aceita schema; anexar o schema como texto e o que sobra para pedir
-            # um formato. Vai no system para nao competir com o conteudo.
+            # El modo JSON del endpoint exige la palabra «json» en el prompt y no
+            # acepta un esquema; adjuntarlo como texto es lo que queda para solicitar
+            # un formato. Va en el sistema para no competir con el contenido.
             instrucao = (
                 f"{system}\n\n" if system else ""
             ) + (
@@ -156,7 +156,7 @@ class Groq:
             payload["response_format"] = {"type": "json_object"}
         if reasoning_effort:
             # Só os modelos de raciocinio aceitam; mandar para os outros devolve
-            # 400, por isso o padrao e nao enviar.
+            # 400, por lo que la opción predeterminada es no enviarlo.
             payload["reasoning_effort"] = reasoning_effort
         return payload
 
@@ -169,11 +169,11 @@ class Groq:
         escolha = escolhas[0]
         motivo = str(escolha.get("finish_reason") or "")
         if motivo == "content_filter":
-            raise LLMBlocked("groq bloqueou a resposta por filtro de conteudo")
+            raise LLMBlocked("groq bloqueó la respuesta por un filtro de contenido")
 
         texto = ((escolha.get("message") or {}).get("content") or "")
         if not texto.strip():
-            raise LLMError(f"groq devolveu choice sem conteudo (finish_reason={motivo})")
+            raise LLMError(f"groq devolvió una opción sin contenido (finish_reason={motivo})")
 
         uso = corpo.get("usage") or {}
         return Completion(
@@ -193,8 +193,8 @@ def strict_schema(schema: dict) -> dict:
     """O schema no dialeto do modo estrito: objeto fechado, tudo obrigatorio.
 
     O modo estrito do Groq recusa objeto sem `additionalProperties: false` e
-    propriedade fora de `required`. Os schemas do projeto ja pedem tudo; o que
-    falta e fechar os objetos -- feito aqui para os estagios nao conhecerem o
+    propiedad fuera de `required`. Los esquemas del proyecto ya piden todo; lo que
+    falta es cerrar los objetos, algo que se hace aquí para que las etapas no conozcan el
     dialeto de provedor nenhum.
     """
     saida = copy.deepcopy(schema)
@@ -233,9 +233,9 @@ def quota_error(r: httpx.Response, model: str) -> LLMQuotaExhausted:
     O corpo diz qual teto estourou ("tokens per minute (TPM)", "requests per
     day (RPD)"...). No free tier o gpt-oss-120b tem 8K tokens por minuto e
     200K por dia (doc de rate limits, 19/09/2026): um roteiro com raciocinio
-    passa de 5K, entao o de minuto e o que bate -- e se resolve esperando
-    segundos, nao trocando de provedor. 413 e o pedido que nem cabe no teto
-    por minuto: esperar nao adianta.
+    supera 5K, el de minutos es el aplicable y se resuelve esperando
+    unos segundos, no cambiando de proveedor. El 413 es una petición que ni siquiera
+    cabe en el límite por minuto: esperar no ayuda.
     """
     try:
         erro = (r.json() or {}).get("error") or {}

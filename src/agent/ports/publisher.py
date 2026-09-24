@@ -4,11 +4,11 @@ Existe como porta porque a primeira implementacao fala com a Content Posting
 API oficial (inbox, escopo `video.upload`). Se um dia o destino mudar, troca-se
 o adaptador sem tocar na CLI nem na memoria.
 
-O fluxo inbox e deliberado: ele **nao exige auditoria** do app, ao contrario do
+El flujo de bandeja es deliberado: **no exige auditoría** de la app, a diferencia del
 Direct Post (que posta direto mas so em modo privado ate passar na auditoria).
-O preco e que o endpoint inbox nao recebe titulo, descricao nem `is_aigc` --
+El precio es que el endpoint de bandeja no recibe título, descripción ni `is_aigc`
 so `source_info`. Legenda e rotulo AIGC sao aplicados pelo criador no app, ao
-concluir o post a partir da notificacao da inbox. O adaptador nao finge o
+y hay que completar la publicación desde la notificación. El adaptador no finge
 contrario: ele sobe o video e registra o `publish_id`; rotular como AIGC e
 etapa manual documentada na CLI, sem flag para desligar.
 """
@@ -25,7 +25,7 @@ class PublisherError(RuntimeError):
 
     Publicacao recusada pela API com motivo de dominio (ex. video invalido)
     volta como PublishResult(state=failed), porque e resultado e precisa ficar
-    gravado. Esta excecao e para o que impede concluir a chamada.
+    registrado. Esta excepción representa lo que impide completar la llamada.
     """
 
 
@@ -46,7 +46,7 @@ class Publisher(Protocol):
     def fetch_status(self, publish_id: str, *, access_token: str) -> str:
         """Estado atual do post na API do TikTok (string opaca, sem validacao).
 
-        Os valores possiveis nao sao validados aqui de proposito: afirmar uma
+        Los valores posibles no se validan aquí de forma intencionada: afirmar un
         lista fechada sem ter exercitado a API real seria documentar chute.
         """
         ...

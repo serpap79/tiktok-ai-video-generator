@@ -1,24 +1,24 @@
-"""Roteirista: de um dossie gravado para um Script pronto para o renderizador.
+"""Guionista: de un dossier grabado a un Script listo para el renderizador.
 
-O estagio tem duas metades de natureza diferente, e misturar as duas e o erro
-que este arquivo evita.
+La etapa tiene dos mitades de naturaleza distinta, y mezclarlas es el error que
+este archivo evita.
 
-A primeira e **julgamento**: hook que abre lacuna, ponto de vista proprio,
-portugues falado. Isso e trabalho do juiz (fatia 3), com rubrica, e nao da para
-decidir por regra.
+La primera es **juicio**: hook que abre hueco, punto de vista propio,
+castellano hablado. Eso es trabajo del juez (porcion 3), con rubrica, y no se
+puede decidir por regla.
 
-A segunda e **mecanica**: contar palavra, conferir se o termo de busca esta
-em ASCII e saiu do vocabulario visual do canal (um pilar so), conferir se o
-indice de fato existe no dossie. Isso nao precisa de juiz
-nenhum, e gastar uma rodada de revisao do juiz com erro de contagem seria
-desperdicio de cota. Por isso o roteirista tem seu proprio laco de correcao, com
-o defeito medido devolvido ao modelo em texto, e so entrega ao juiz um roteiro
-que ja passa no que e verificavel.
+La segunda es **mecanica**: contar palabra, comprobar si el termino de busqueda
+esta en ASCII y salio del vocabulario visual del canal (un pilar solo),
+comprobar si el indice de hecho existe en el dossier. Eso no necesita juez
+ninguno, y gastar una ronda de revision del juez con error de conteo seria
+desperdicio de cuota. Por eso el guionista tiene su propio lazo de correccion,
+con el defecto medido devuelto al modelo en texto, y solo entrega al juez un
+guion que ya pasa en lo que es verificable.
 
-A faixa de duracao e requisito de monetizacao, nao gosto: video abaixo de 60s
-nao e elegivel ao Creator Rewards. Ela e estimada aqui pelo ritmo de fala
-(WORDS_PER_SECOND) e **medida de verdade** so depois do TTS, pelo renderizador --
-e e a medida que manda.
+La franja de duracion es requisito de monetizacion, no gusto: video por debajo
+de 60s no es elegible al Creator Rewards. Se estima aqui por el ritmo de habla
+(WORDS_PER_SECOND) y se **mide de verdad** solo despues del TTS, por el
+renderizador -- y es la medida la que manda.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from agent.brand.brand import pillar_brief, voice_brief
-from agent.brand.checks import check_emoji_bordao, check_hook, check_numbers
+from agent.brand.checks import check_emoji_muletilla, check_hook, check_numbers
 from agent.models import (
     MAX_DURATION_S,
     MIN_DURATION_S,
@@ -48,54 +48,65 @@ from agent.research.subject import missing_subject
 from agent.writer.humanize import humanize as humanize_narration
 from agent.writer.visuals import compact_brief, suggest_pillar, validate_broll, validate_terms
 
-# Faixa de palavras que corresponde a faixa de duracao exigida, com 2s de
-# margem em cada ponta: a voz real varia alguns por cento do ritmo medido, e
-# 59s nao monetiza.
-MARGEM_S = 2
-MIN_PALAVRAS = int((MIN_DURATION_S + MARGEM_S) * WORDS_PER_SECOND)
-MAX_PALAVRAS = int((MAX_DURATION_S - MARGEM_S) * WORDS_PER_SECOND)
+# Franja de palabras que corresponde a la franja de duracion exigida, con 2s de
+# margen en cada punta: la voz real varia unos por ciento del ritmo medido, y
+# 59s no monetiza.
+MARGEN_S = 2
+MIN_PALABRAS = int((MIN_DURATION_S + MARGEN_S) * WORDS_PER_SECOND)
+MAX_PALABRAS = int((MAX_DURATION_S - MARGEN_S) * WORDS_PER_SECOND)
+# Alias historicos: los tests y los comandos importan estas constantes por su
+# nombre original del modulo.
+MIN_PALAVRAS = MIN_PALABRAS
+MAX_PALAVRAS = MAX_PALABRAS
+MIN_WORDS = MIN_PALABRAS
+MAX_WORDS = MAX_PALABRAS
 
-# short nao monetiza (25s << 60s): a funcao dele e alcance, nao receita.
-# Subiu de 30-50 para 58-70 palavras em 20/09/2026, quando a grade passou a
-# pedir curto de ~25s (era ~15s). A 2,57 palavras/s medidas, 58-70 palavras
-# dao 23-27s. Final em loop, para o replay automatico.
-MIN_PALAVRAS_CURTO = math.ceil(SHORT_MIN_DURATION_S * WORDS_PER_SECOND)
-MAX_PALAVRAS_CURTO = math.floor(SHORT_MAX_DURATION_S * WORDS_PER_SECOND)
+# short no monetiza (25s << 60s): su funcion es alcance, no ingreso.
+# Subio de 30-50 a 58-70 palabras en 20/09/2026, cuando la parrilla paso a
+# pedir corto de ~25s (era ~15s). A 2,57 palabras/s medidas, 58-70 palabras
+# dan 23-27s. Final en bucle, para el replay automatico.
+MIN_PALABRAS_CORTO = math.ceil(SHORT_MIN_DURATION_S * WORDS_PER_SECOND)
+MAX_PALABRAS_CORTO = math.floor(SHORT_MAX_DURATION_S * WORDS_PER_SECOND)
 BANDS: dict[str, tuple[int, int]] = {
-    "long": (MIN_PALAVRAS, MAX_PALAVRAS),
-    "short": (MIN_PALAVRAS_CURTO, MAX_PALAVRAS_CURTO),
+    "long": (MIN_PALABRAS, MAX_PALABRAS),
+    "short": (MIN_PALABRAS_CORTO, MAX_PALABRAS_CORTO),
 }
-# Um clipe de b-roll cobre ~5s, entao o curto de 25s pede mais termos que o de
-# 15s -- com 2 termos o mesmo clipe voltava tres vezes no mesmo video.
+# Un clip de b-roll cubre ~5s, asi que el corto de 25s pide mas terminos que el
+# de 15s -- con 2 terminos el mismo clip volvia tres veces en el mismo video.
 TERMS_PER_MODE: dict[str, tuple[int, int]] = {
     "long": (4, 8),
     "short": (3, 5),
 }
 
-# "[0]", "[1, 2]": o indice do fato echoado dentro do texto. Medido na primeira
-# execucao real (18/09/2026): o modelo escreveu "...no seu projeto [0]." e
-# "...em um projeto [0, 3]." -- e o TTS leria "zero" e "um" em voz alta.
-_MARCADOR_DE_CITACAO = re.compile(r"\[\s*\d+(?:\s*,\s*\d+)*\s*\]")
+# "[0]", "[1, 2]": el indice del hecho colado dentro del texto. Medido en la
+# primera ejecucion real (18/09/2026): el modelo escribio "...en tu proyecto
+# [0]." y "...en un proyecto [0, 3]." -- y el TTS lo diria "cero" y "uno" en
+# voz alta.
+_MARCADOR_DE_CITA = re.compile(r"\[\s*\d+(?:\s*,\s*\d+)*\s*\]")
 
-# Abaixo disto o dossie nao sustenta 60 segundos de narracao. Medido: um dossie
-# de 4 fatos tirados de UMA frase de changelog levou o roteirista a tres
-# tentativas, todas entre 104 e 157 palavras, sem nunca alcancar as 150 -- porque
-# nao havia assunto, e nao porque a instrucao estava ruim.
-MIN_FATOS_PARA_ROTEIRO = 3
+# Por debajo de esto el dossier no sostiene 60 segundos de narracion. Medido:
+# un dossier de 4 hechos sacados de UNA frase de changelog llevo al guionista a
+# tres intentos, todos entre 104 y 157 palabras, sin nunca alcanzar las 150 --
+# porque no habia asunto, y no porque la instruccion estuviera mal.
+MIN_HECHOS_PARA_GUION = 3
+# Alias historico.
+MIN_FATOS_PARA_ROTEIRO = MIN_HECHOS_PARA_GUION
 
-# Tentativas totais, contando a primeira. Duas correcoes bastam para defeito
-# mecanico; se o modelo nao acerta a contagem em tres tentativas, o problema nao
-# e a instrucao, e insistir so queima cota do free tier.
-MAX_TENTATIVAS = 3
+# Intentos totales, contando el primero. Dos correcciones bastan para defecto
+# mecanico; si el modelo no acierta el conteo en tres intentos, el problema no
+# es la instruccion, e insistir solo quema cuota del free tier.
+MAX_INTENTOS = 3
+# Alias historico.
+MAX_TENTATIVAS = MAX_INTENTOS
 
 SISTEMA = (
-    "Voce e roteirista de um canal brasileiro de tech, IA e ciencia. Escreve para "
-    "ser ouvido, nao lido: frase curta, voz ativa, zero jargao nao explicado. "
-    "Voce so afirma o que esta no dossie que recebe. Numero que nao esta no "
-    "dossie nao entra no roteiro, nem como aproximacao."
+    "Eres guionista de un canal espanol de tech, IA y ciencia. Escribes para ser "
+    "oido, no leido: frase corta, voz activa, cero jerga sin explicar. Solo "
+    "afirmas lo que esta en el dossier que recibes. Numero que no esta en el "
+    "dossier no entra en el guion, ni como aproximacion."
 )
 
-SCHEMA_ROTEIRO: dict[str, Any] = {
+SCHEMA_GUION: dict[str, Any] = {
     "type": "object",
     "properties": {
         "hook": {"type": "string"},
@@ -113,12 +124,12 @@ SCHEMA_ROTEIRO: dict[str, Any] = {
 
 @dataclass
 class Attempt:
-    """Uma tentativa e o que ela violou. Vazio significa que ela foi aceita.
+    """Un intento y lo que vio. Vacio significa que fue aceptado.
 
-    `narration` guarda o texto reprovado. Sem ele, entender POR QUE um portao
-    reprovou exige rodar de novo e pagar a cota outra vez -- foi o que aconteceu
-    na primeira execucao real, com um portao acusando "numero 0, 1, 2" sem que
-    houvesse como ver de onde os numeros vinham.
+    `narration` guarda el texto reprobado. Sin el, entender POR QUE una puerta
+    reprobo exige correr de nuevo y pagar la cuota otra vez -- fue lo que paso
+    en la primera ejecucion real, con una puerta acusando "numero 0, 1, 2" sin
+    que hubiera forma de ver de donde venian los numeros.
     """
 
     violations: list[str] = field(default_factory=list)
@@ -130,12 +141,12 @@ class Attempt:
 
 @dataclass
 class WriteReport:
-    """O roteiro, as tentativas que precisaram acontecer, e o custo de todas.
+    """El guion, los intentos que hicieron falta, y el coste de todos.
 
-    As tentativas ficam gravadas porque elas dizem onde o prompt esta fraco: se
-    toda execucao gasta duas rodadas para acertar a contagem de palavras, o
-    defeito esta na instrucao, nao no modelo -- e isso so aparece se o intervalo
-    for registrado em vez de descartado no sucesso.
+    Los intentos quedan grabados porque dicen donde el prompt esta debil: si
+    toda ejecucion gasta dos rondas para acertar el conteo de palabras, el
+    defecto esta en la instruccion, no en el modelo -- y eso solo aparece si el
+    intervalo se registra en vez de descartarse en el exito.
     """
 
     topic: str
@@ -143,14 +154,14 @@ class WriteReport:
     attempts: list[Attempt] = field(default_factory=list)
     model: str = ""
     provider: str = ""
-    # Passada de humanizacao apos o aceite mecanico. Nao e tentativa: nao
-    # reprova, so melhora -- ou mantem o original com motivo.
+    # Pasada de humanizacion despues del aceite mecanico. No es intento: no
+    # reprueba, solo mejora -- o mantiene el original con motivo.
     humanized: bool = False
     humanize_notes: list[str] = field(default_factory=list)
     humanize_usage: Usage = field(default_factory=Usage)
     humanize_latency_s: float = 0.0
-    # Motivo de nem ter tentado. Diferente de tentativa reprovada: aqui nenhuma
-    # chamada foi feita, e o custo e zero.
+    # Motivo de ni siquiera haber intentado. Distinto de intento reprobado: aqui
+    # ninguna llamada se hizo, y el coste es cero.
     refusal: str = ""
 
     @property
@@ -171,26 +182,26 @@ class WriteReport:
 
     @property
     def violations(self) -> list[str]:
-        """Violacoes da ultima tentativa: o motivo de ter falhado."""
+        """Violaciones del ultimo intento: el motivo de haber fallado."""
         return self.attempts[-1].violations if self.attempts else []
 
 
 class Screenwriter:
-    def __init__(self, llm: LLM, max_attempts: int = MAX_TENTATIVAS):
+    def __init__(self, llm: LLM, max_attempts: int = MAX_INTENTOS):
         self._llm = llm
         self._max_attempts = max_attempts
 
     def write(self, dossier: Dossier, notes: list[str] | None = None,
               mode: str = "long", polish: bool = True, pillar: str = "",
               previous: str = "") -> WriteReport:
-        """Escreve o roteiro. `notes` sao as notas de revisao do juiz.
+        """Escribe el guion. `notes` son las notas de revision del juez.
 
-        Elas entram no mesmo canal das violacoes mecanicas -- o modelo recebe uma
-        lista de defeitos a corrigir e nao precisa saber qual deles foi contado e
-        qual foi julgado.
+        Entran por el mismo canal de las violaciones mecanicas -- el modelo
+        recibe una lista de defectos que corregir y no necesita saber cual de
+        ellos fue contado y cual juzgado.
         """
         if mode not in BANDS:
-            raise ValueError(f"modo desconhecido: {mode!r}; use long ou short")
+            raise ValueError(f"modo desconocido: {mode!r}; usa long o short")
         report = WriteReport(
             topic=dossier.topic,
             model=getattr(self._llm, "model", ""),
@@ -199,51 +210,52 @@ class Screenwriter:
 
         report.refusal = thin_dossier_reason(dossier, mode)
         if report.refusal:
-            # Medir antes de pagar, como o curador e o juiz fazem: dossie que nao
-            # sustenta 60s de narracao nao vira roteiro por insistencia, e tentar
-            # tres vezes so gastaria cota para chegar na mesma parede.
+            # Medir antes de pagar, como hacen el curador y el juez: dossier que
+            # no sostiene 60s de narracion no se convierte en guion por
+            # insistencia, y probar tres veces solo gastaria cuota para llegar a
+            # la misma pared.
             return report
 
-        correcao: list[str] = list(notes or [])
-        # Texto da tentativa anterior: sem ele, "mantenha o que estava bom e
-        # conserte o apontado" pedia ao modelo para manter algo que ele nao via
-        # -- cada correcao era uma escrita do zero, e a contagem de palavras
-        # oscilava em vez de convergir.
+        correccion: list[str] = list(notes or [])
+        # Texto del intento anterior: sin el, "manten lo que estaba bien y
+        # arregla lo apuntado" le pedia al modelo mantener algo que no veia --
+        # cada correccion era una escrita desde cero, y el conteo de palabras
+        # oscilaba en vez de converger.
         anterior = previous
 
         for _ in range(self._max_attempts):
             try:
-                resposta = self._llm.complete(
-                    build_prompt(dossier, correcao, mode, pillar=pillar,
-                                 previous=anterior if correcao else ""),
+                respuesta = self._llm.complete(
+                    build_prompt(dossier, correccion, mode, pillar=pillar,
+                                 previous=anterior if correccion else ""),
                     system=SISTEMA,
-                    schema=SCHEMA_ROTEIRO,
+                    schema=SCHEMA_GUION,
                     temperature=0.6,
                     max_output_tokens=2048,
                 )
             except LLMError:
-                # Cota estourada ou filtro de conteudo: nao ha o que corrigir no
-                # prompt, entao sobe para quem chamou. Defeito de forma na
-                # resposta e tratado em _avaliar, como violacao corrigivel.
+                # Cuota rebasada o filtro de contenido: no hay nada que corregir
+                # en el prompt, asi que sube a quien llamo. Defecto de forma en
+                # la respuesta se trata en _evaluar, como violacion corregible.
                 raise
 
-            # Com o roteador, quem respondeu so e conhecido depois da chamada.
-            report.model, report.provider = resposta.model, resposta.provider
-            tentativa, script = self._avaliar(resposta, dossier, mode, pillar)
-            report.attempts.append(tentativa)
-            if not tentativa.violations:
+            # Con el router, quien respondio solo se conoce despues de la llamada.
+            report.model, report.provider = respuesta.model, respuesta.provider
+            intento, script = self._evaluar(respuesta, dossier, mode, pillar)
+            report.attempts.append(intento)
+            if not intento.violations:
                 report.script = script
                 if polish and script is not None:
-                    self._polir(report, script, dossier, mode)
+                    self._pulir(report, script, dossier, mode)
                 return report
-            correcao = tentativa.violations
-            anterior = tentativa.narration or anterior
+            correccion = intento.violations
+            anterior = intento.narration or anterior
 
         return report
 
-    def _polir(self, report: WriteReport, script: Script,
+    def _pulir(self, report: WriteReport, script: Script,
                dossier: Dossier, mode: str) -> None:
-        """Passada de humanizacao. Original intacto se a reescrita falhar."""
+        """Pasada de humanizacion. Original intacto si la reescritura falla."""
         minimo, maximo = BANDS[mode]
         rel = humanize_narration(
             script.hook, script.body, script.closing, dossier,
@@ -256,290 +268,295 @@ class Screenwriter:
                 "hook": rel.hook, "body": rel.body, "closing": rel.closing})
             report.humanized = True
 
-    # ------------------------------------------------------------------ avaliacao
+    # ------------------------------------------------------------------ evaluacion
 
-    def _avaliar(self, resposta: Completion, dossier: Dossier,
+    def _evaluar(self, respuesta: Completion, dossier: Dossier,
                  mode: str = "long", pillar: str = "") -> tuple[Attempt, Script | None]:
-        tentativa = Attempt(usage=resposta.usage, latency_s=resposta.latency_s)
-        if resposta.truncated:
-            tentativa.violations.append(
-                "a resposta foi cortada por limite de tokens; escreva mais curto"
+        intento = Attempt(usage=respuesta.usage, latency_s=respuesta.latency_s)
+        if respuesta.truncated:
+            intento.violations.append(
+                "la respuesta fue cortada por limite de tokens; escribe mas corto"
             )
-            return tentativa, None
+            return intento, None
 
         try:
-            corpo = parse_json_object(resposta.text)
+            cuerpo = parse_json_object(respuesta.text)
         except LLMError as exc:
-            # Defeito de forma, nao de provedor: o laco conserta isso, e gastar
-            # uma rodada do juiz com JSON quebrado seria desperdicio de cota.
-            tentativa.violations.append(f"a resposta nao veio como objeto JSON: {exc}")
-            return tentativa, None
+            # Defecto de forma, no de proveedor: el lazo lo arregla, y gastar una
+            # ronda del juez con JSON roto seria desperdicio de cuota.
+            intento.violations.append(f"la respuesta no vino como objeto JSON: {exc}")
+            return intento, None
 
-        usados, fora = _resolver_fatos(corpo.get("used_facts"), dossier.facts)
+        usados, fuera = _resolver_hechos(cuerpo.get("used_facts"), dossier.facts)
 
         try:
             script = Script(
                 topic=dossier.topic,
-                hook=_texto(corpo.get("hook")),
-                body=_texto(corpo.get("body")),
-                closing=_texto(corpo.get("closing")),
-                search_terms=_termos(corpo.get("search_terms")),
+                hook=_texto(cuerpo.get("hook")),
+                body=_texto(cuerpo.get("body")),
+                closing=_texto(cuerpo.get("closing")),
+                search_terms=_terminos(cuerpo.get("search_terms")),
                 facts=usados,
                 format=mode,
-                broll=_termos(corpo.get("broll"))[:3],
+                broll=_terminos(cuerpo.get("broll"))[:3],
                 pillar=pillar,
-                caption=_legenda(corpo.get("caption")),
+                caption=_leyenda(cuerpo.get("caption")),
             )
         except ValidationError as exc:
-            tentativa.violations.extend(_violacoes_de_contrato(exc))
-            return tentativa, None
+            intento.violations.extend(_violaciones_de_contrato(exc))
+            return intento, None
 
-        tentativa.word_count = script.word_count
-        tentativa.narration = script.narration
-        tentativa.violations.extend(_violacoes_mecanicas(script, dossier, fora, mode))
-        return tentativa, (script if not tentativa.violations else None)
+        intento.word_count = script.word_count
+        intento.narration = script.narration
+        intento.violations.extend(_violaciones_mecanicas(script, dossier, fuera, mode))
+        return intento, (script if not intento.violations else None)
 
 
-def _violacoes_mecanicas(script: Script, dossier: Dossier, fora: list[int],
-                         mode: str = "long") -> list[str]:
-    """O que da para conferir sem julgamento. Texto vai de volta ao modelo."""
+def _violaciones_mecanicas(script: Script, dossier: Dossier, fuera: list[int],
+                           mode: str = "long") -> list[str]:
+    """Lo que se puede comprobar sin juicio. El texto vuelve al modelo."""
     problemas: list[str] = []
     minimo, maximo = BANDS[mode]
     tmin, tmax = TERMS_PER_MODE[mode]
 
-    marcadores = _MARCADOR_DE_CITACAO.findall(script.narration)
+    marcadores = _MARCADOR_DE_CITA.findall(script.narration)
     if marcadores:
         problemas.append(
-            f"a narracao contem marcador de citacao ({', '.join(marcadores[:4])}). "
-            "O texto e falado por um sintetizador: ele leria esses numeros em voz "
-            "alta. O indice do fato vai APENAS no campo used_facts."
+            f"la narracion contiene marcador de cita ({', '.join(marcadores[:4])}). "
+            "El texto lo habla un sintetizador: diria esos numeros en voz alta. "
+            "El indice del hecho va SOLO en el campo used_facts."
         )
 
     if not (minimo <= script.word_count <= maximo):
-        alvo = (minimo + maximo) // 2
+        objetivo = (minimo + maximo) // 2
         problemas.append(
-            f"a narracao tem {script.word_count} palavras "
-            f"(~{script.estimated_duration_s:.0f}s) e precisa ter entre {minimo} e "
-            f"{maximo}. Reescreva com cerca de {alvo} palavras."
+            f"la narracion tiene {script.word_count} palabras "
+            f"(~{script.estimated_duration_s:.0f}s) y necesita tener entre {minimo} y "
+            f"{maximo}. Reescribe con unas {objetivo} palabras."
         )
 
     if not (tmin <= len(script.search_terms) <= tmax):
         problemas.append(
-            f"search_terms tem {len(script.search_terms)} termos e o modo {mode} "
-            f"pede entre {tmin} e {tmax}, em ordem cronologica."
+            f"search_terms tiene {len(script.search_terms)} terminos y el modo {mode} "
+            f"pide entre {tmin} y {tmax}, en orden cronologico."
         )
 
-    if fora:
+    if fuera:
         problemas.append(
-            f"used_facts aponta indice que nao existe no dossie: {fora}. "
-            f"Os indices validos vao de 0 a {len(dossier.facts) - 1}."
+            f"used_facts apunta a indice que no existe en el dossier: {fuera}. "
+            f"Los indices validos van de 0 a {len(dossier.facts) - 1}."
         )
     if not script.facts:
         problemas.append(
-            "used_facts esta vazio: todo roteiro precisa apoiar-se em pelo menos "
-            "um fato do dossie, com fonte."
+            "used_facts esta vacio: todo guion necesita apoyarse en al menos "
+            "un hecho del dossier, con fuente."
         )
 
-    soltos = _numeros_sem_dossie(script, dossier)
+    sueltos = _numeros_sin_dossier(script, dossier)
 
-    if soltos:
+    if sueltos:
         problemas.append(
-            f"a narracao cita numero que nao esta no dossie: {', '.join(soltos)}. "
-            "Use so os numeros dos fatos, sem converter unidade e sem arredondar."
+            f"la narracion cita numero que no esta en el dossier: {', '.join(sueltos)}. "
+            "Usa solo los numeros de los hechos, sin convertir unidad y sin redondear."
         )
 
     problemas.extend(validate_terms(script.search_terms))
     problemas.extend(validate_broll(script.broll, mode))
     problemas.extend(caption_problems(script))
 
-    sem_sujeito = missing_subject(script.narration, dossier.topic)
-    if sem_sujeito:
+    sin_sujeto = missing_subject(script.narration, dossier.topic)
+    if sin_sujeto:
         problemas.append(
-            "o roteiro fala de 'um modelo' sem nomear: cite "
-            + ", ".join(f"{t!r}" for t in sem_sujeito) + " (nome e criador, "
-            "conforme o dossie -- nunca invente). Sem nome nao ha busca nem "
-            "credibilidade.")
+            "el guion habla de 'un modelo' sin nombrarlo: cita "
+            + ", ".join(f"{t!r}" for t in sin_sujeto) + " (nombre y creador, "
+            "conforme el dossier -- nunca inventes). Sin nombre no hay busqueda ni "
+            "credibilidad.")
 
-    falha_gancho = check_hook(script.hook)
-    if falha_gancho is not None:
-        problemas.append(falha_gancho)
+    fallo_gancho = check_hook(script.hook)
+    if fallo_gancho is not None:
+        problemas.append(fallo_gancho)
     problemas.extend(check_numbers(script.narration))
-    problemas.extend(check_emoji_bordao(script.narration))
+    problemas.extend(check_emoji_muletilla(script.narration))
 
     return problemas
 
 
-def _numeros_sem_dossie(script: Script, dossier: Dossier) -> list[str]:
-    """Numero em digito na narracao precisa estar em algum fato do dossie.
+def _numeros_sin_dossier(script: Script, dossier: Dossier) -> list[str]:
+    """Numero en digito en la narracion tiene que estar en algun hecho del dossier.
 
-    E o mesmo portao que o pesquisador usa para conferir fato contra pagina, com
-    o dossie no lugar da pagina -- a pergunta e identica ("este numero existe na
-    fonte?") e ter duas implementacoes dela garantiria duas respostas.
+    Es la misma puerta que el investigador usa para comprobar hecho contra
+    pagina, con el dossier en el lugar de la pagina -- la pregunta es identica
+    ("este numero existe en la fuente?") y tener dos implementaciones de ella
+    garantizaria dos respuestas.
 
-    Limite conhecido: pega so o que esta escrito em digito. A narracao boa
-    escreve numero por extenso para o TTS ("cinco virgula nove gigabytes"), e
-    conferir isso exigiria converter numeral em portugues de volta para digito.
-    Quem cobre esse caso e o criterio 2 da rubrica do juiz, com o dossie em maos
-    -- este portao so garante que o barato de conferir nunca passe errado.
+    Limite conocido: coge solo lo que esta escrito en digito. La narracion buena
+    escribe numero con letras para el TTS ("cinco coma nueve gigabytes"), y
+    comprobar eso exigiria convertir numeral en castellano de vuelta a digito.
+    Quien cubre ese caso es el criterio 2 de la rubrica del juez, con el dossier
+    en mano -- esta puerta solo garantiza que lo barato de comprobar nunca pase
+    mal.
     """
-    fontes = "\n".join(f"{f.claim}\n{f.quote}" for f in dossier.facts)
-    # O marcador de citacao sai antes da conta: ele tem violacao propria, e
-    # deixa-lo aqui faria o portao acusar "numero 0, 1, 2 sem respaldo" -- que e
-    # verdade e nao ajuda ninguem a entender o que fazer.
-    narracao = _MARCADOR_DE_CITACAO.sub(" ", script.narration)
-    return missing_numbers(narracao, fontes)
+    fuentes = "\n".join(f"{f.claim}\n{f.quote}" for f in dossier.facts)
+    # El marcador de cita sale antes de la cuenta: tiene violacion propia, y
+    # dejarlo aqui haria la puerta acusar "numero 0, 1, 2 sin respaldo" -- que es
+    # verdad y no ayuda a nadie a entender que hacer.
+    narracion = _MARCADOR_DE_CITA.sub(" ", script.narration)
+    return missing_numbers(narracion, fuentes)
 
 
-# Fatos minimos por formato. O curto e "uma ideia so, 1 ou 2 fatos": exigir
-# 3 dele recusava justamente o dossie que so serve para curto (visto no teste
-# do piloto em 20/09 -- o formato escolheu curto e o roteirista recusou).
-MIN_FATOS_POR_MODO = {"long": MIN_FATOS_PARA_ROTEIRO, "carousel": MIN_FATOS_PARA_ROTEIRO,
-                      "short": 1}
+# Hechos minimos por formato. El corto es "una sola idea, 1 o 2 hechos": exigir
+# 3 de el rechazaba justo el dossier que solo sirve para corto (visto en el
+# test del piloto en 20/09 -- el formato eligio corto y el guionista rechazo).
+MIN_HECHOS_POR_MODO = {"long": MIN_HECHOS_PARA_GUION, "carousel": MIN_HECHOS_PARA_GUION,
+                       "short": 1}
 
 
 def thin_dossier_reason(dossier: Dossier, mode: str = "long") -> str:
-    """Motivo para nao tentar escrever, ou string vazia se da para tentar.
+    """Motivo para no intentar escribir, o cadena vacia si se puede intentar.
 
-    A faixa de 60-90s exige umas 150 palavras de conteudo. Dossie com dois fatos
-    tirados da mesma frase nao tem isso, e o roteirista so tem duas saidas:
-    encher de enrolacao, ou inventar. As duas sao piores que recusar com motivo.
+    La franja de 60-90s exige unas 150 palabras de contenido. Dossier con dos
+    hechos sacados de la misma frase no tiene eso, y el guionista solo tiene
+    dos salidas: llenar de relleno, o inventar. Las dos son peores que rechazar
+    con motivo.
 
-    O numero de FONTES nao entra: uma fonte rica rende roteiro (o roteiro de
-    referencia do M0 tem cinco fatos de um unico release). O que conta e quantos
-    fatos distintos existem.
+    El numero de FUENTES no entra: una fuente rica rinde guion (el guion de
+    referencia del M0 tiene cinco hechos de un unico release). Lo que cuenta es
+    cuantos hechos distintos existen.
     """
-    minimo = MIN_FATOS_POR_MODO.get(mode, MIN_FATOS_PARA_ROTEIRO)
+    minimo = MIN_HECHOS_POR_MODO.get(mode, MIN_HECHOS_PARA_GUION)
     if len(dossier.facts) < minimo:
-        alvo = (f"a faixa de {MIN_DURATION_S}-{MAX_DURATION_S}s" if mode == "long"
-                else f"o formato {mode}")
+        objetivo = (f"la franja de {MIN_DURATION_S}-{MAX_DURATION_S}s" if mode == "long"
+                    else f"el formato {mode}")
         return (
-            f"dossie fino: {len(dossier.facts)} fato(s), e {alvo} pede pelo menos "
-            f"{minimo}. Pesquise outras fontes antes de roteirizar."
+            f"dossier fino: {len(dossier.facts)} hecho(s), y {objetivo} pide al menos "
+            f"{minimo}. Investiga otras fuentes antes de escribir el guion."
         )
     return ""
 
 
-def _resolver_fatos(indices: object, facts: list[Fact]) -> tuple[list[Fact], list[int]]:
-    """Traduz os indices que o modelo devolveu em fatos do dossie.
+def _resolver_hechos(indices: object, facts: list[Fact]) -> tuple[list[Fact], list[int]]:
+    """Traduce los indices que el modelo devolvio a hechos del dossier.
 
-    O modelo aponta, nunca copia: se ele pudesse reescrever o fato, a afirmacao
-    do roteiro deixaria de ser rastreavel ao que a fonte diz -- que e todo o
-    ponto de o dossie existir.
+    El modelo apunta, nunca copia: si pudiera reescribir el hecho, la
+    afirmacion del guion dejaria de ser rastreable a lo que la fuente dice --
+    que es todo el punto de que el dossier exista.
     """
     if not isinstance(indices, list):
         return [], []
 
     usados: list[Fact] = []
-    fora: list[int] = []
-    for bruto in indices:
-        if isinstance(bruto, bool) or not isinstance(bruto, int):
+    fuera: list[int] = []
+    for crudo in indices:
+        if isinstance(crudo, bool) or not isinstance(crudo, int):
             continue
-        if 0 <= bruto < len(facts):
-            if facts[bruto] not in usados:
-                usados.append(facts[bruto])
+        if 0 <= crudo < len(facts):
+            if facts[crudo] not in usados:
+                usados.append(facts[crudo])
         else:
-            fora.append(bruto)
-    return usados, fora
+            fuera.append(crudo)
+    return usados, fuera
 
 
-def _violacoes_de_contrato(exc: ValidationError) -> list[str]:
-    saida: list[str] = []
-    for erro in exc.errors():
-        campo = ".".join(str(p) for p in erro["loc"]) or "roteiro"
-        saida.append(f"o campo {campo} nao respeita o contrato: {erro['msg']}")
-    return saida
+def _violaciones_de_contrato(exc: ValidationError) -> list[str]:
+    salida: list[str] = []
+    for error in exc.errors():
+        campo = ".".join(str(p) for p in error["loc"]) or "guion"
+        salida.append(f"el campo {campo} no respeta el contrato: {error['msg']}")
+    return salida
 
 
-# Exemplo de ~25s que cabe na faixa: o modelo imita o TAMANHO, nao so o tom --
-# medido em 19/09/2026, sem exemplo de extensao ele escrevia o curto no
-# tamanho do longo. Tem 65 palavras de proposito, o meio da faixa.
+# Ejemplo de ~25s que cabe en la franja: el modelo imita el TAMANO, no solo el
+# tono -- medido en 19/09/2026, sin ejemplo de extension escribia el corto en
+# el tamano del largo. Tiene 65 palabras a proposito, el medio de la franja.
 SHORT_EXAMPLE = (
-    "hook: Um modelo gigante cabe no seu bolso?\n"
-    "body: O Bonsai 2 tem vinte e sete bilhões de parâmetros em só cinco "
-    "vírgula nove gigabytes. É nove vezes menor que o original e mantém quase "
-    "todo o desempenho. Na prática, ele roda num notebook comum, sem nuvem, "
-    "sem mensalidade e sem mandar seus dados para o servidor de ninguém.\n"
-    "closing: Gigante no bolso: o que mais vai encolher?")
+    "hook: Un modelo gigante cabe en tu bolsillo?\n"
+    "body: El Bonsai 2 tiene veintisiete mil millones de parametros en solo "
+    "cinco coma nueve gigabytes. Es nueve veces mas pequeno que el original y "
+    "mantiene casi todo el rendimiento. En la practica, funciona en un portatil "
+    "comun, sin nube, sin cuota y sin mandar tus datos al servidor de nadie.\n"
+    "closing: Gigante en el bolsillo: que mas se encogera?")
 
-# Quantos dados numericos o video comporta. O longo de 19/09 empilhou sete
-# ("cento e quarenta e tres tokens por segundo... zero ponto setecentos e
-# quatorze miliwatts-hora") e virou ficha tecnica lida em voz alta.
+# Cuantos datos numericos aguanta el video. El largo del 19/09 apilo siete
+# ("ciento cuarenta y tres tokens por segundo... cero punto setecientos
+# catorce miliwatios-hora") y se convirtio en ficha tecnica leida en voz alta.
 MAX_NUMEROS = {"long": 3, "short": 1}
 
 
-def build_prompt(dossier: Dossier, correcoes: list[str] | None = None,
+def build_prompt(dossier: Dossier, correcciones: list[str] | None = None,
                  mode: str = "long", pillar: str = "", previous: str = "") -> str:
-    """Monta o prompt do roteiro. Funcao livre para o teste inspecionar o texto.
+    """Compone el prompt del guion. Funcion libre para que el test inspeccione el texto.
 
-    Ordem: tema e dossie (o material), tarefa e tipo de conteudo (a forma),
-    estetica e voz (a marca), regras (o que reprova), correcao (so na volta).
+    Orden: tema y dossier (el material), tarea y tipo de contenido (la forma),
+    estetica y voz (la marca), reglas (lo que reprueba), correccion (solo a la
+    vuelta).
     """
-    fatos = "\n".join(
-        f"[{i}] {f.claim}\n    fonte: {f.source_name}"
-        + (f'\n    trecho: "{f.quote}"' if f.quote else "")
+    hechos = "\n".join(
+        f"[{i}] {f.claim}\n    fuente: {f.source_name}"
+        + (f'\n    pasaje: "{f.quote}"' if f.quote else "")
         for i, f in enumerate(dossier.facts)
     )
     minimo, maximo = BANDS[mode]
     tmin, tmax = TERMS_PER_MODE[mode]
-    alvo = (minimo + maximo) // 2
-    fechamento = (
-        "- closing: fechamento com PONTO DE VISTA PROPRIO: aponte o que as fontes "
-        "NAO dizem, ou a pergunta que elas deixam aberta, e devolva ao "
-        "espectador. Chamada concreta, nunca 'siga para mais'.\n"
+    objetivo = (minimo + maximo) // 2
+    cierre = (
+        "- closing: cierre con PUNTO DE VISTA PROPIO: apunta lo que las fuentes "
+        "NO dicen, o la pregunta que dejan abierta, y se lo devuelve al "
+        "espectador. Llamada concreta, nunca 'sigue para mas'.\n"
         if mode == "long" else
-        "- closing: UMA frase que reconecta com a pergunta do hook E aponta a "
-        "implicacao que a fonte nao desenvolve (ex.: 'Se sao dois orgaos, qual "
-        "deles decide por voce?'). Sem ela o video e resumo. Sem 'siga para mais'.\n"
+        "- closing: UNA frase que reconecta con la pregunta del hook Y apunta la "
+        "implicacion que la fuente no desarrolla (ej.: 'Si son dos organos, cual "
+        "de ellos decide por ti?'). Sin ella el video es resumen. Sin 'sigue para mas'.\n"
     )
-    duracao_txt = (
-        f"Isso equivale a {MIN_DURATION_S}-{MAX_DURATION_S}s falados e e "
-        "requisito de monetizacao, nao preferencia.\n"
+    duracion_txt = (
+        f"Equivale a {MIN_DURATION_S}-{MAX_DURATION_S}s hablados y es "
+        "requisito de monetizacion, no preferencia.\n"
         if mode == "long" else
-        "Video curto de alcance (~25s): uma ideia so, 2 ou 3 fatos no maximo. "
-        "Conte as palavras antes de responder e corte frases inteiras se passar "
-        "do teto.\n"
+        "Video corto de alcance (~25s): una sola idea, 2 o 3 hechos como maximo. "
+        "Cuenta las palabras antes de responder y corta frases enteras si te pasas "
+        "del techo.\n"
     )
     partes = [
         f"TEMA: {dossier.topic}\n",
-        f"DOSSIE (use o indice para citar):\n{fatos}\n",
-        "TAREFA\n"
-        "Roteiro de video vertical em portugues do Brasil, para ser narrado. Devolva:\n"
-        "- hook: a PRIMEIRA FRASE abre uma lacuna de informacao e nao a responde. "
-        "Ate 12 palavras (regra da marca). Nada de 'hoje eu vou falar sobre'.\n"
-        "- body: todo dado vem de um fato do dossie. Na primeira frase, contexto: "
-        "nomeie o assunto (nome + quem construiu, SE o dossie disser) e por que "
-        "importa para quem assiste.\n"
-        + fechamento +
-        f"- search_terms: de {tmin} a {tmax} termos EM INGLES, na ordem cronologica "
-        "da narracao, COPIADOS da lista de ESTETICA.\n"
-        "- broll: termos EM INGLES do objeto concreto do assunto (regra abaixo).\n"
-        "- caption: legenda do post em 2 linhas: um gancho ESCRITO diferente da fala "
-        "e uma frase de contexto (quem, o que). Sem emoji, link ou hashtag.\n"
-        "- used_facts: os indices dos fatos do dossie em que o roteiro se apoia.\n",
+        f"DOSSIER (usa el indice para citar):\n{hechos}\n",
+        "TAREA\n"
+        "Guion de video vertical en castellano, para ser narrado. Devuelve:\n"
+        "- hook: la PRIMERA FRASE abre un hueco de informacion y no lo responde. "
+        "Hasta 12 palabras (regla de la marca). Nada de 'hoy os voy a hablar de'.\n"
+        "- body: todo dato viene de un hecho del dossier. En la primera frase, "
+        "contexto: nombra el asunto (nombre + quien lo construyo, SI el dossier lo "
+        "dice) y por que importa para quien mira.\n"
+        + cierre +
+        f"- search_terms: de {tmin} a {tmax} terminos EN INGLES, en orden cronologico "
+        "de la narracion, COPIADOS de la lista de ESTETICA.\n"
+        "- broll: terminos EN INGLES del objeto concreto del asunto (regla abajo).\n"
+        "- caption: leyenda del post en 2 lineas: un gancho ESCRITO distinto del habla "
+        "y una frase de contexto (quien, que). Sin emoji, link ni hashtag.\n"
+        "- used_facts: los indices de los hechos del dossier en los que el guion se apoya.\n",
         pillar_brief(pillar or "news", mode),
         compact_brief(suggest_pillar(dossier.topic), mode),
         *([] if mode != "short" else [
-            "EXEMPLO DE TAMANHO (25s: copie a extensao, nao o texto)\n" + SHORT_EXAMPLE]),
+            "EJEMPLO DE TAMANO (25s: copia la extension, no el texto)\n" + SHORT_EXAMPLE]),
         voice_brief(),
-        "REGRAS\n"
-        f"- A narracao inteira (hook + body + closing) tem entre {minimo} e {maximo} "
-        f"palavras, cerca de {alvo}. " + duracao_txt +
-        f"- No maximo {MAX_NUMEROS[mode]} dado(s) numerico(s) no video inteiro: escolha "
-        "o que o espectador lembraria e traduza em comparacao. Ficha tecnica lida "
-        "em voz alta perde a pessoa.\n"
-        "- Numero por extenso quando soar melhor ('cinco virgula nove gigabytes'), "
-        "sem mudar o valor. Nao invente numero, nome, data nem citacao.\n"
-        "- Descricao em ingles vira portugues na fala ('High-Resolution Stereo Camera' -> "
-        "'camera estereo de alta resolucao'); em ingles, so nome proprio curto.\n"
-        "- NAO escreva indices no texto ('[0]', '[1, 2]'): o sintetizador de voz "
-        "leria em voz alta. O indice vai apenas no campo used_facts.\n"
-        "- Sem emoji, sem hashtag, sem marcacao de cena. So o que sera falado.",
+        "REGLAS\n"
+        f"- La narracion entera (hook + body + closing) tiene entre {minimo} y {maximo} "
+        f"palabras, unas {objetivo}. " + duracion_txt +
+        f"- Como maximo {MAX_NUMEROS[mode]} dato(s) numerico(s) en el video entero: elige "
+        "el que el espectador recordaria y traducelo en comparacion. Ficha tecnica "
+        "leida en voz alta pierde a la gente.\n"
+        "- Numero con letras cuando suene mejor ('cinco coma nueve gigabytes'), "
+        "sin cambiar el valor. No inventes numero, nombre, fecha ni cita.\n"
+        "- Descripcion en ingles se convierte en castellano en el habla ('High-Resolution "
+        "Stereo Camera' -> 'camara estereo de alta resolucion'); en ingles, solo nombre "
+        "propio corto.\n"
+        "- NO escribas indices en el texto ('[0]', '[1, 2]'): el sintetizador de voz "
+        "los diria en voz alta. El indice va solo en el campo used_facts.\n"
+        "- Sin emoji, sin hashtag, sin marcacion de escena. Solo lo que se dira.",
     ]
-    if correcoes:
-        bloco = "CORRIJA A TENTATIVA ANTERIOR\n" + "\n".join(f"- {c}" for c in correcoes)
+    if correcciones:
+        bloque = "CORRIGE EL INTENTO ANTERIOR\n" + "\n".join(f"- {c}" for c in correcciones)
         if previous:
-            bloco += f"\nTEXTO ANTERIOR (ajuste este, nao comece do zero):\n{previous}"
-        partes.append(bloco + "\nMantenha o que estava bom e conserte apenas o apontado.")
+            bloque += f"\nTEXTO ANTERIOR (ajusta este, no empieces de cero):\n{previous}"
+        partes.append(bloque + "\nManten lo que estaba bien y corrige solo lo apuntado.")
     return "\n".join(partes)
 
 
@@ -547,41 +564,41 @@ def _texto(valor: object) -> str:
     return " ".join(str(valor).split()) if isinstance(valor, str) else ""
 
 
-def _legenda(valor: object) -> str:
-    """Legenda preserva a quebra de linha (sao duas linhas por regra da marca)."""
+def _leyenda(valor: object) -> str:
+    """La leyenda preserva el salto de linea (son dos lineas por regla de marca)."""
     if not isinstance(valor, str):
         return ""
-    linhas = [" ".join(linha.split()) for linha in valor.splitlines()]
-    return "\n".join(linha for linha in linhas if linha)
+    lineas = [" ".join(linea.split()) for linea in valor.splitlines()]
+    return "\n".join(linea for linea in lineas if linea)
 
 
-_LINK = re.compile(r"https?://|www\.|\.com\b|\.br\b", re.IGNORECASE)
+_LINK = re.compile(r"https?://|www\.|\.com\b|\.es\b", re.IGNORECASE)
 
 
 def caption_problems(script: Script) -> list[str]:
-    """Regras da legenda no guia: 2 linhas, sem emoji/link/hashtag, sem repetir o audio."""
-    legenda = script.caption.strip()
-    if not legenda:
-        return ["caption vazia: escreva 2 linhas (gancho escrito diferente da fala + "
-                "uma frase de contexto: quem, o que)."]
+    """Reglas de la leyenda en la guia: 2 lineas, sin emoji/link/hashtag, sin repetir el audio."""
+    leyenda = script.caption.strip()
+    if not leyenda:
+        return ["caption vacia: escribe 2 lineas (gancho escrito distinto del habla + "
+                "una frase de contexto: quien, que)."]
     problemas: list[str] = []
-    linhas = legenda.splitlines()
-    if len(linhas) > 2 or len(legenda) > 220:
-        problemas.append(f"caption com {len(linhas)} linha(s) e {len(legenda)} caracteres: "
-                         "no maximo 2 linhas curtas (regra da marca).")
-    if "#" in legenda:
-        problemas.append("caption com hashtag: as 5 hashtags da marca entram sozinhas.")
-    if _LINK.search(legenda):
-        problemas.append("caption com link ou dominio: a regra da marca e sem link.")
-    if check_emoji_bordao(legenda):
-        problemas.append("caption com emoji ou bordao: a marca nunca usa.")
-    if script.hook and legenda.splitlines()[0].strip().lower() == script.hook.strip().lower():
-        problemas.append("caption repete o hook falado: a primeira linha e um gancho ESCRITO "
-                         "diferente do audio (guia da marca).")
+    lineas = leyenda.splitlines()
+    if len(lineas) > 2 or len(leyenda) > 220:
+        problemas.append(f"caption con {len(lineas)} linea(s) y {len(leyenda)} caracteres: "
+                         "como maximo 2 lineas cortas (regla de la marca).")
+    if "#" in leyenda:
+        problemas.append("caption con hashtag: las 5 hashtags de la marca entran solas.")
+    if _LINK.search(leyenda):
+        problemas.append("caption con link o dominio: la regla de la marca es sin link.")
+    if check_emoji_muletilla(leyenda):
+        problemas.append("caption con emoji o muletilla: la marca nunca los usa.")
+    if script.hook and leyenda.splitlines()[0].strip().lower() == script.hook.strip().lower():
+        problemas.append("caption repite el hook hablado: la primera linea es un gancho "
+                         "ESCRITO distinto del audio (guia de la marca).")
     return problemas
 
 
-def _termos(valor: object) -> list[str]:
+def _terminos(valor: object) -> list[str]:
     if not isinstance(valor, list):
         return []
     return [" ".join(str(t).split()) for t in valor if isinstance(t, str) and t.strip()]

@@ -1,29 +1,29 @@
 #!/usr/bin/env python
-"""Recorta o retrato do apresentador e mede os pontos do rosto -- uma vez so.
+"""Recorta el retrato del presentador y mide los puntos del rostro: una sola vez.
 
-Por que fora do pacote: `rembg` (matting) e `mediapipe` (malha de rosto) somam
-mais de 400 MB de roda com onnxruntime e opencv atras. O agente roda tres vezes
-por dia e nunca precisa disso -- o recorte e a medida sao de quando o avatar e
-gerado, e o resultado (PNG + JSON) e o que fica versionado. Mesma decisao do
-`sentence-transformers`: dependencia grande so entra se rodar no laco.
+Está fuera del paquete porque `rembg` (matting) y `mediapipe` (malla facial) suman
+más de 400 MB de dependencias con onnxruntime y opencv. El agente se ejecuta tres veces
+al día y nunca necesita esto: el recorte y las mediciones se hacen al generar el avatar
+y el resultado (PNG + JSON) es lo que se versiona. Misma decisión que
+`sentence-transformers`: una dependencia grande solo entra si se usa en el bucle principal.
 
     uv run --no-project --with rembg --with mediapipe --with pillow --with numpy \
         python scripts/make_presenter_cutouts.py
 
-O modelo de malha de rosto e baixado uma vez para `data/models/` (fora do git).
+El modelo de malla facial se descarga una vez a `data/models/` (fuera de Git).
 
-O que o recorte antigo errava, e por que este existe: ele cortava o assunto nas
-bordas da imagem. A silhueta virava um retangulo de rosto com o peito cortado a
-faca -- na composicao, uma figurinha colada, nao um apresentador. Aqui o busto e
-cortado ACIMA de onde o ombro encosta na borda e a ultima faixa vira transparente
-por degrade, que e como uma vinheta de telejornal resolve o mesmo problema.
+Qué erraba el recorte antiguo y por qué existe este: cortaba el sujeto en las
+bordes de la imagen. La silueta se convertía en un rectángulo con el pecho cortado:
+en la composición parecía una pegatina, no un presentador. Aquí el busto
+se corta por encima de donde el hombro toca el borde y la última franja se vuelve
+transparente con un degradado, como resuelve el mismo problema la viñeta de un telediario.
 
-Sai por apresentador:
+Genera un archivo por presentador:
 
-- `<id>.png`  -- RGBA, assunto inteiro com folga, base em degrade;
-- `<id>.json` -- pontos do rosto em pixel do PNG (olhos, base do nariz, boca,
-  queixo, pescoco e o pivo de rotacao da cabeca). E o que `render/presenter.py`
-  usa para animar sem adivinhar onde fica a boca.
+- `<id>.png`: RGBA, sujeto entero con margen y base degradada;
+- `<id>.json`: puntos del rostro en píxeles del PNG (ojos, base de la nariz, boca,
+  mentón, cuello y pivote de rotación de la cabeza). Es lo que usa `render/presenter.py`
+  para animar sin adivinar dónde está la boca.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ MODELO_URL = ("https://storage.googleapis.com/mediapipe-models/face_landmarker/"
               "face_landmarker/float16/1/face_landmarker.task")
 MODELO = RAIZ / "data" / "models" / "face_landmarker.task"
 
-# Indices da malha de 468 pontos do MediaPipe (canonicos, nao mudam entre versoes).
+# Índices de la malla de 468 puntos de MediaPipe (canónicos, no cambian entre versiones).
 PONTOS = {
     "olho_esq_out": 33, "olho_esq_in": 133, "olho_esq_cima": 159, "olho_esq_baixo": 145,
     "olho_dir_in": 362, "olho_dir_out": 263, "olho_dir_cima": 386, "olho_dir_baixo": 374,
@@ -52,8 +52,8 @@ PONTOS = {
     "boca_esq": 61, "boca_dir": 291, "queixo": 152, "testa": 10,
     "mand_esq": 172, "mand_dir": 397, "face_esq": 234, "face_dir": 454,
 }
-# Folga lateral/superior em volta do assunto: a cabeca gira ate ~3 graus na
-# animacao e nao pode raspar na borda do PNG.
+# Margen lateral y superior alrededor del sujeto: la cabeza gira hasta ~3 grados en la
+# animación y no debe rozar el borde del PNG.
 FOLGA = 60
 # Degrade da base: fracao da altura do recorte que vai de opaco a transparente.
 DEGRADE = 0.20
@@ -94,7 +94,7 @@ def recortar_fundo(img: Image.Image) -> Image.Image:
 
 
 def _linha_do_busto(alfa: np.ndarray) -> int:
-    """Primeira linha em que o assunto encosta na borda lateral.
+    """Primera fila en la que el sujeto toca el borde lateral.
 
     Acima dela a silhueta e livre (da para cortar sem deixar aresta reta); dali
     para baixo o ombro ja saiu pela lateral e qualquer corte vira retangulo.
@@ -142,7 +142,7 @@ def processar(pid: str, origem: Path) -> dict:
     caixa = (max(0, x0 - FOLGA), max(0, y0 - FOLGA),
              min(recorte.width, x1 + FOLGA), min(recorte.height, y1 + FOLGA))
     corpo = recorte.crop(caixa)
-    # Folga que o crop nao conseguiu (assunto colado na borda da origem) entra
+    # El margen que el recorte no consiguió (sujeto pegado al borde original) entra
     # como margem transparente, para a rotacao ter para onde ir.
     esq = FOLGA - (x0 - caixa[0])
     topo = FOLGA - (y0 - caixa[1])

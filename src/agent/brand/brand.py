@@ -1,8 +1,8 @@
-"""Vetor de marca: carrega `brand/brand.json` e distribui para as camadas.
+"""Vector de marca: carga `brand/brand.json` y lo reparte a las capas.
 
-Toda camada agentica le daqui, ninguem copia valor para dentro do codigo:
-cor, tag, formula de gancho e hashtag existem em UM lugar. Se o guia mudar,
-muda o JSON e os testes de conformidade acusam onde o codigo divergiu.
+Toda capa agentica lee de aqui, nadie copia el valor dentro del codigo: color,
+tag, formula de gancho y hashtag existen en UN sitio. Si la guia cambia, cambia
+el JSON y los tests de conformidad acusan donde el codigo divergio.
 """
 
 from __future__ import annotations
@@ -68,23 +68,24 @@ class Brand:
     negative_prompt: str = ""
 
     def accent_for(self, pillar_id: str) -> str:
-        """Um acento por peca: o do pilar, ou o verde padrao."""
+        """Un acento por pieza: el del pilar, o el verde por defecto."""
         pillar = self.pillars.get(pillar_id)
         return pillar.accent if pillar is not None else self.accent_primary
 
     def presenter_for(self, pillar_id: str) -> Presenter | None:
-        """Quem apresenta este pilar. Sem formato declarado: None -- sem avatar.
+        """Quien presenta este pilar. Sin formato declarado: None -- sin avatar.
 
-        Ate a manha de 20/09/2026 isto era elenco por formato (Iris na noticia,
-        Theo no tutorial e no vs, o resto sem avatar). Na noite do mesmo dia
-        virou assinatura do canal: existe clipe base fotorrealista do THEO --
-        piscada e balanco de cabeca **humanos**, porque foram gerados como
-        video -- e nao existe o da Iris. Um apresentador sintetizado ao lado de
-        um filmado seria uma diferenca de qualidade visivel no mesmo canal.
+        Hasta la manana del 20/09/2026 esto era reparto por formato (Nova en la
+        noticia, Atlas en el tutorial y el vs, el resto sin avatar). En la noche
+        del mismo dia se volvio firma del canal: existe clip base
+        fotorrealista del ATLAS -- parpadeo y balanceo de cabeza **humanos**,
+        porque se generaron como video -- y no existe el de Nova. Un
+        presentador sintetizado al lado de uno filmado seria una diferencia de
+        calidad visible en el mismo canal.
 
-        A Iris nao foi removida: ela esta no `brand.json` com a lista de
-        formatos vazia, e volta sozinha a disputar pilar quando o clipe base
-        dela existir. Quem decide continua sendo o JSON, nao esta funcao.
+        Nova no se elimino: esta en el `brand.json` con la lista de formatos
+        vacia, y vuelve sola a disputar el pilar cuando exista su clip base.
+        Quien decide sigue siendo el JSON, no esta funcion.
         """
         for p in self.presenters.values():
             if pillar_id in p.formats:
@@ -94,7 +95,7 @@ class Brand:
 
 @lru_cache(maxsize=1)
 def load(path: str | Path = BRAND_JSON) -> Brand:
-    """O vetor de marca. Falha alto se o JSON sumir: marca ausente nao gera."""
+    """El vector de marca. Falla alto si el JSON desaparece: marca ausente no genera."""
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
     pillars = {
         p["id"]: ContentPillar(
@@ -141,74 +142,82 @@ def load(path: str | Path = BRAND_JSON) -> Brand:
 
 
 def voice_brief() -> str:
-    """Bloco de voz da marca para o system prompt do roteirista."""
+    """Bloque de voz de la marca para el system prompt del guionista."""
     return (
-        "VOZ SEU CANAL (@seucanal): informativo e preciso, provocador sem "
-        "ser raivoso, enigmatico no gancho, futurista no fechamento. "
-        "Uma ideia por video. Maximo um numero por frase. Gancho com ate 12 "
-        "palavras. Nunca prometa o que o video nao entrega. "
-        "Nunca emoji, nunca 'fala galera', nunca 'se inscreva'.")
+        "VOZ CIRCUITO CERO (@circuitocero): informativo y preciso, provocador "
+        "sin ser rabioso, enigmatico en el gancho, futurista en el cierre. "
+        "Una idea por video. Maximo un numero por frase. Gancho con hasta 12 "
+        "palabras. Nunca prometas lo que el video no entrega. "
+        "Nunca emoji, nunca 'hola a todos', nunca 'suscribete'.")
 
 
 def pillar_brief(pillar_id: str, mode: str = "long") -> str:
-    """Bloco TIPO DE CONTEUDO do prompt: formula de gancho, batidas e CTA.
+    """Bloque TIPO DE CONTENIDO del prompt: formula de gancho, batidas y CTA.
 
-    Ate 19/09 a formula de cada pilar existia no `brand.json` e nao chegava a
-    prompt nenhum -- "curiosidade", "tutorial" e "noticia" saiam com a mesma
-    estrutura. E o que separa os tipos de conteudo para quem assiste.
+    Hasta el 19/09 la formula de cada pilar existia en el `brand.json` y no
+    llegaba a prompt ninguno -- "curiosidad", "tutorial" y "noticia" salian con
+    la misma estructura. Es lo que separa los tipos de contenido para quien
+    mira.
     """
     brand = load()
     p = brand.pillars.get(pillar_id) or brand.pillars["news"]
     batidas = " -> ".join(f"({i}) {b}" for i, b in enumerate(p.beats, start=1))
     if mode == "short":
-        estrutura = ("gancho + so a batida (1) em uma frase + fechamento em loop. "
-                     f"Batidas: {batidas}")
+        estructura = ("gancho + solo la batida (1) en una frase + cierre en bucle. "
+                      f"Batidas: {batidas}")
     elif mode == "carousel":
-        estrutura = f"slide 1 = gancho; slides 2-4 = batidas; slide 5 = conclusao. {batidas}"
+        estructura = f"slide 1 = gancho; slides 2-4 = batidas; slide 5 = conclusion. {batidas}"
     else:
-        estrutura = f"gancho -> contexto (quem, o que, por que importa) -> {batidas} -> fechamento"
+        estructura = f"gancho -> contexto (quien, que, por que importa) -> {batidas} -> cierre"
     return (
-        f"TIPO DE CONTEUDO: {p.tag} ({p.id})\n"
-        f"- Formula do gancho: {p.hook_formula}. Exemplo de tom (nao copie): \"{p.example}\"\n"
-        f"- Estrutura: {estrutura}\n"
-        f"- CTA da marca para este tipo (adapte ao tema): \"{p.cta}\""
+        f"TIPO DE CONTENIDO: {p.tag} ({p.id})\n"
+        f"- Formula del gancho: {p.hook_formula}. Ejemplo de tono (no copies): \"{p.example}\"\n"
+        f"- Estructura: {estructura}\n"
+        f"- CTA de la marca para este tipo (adaptalo al tema): \"{p.cta}\""
     )
 
 
+_SIN_TILDES = str.maketrans("áéíóúüñÁÉÍÓÚÜÑ", "aeiouunAEIOUUN")
+
+
 def suggest_content_pillar(topic: str) -> str:
-    """Pilar de conteudo pelo assunto. Orientacao; o roteirista escolhe."""
+    """Pilar de contenido por el asunto. Orientacion; el guionista elige.
+
+    La comparacion ignora tildes: el publico escribe 'cuál gana' o 'cual gana'
+    y ambos deben caer en el mismo pilar.
+    """
     brand = load()
-    baixo = topic.lower()
-    pontos: dict[str, int] = {}
+    bajo = topic.lower().translate(_SIN_TILDES)
+    puntos: dict[str, int] = {}
     for pid, p in brand.pillars.items():
-        pontos[pid] = sum(1 for kw in p.keywords if kw in baixo)
-    melhor = max(sorted(pontos), key=lambda pid: pontos[pid])
-    return melhor if pontos[melhor] else "news"
+        puntos[pid] = sum(1 for kw in p.keywords
+                          if kw in bajo or kw.translate(_SIN_TILDES) in bajo)
+    mejor = max(sorted(puntos), key=lambda pid: puntos[pid])
+    return mejor if puntos[mejor] else "news"
 
 
 def avatar_prompt(presenter_id: str, *, angulo: str = "frontal",
-                  expressao: str = "neutra", gesto: str = "parada") -> str:
-    """Prompt pronto de geracao do avatar: identidade travada + 3 variaveis.
+                  expresion: str = "neutra", gesto: str = "quieta") -> str:
+    """Prompt listo de generacion del avatar: identidad fija + 3 variables.
 
-    So as 3 variaveis mudam por video -- qualquer outro ajuste e deriva do
-    rosto e reprova no QA contra os retratos mestres.
+    Solo las 3 variables cambian por video -- cualquier otro ajuste es deriva
+    del rostro y reprueba el QA contra los retratos maestros.
     """
     brand = load()
     if presenter_id not in brand.presenters:
-        raise ValueError(f"apresentador {presenter_id!r} desconhecido")
-    for nome, valor in (("angulo", angulo), ("expressao", expressao),
-                        ("gesto", gesto)):
-        opcoes = brand.variation_slots.get(nome, ())
-        if opcoes and valor not in opcoes:
-            raise ValueError(f"{nome} {valor!r} fora de {list(opcoes)}")
+        raise ValueError(f"presentador {presenter_id!r} desconocido")
+    for nombre, valor in (("angulo", angulo), ("expresion", expresion),
+                          ("gesto", gesto)):
+        opciones = brand.variation_slots.get(nombre, ())
+        if opciones and valor not in opciones:
+            raise ValueError(f"{nombre} {valor!r} fuera de {list(opciones)}")
     base = brand.variation_prompt
     p = brand.presenters[presenter_id]
-    texto = base.replace("{prompt_de_identidade}", p.identity_prompt)
-    texto = texto.replace("{frontal | 3/4 esquerda | 3/4 direita}", angulo)
-    texto = texto.replace("{neutra | concentrada | uma sobrancelha erguida}",
-                          expressao)
-    texto = texto.replace("{parada | leve inclinação de cabeça | mão aberta "
-                          "na altura do peito}", gesto)
+    texto = base.replace("{prompt_de_identidad}", p.identity_prompt)
+    texto = texto.replace("{frontal | 3/4 izquierda | 3/4 derecha}", angulo)
+    texto = texto.replace("{neutra | concentrada | una ceja levantada}", expresion)
+    texto = texto.replace("{quieta | leve inclinacion de cabeza | mano abierta "
+                          "a la altura del pecho}", gesto)
     return texto
 
 

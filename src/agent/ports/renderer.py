@@ -1,6 +1,6 @@
 """Porta Renderer: transforma um Script em MP4 vertical.
 
-Existe como porta porque a primeira implementacao delega a um projeto externo
+Existe como puerto porque la primera implementación delega en un proyecto externo
 (MoneyPrinterTurbo). Se um dia quisermos renderizar por conta propria, troca-se
 o adaptador sem tocar em nenhum estagio do agente.
 """
@@ -13,11 +13,11 @@ from agent.models import RenderResult, Script
 
 
 class RendererError(RuntimeError):
-    """Falha na comunicacao com o renderizador, nao na renderizacao em si.
+    """Fallo en la comunicación con el renderizador, no en la renderización.
 
-    Renderizacao que falha do lado do renderizador volta como
+    Una renderización que falla en el renderizador vuelve como
     RenderResult(state=failed), porque e resultado do dominio e precisa ser
-    gravada na memoria. Esta excecao e para o que impede chegar a um resultado:
+    un resultado guardado en memoria. Esta excepción representa lo que impide obtener un resultado:
     servico fora do ar, autenticacao, timeout.
     """
 
@@ -27,12 +27,12 @@ class Renderer(Protocol):
     def render(self, script: Script) -> RenderResult:
         """Produz o MP4 e devolve o resultado com duracao e dimensoes medidas.
 
-        Bloqueia ate terminar ou estourar o timeout. Nao levanta excecao quando
-        a renderizacao falha por motivo de dominio (material nao encontrado,
+        Bloquea hasta terminar o agotar el tiempo de espera. No lanza una excepción cuando
+        la renderización falla por un motivo de dominio (material no encontrado,
         TTS indisponivel): isso vem em RenderResult.state.
         """
         ...
 
     def health(self) -> bool:
-        """True se o renderizador responde. Usado antes de gastar trabalho."""
+        """True si el renderizador responde. Se usa antes de gastar trabajo."""
         ...

@@ -1,8 +1,8 @@
-"""Coletor: roda as fontes, preenche velocidade e grava a serie.
+"""Recolector: ejecuta las fuentes, completa la velocidad y guarda la serie.
 
-Duas responsabilidades, ambas deliberadamente burras -- nenhum julgamento sobre
-o que o sinal vale acontece aqui. Ranquear, filtrar por politica e escolher tema
-e trabalho do curador (M2).
+Dos responsabilidades, ambas deliberadamente simples: aquí no se juzga
+qué vale la señal. Clasificar, filtrar por política y elegir el tema
+corresponde al curador (M2).
 """
 
 from __future__ import annotations
@@ -14,14 +14,15 @@ from agent.memory.store import SignalStore
 from agent.models import Signal
 from agent.ports.radar import RadarSource, SourceUnavailable
 
-# Abaixo disso a diferenca entre duas coletas e ruido de arredondamento dividido
-# por um intervalo minusculo, o que produz velocidade absurda.
+# Por debajo, la diferencia entre dos recolecciones es ruido de redondeo dividido
+# por un intervalo minúsculo, lo que produce velocidades absurdas.
 _INTERVALO_MINIMO_H = 0.25
 
 
 @dataclass
 class CollectionReport:
-    """O que aconteceu na coleta. Falha de fonte e dado, nao excecao perdida."""
+    """Qué ocurrió durante la recolección. Un fallo de fuente es un dato,
+    no una excepción perdida."""
 
     signals: list[Signal] = field(default_factory=list)
     failures: dict[str, str] = field(default_factory=dict)
@@ -49,14 +50,14 @@ class Radar:
             try:
                 sinais = source.collect()
             except SourceUnavailable as exc:
-                # Esperado. A janela de um trend e de horas: nao ha tempo para
-                # esperar um servico se recuperar, e uma fonte fora do ar nao
+                # Es lo esperado. La ventana de una tendencia dura horas: no hay tiempo de
+                # esperar a que un servicio se recupere, y una fuente caída no
                 # pode derrubar a coleta inteira.
                 report.failures[source.name] = str(exc)
                 continue
             except Exception as exc:  # noqa: BLE001
-                # Bug no parser de uma fonte tambem nao derruba as outras, mas
-                # aparece no relatorio com o tipo, para nao virar falha silenciosa.
+                # Un error en el parser de una fuente tampoco tumba las demás, pero
+                # aparece en el informe con su tipo para que no sea un fallo silencioso.
                 report.failures[source.name] = f"{type(exc).__name__}: {exc}"
                 continue
 
@@ -67,11 +68,11 @@ class Radar:
         return report
 
     def _fill_velocity(self, sinais: list[Signal]) -> list[Signal]:
-        """Calcula velocidade por diferenca para quem so reporta nivel.
+        """Calcula la velocidad por diferencia para quienes solo informan del nivel.
 
-        Fonte que ja trouxe velocidade (o Hacker News) passa intacta. Sem coleta
-        anterior a velocidade continua None -- que significa "desconhecido" e e
-        diferente de zero. O curador precisa poder distinguir os dois.
+        Una fuente que ya trae velocidad (Hacker News) pasa intacta. Sin recolección
+        anterior, la velocidad sigue en None, lo que significa «desconocido» y es
+        diferente de cero. El curador debe poder distinguir ambos casos.
         """
         saida: list[Signal] = []
         for s in sinais:
@@ -97,13 +98,13 @@ class Radar:
 
 
 def default_sources() -> list[RadarSource]:
-    """As fontes do nicho, na ordem em que valem a pena.
+    """Las fuentes del nicho, en el orden en que valen la pena.
 
-    O arXiv fica de fora de proposito: nao tem sinal de velocidade nenhum, entao
-    nao e radar. Serve de profundidade para um tema ja escolhido (M3), nao para
-    descobri-lo.
+    El arXiv queda fuera a proposito: no tiene senal de velocidad ninguna, asi
+    que no es radar. Sirve de profundidad para un tema ya elegido (M3), no para
+    descubrirlo.
     """
-    from agent.radar.sources.arquivo import Arquivo, WikipediaOnThisDay
+    from agent.radar.sources.arquivo import Archivo, WikipediaOnThisDay
     from agent.radar.sources.gdelt import Gdelt
     from agent.radar.sources.google_trends import GoogleTrends
     from agent.radar.sources.hacker_news import HackerNews
@@ -112,4 +113,4 @@ def default_sources() -> list[RadarSource]:
     from agent.radar.sources.wikipedia import WikipediaPageviews
 
     return [HackerNews(), RssFeeds(), HuggingFaceTrending(), GoogleTrends(),
-            WikipediaPageviews(), WikipediaOnThisDay(), Arquivo(), Gdelt()]
+            WikipediaPageviews(), WikipediaOnThisDay(), Archivo(), Gdelt()]

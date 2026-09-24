@@ -1,15 +1,15 @@
-"""Sujeito obrigatorio: o roteiro precisa dizer DE QUEM fala.
+"""Sujeto obligatorio: el guion debe decir DE QUIÉN habla.
 
-Falha que o piloto acusou: o video falava de "um modelo" sem nunca dizer o
-nome, de onde e nem quem construiu -- e sem nome nao ha busca, nem
-credibilidade, nem canal. A causa e estrutural: nada no caminho exigia o
-sujeito, entao o modelo generalizava.
+Un fallo detectado por el piloto: el vídeo hablaba de «un modelo» sin decir nunca el
+nombre, el origen ni quién lo creó. Sin nombre no hay búsqueda,
+credibilidad ni canal. La causa es estructural: nada en el proceso exigía el
+sujeto, por lo que el modelo generalizaba.
 
-O portao e lexical e barato: os identificadores saem do proprio topico
-(nome com letra+digito tipo "27B", proprio com 6+ letras tipo "Bonsai").
-Numero puro ("5,9") nao e identidade -- e quantidade, e ja tem portao
-proprio. Quem construiu vem do dossie via o roteirista (regra de prompt:
-diga se o dossie disser, nunca invente).
+La comprobación es léxica y barata: los identificadores salen del propio tema
+(nombre con letra+dígito como «27B», propio de 6+ letras como «Bonsai»).
+Un número puro («5,9») no es identidad: es una cantidad y ya tiene su propia comprobación
+. Quien lo creó llega desde el expediente mediante el guionista (regla del prompt:
+decirlo si el expediente lo indica, nunca inventarlo).
 """
 
 from __future__ import annotations
@@ -18,19 +18,20 @@ import re
 
 _TOKEN = re.compile(r"[A-Za-zÀ-ÿ0-9]+(?:[.,][A-Za-zÀ-ÿ0-9]+)*")
 
-# Categoria gramatical, nao identidade: some do portao, fica no texto.
+# Categoría gramatical, no identidad: se excluye de la comprobación y queda en el texto.
 _STOP = frozenset({
     "modelo", "modelos", "video", "sobre", "como", "para", "com", "uma",
 })
 
 
 def subject_terms(topic: str) -> list[str]:
-    """Identificadores do assunto, em ordem, sem repetir (minusculos).
+    """Identificadores del asunto, en orden y sin repetir (en minúsculas).
 
     Entra nome proprio (maiuscula no titulo: "Bonsai", "Stanford") e
     codinome com letra+digito ("27B"). Fora: minuscula comum ("modelo"),
     numero puro ("5,9") e curto demais. Titulo em ingles com resto em
-    portugues nao e problema: nome proprio nao traduz.
+    un título en inglés con el resto en castellano no es un problema: los nombres
+    propios no se traducen.
     """
     termos: list[str] = []
     for bruto in _TOKEN.findall(topic):
@@ -53,8 +54,8 @@ def _tem_nome(token: str) -> bool:
 
 def missing_subject(text: str, topic: str, minimum: int = 1) -> list[str]:
     """Identificadores ausentes. Basta 1: o bug a matar e o anonimato total
-    ("um modelo"), nao a ficha incompleta. A lista de faltantes vai ao modelo
-    para ele completar o que couber.
+    («un modelo»), no una ficha incompleta. La lista de ausentes se envía al modelo
+    para que complete lo que sea posible.
     """
     termos = subject_terms(topic)
     baixa = text.lower()

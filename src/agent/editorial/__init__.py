@@ -1,1 +1,1 @@
-"""Editorial: que tipo de conteudo, em que formato, em qual horario -- e por que."""
+"""Editorial: qué tipo de contenido, en qué formato y a qué hora, y por qué."""

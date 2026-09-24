@@ -62,44 +62,44 @@ def preflight_video(script: dict, scripts: list[dict], reviews: list[dict],
 
     fatos = script.get("facts", [])
     gates.append(Gate(
-        "fatos com fonte no roteiro", bool(fatos),
-        f"{len(fatos)} fato(s)" if fatos else "roteiro sem facts"))
+        "fatos con fuente en el guion", bool(fatos),
+        f"{len(fatos)} hecho(s)" if fatos else "guion sin facts"))
 
-    parecer = _review_match(script, scripts, reviews)
+    informe = _review_match(script, scripts, reviews)
     gates.append(Gate(
-        "parecer aprovado para este texto", parecer is not None,
-        f"parecer #{parecer['id']} ({parecer['model']})" if parecer
-        else "rode judge/produce neste roteiro antes"))
+        "informe aprobado para este texto", informe is not None,
+        f"informe #{informe['id']} ({informe['model']})" if informe
+        else "ejecuta judge/produce en este guion antes"))
 
     if probe is None:
-        gates.append(Gate("mp4 medido", False, "arquivo ausente ou ilegivel"))
+        gates.append(Gate("mp4 medido", False, "archivo ausente o ilegible"))
         return PreflightReport(gates)
 
     gates.append(Gate(
-        "9:16 em 1080x1920",
+        "9:16 en 1080x1920",
         (probe.get("width"), probe.get("height")) == (1080, 1920),
         f"{probe.get('width')}x{probe.get('height')}"))
     gates.append(Gate(
-        "trilha de audio presente", bool(probe.get("has_audio")),
+        "pista de audio presente", bool(probe.get("has_audio")),
         "" if probe.get("has_audio") else "mp4 mudo"))
     dur = probe.get("duration_s")
     gates.append(Gate(
-        f"duracao na faixa {formato} ({faixa[0]}-{faixa[1]}s)",
+        f"duracion en la franja {formato} ({faixa[0]}-{faixa[1]}s)",
         dur is not None and faixa[0] <= dur <= faixa[1],
-        f"{dur}s" if dur is not None else "sem duracao"))
+        f"{dur}s" if dur is not None else "sin duracion"))
     return PreflightReport(gates)
 
 
 def preflight_carousel(carousel: dict, approved: bool,
                        slides_ok: bool) -> PreflightReport:
-    """Pacote carrossel: parecer + 5 slides na marca."""
+    """Paquete carrusel: informe + 5 slides en la marca."""
     return PreflightReport([
-        Gate("parecer aprovado (corte 8/10)", approved,
-             "" if approved else "rode produce --mode carousel antes"),
+        Gate("informe aprobado (corte 8/10)", approved,
+             "" if approved else "ejecuta produce --mode carousel antes"),
         Gate("5 slides 1080x1920", slides_ok,
-             "" if slides_ok else "slides fora do aceite"),
-        Gate("fatos com fonte", bool(carousel.get("facts")),
-             "" if carousel.get("facts") else "carrossel sem facts"),
+             "" if slides_ok else "slides fuera del aceite"),
+        Gate("hechos con fuente", bool(carousel.get("facts")),
+             "" if carousel.get("facts") else "carrusel sin facts"),
     ])
 
 

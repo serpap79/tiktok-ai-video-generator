@@ -1,8 +1,8 @@
-"""Porta RadarSource: uma fonte de sinal de tendencia.
+"""Puerto RadarSource: una fuente de señales de tendencia.
 
-Cada fonte e substituivel e falha de forma isolada. O radar roda todas e segue
-com o que voltou: nenhuma fonte pode derrubar a coleta, porque a janela de um
-trend e de horas e nao ha tempo para esperar um servico se recuperar.
+Cada fuente es sustituible y falla de forma aislada. El radar las ejecuta todas y continúa
+con lo que ha vuelto: ninguna fuente puede tumbar la recolección, porque la ventana de una
+tendencia dura horas y no hay tiempo para esperar a que un servicio se recupere.
 """
 
 from __future__ import annotations
@@ -13,9 +13,9 @@ from agent.models import Signal
 
 
 class SourceUnavailable(RuntimeError):
-    """A fonte nao respondeu ou respondeu de forma inutilizavel.
+    """La fuente no respondió o respondió de forma inutilizable.
 
-    E esperado e nao e excepcional: o GDELT devolve 429 com frequencia e o
+    Es algo esperado, no excepcional: GDELT devuelve 429 con frecuencia y
     Reddit devolve 403 sem OAuth. O coletor registra e continua.
     """
 
@@ -25,10 +25,10 @@ class RadarSource(Protocol):
     name: str
 
     def collect(self) -> list[Signal]:
-        """Devolve os sinais que a fonte enxerga agora.
+        """Devuelve las señales que la fuente detecta ahora.
 
-        Levanta SourceUnavailable quando nao conseguir falar com a fonte.
-        Lista vazia e resposta valida: significa "a fonte respondeu e nao ha
-        nada", que e diferente de "a fonte caiu".
+        Levanta SourceUnavailable cuando no puede comunicarse con la fuente.
+        Una lista vacía es una respuesta válida: significa «la fuente respondió y no hay
+        nada», no «la fuente cayó».
         """
         ...

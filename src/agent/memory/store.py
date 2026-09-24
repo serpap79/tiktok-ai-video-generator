@@ -1,16 +1,16 @@
-"""Memoria do agente em SQLite.
+"""Memoria del agente en SQLite.
 
-Coisas distintas, e nao um armazem generico: a **serie de sinais** (do radar), o
-**ledger de temas** (do curador), os **dossies** (do pesquisador) e os
-**roteiros** (do roteirista). Cada uma responde a uma pergunta diferente --
-"esta subindo?", "ja falamos disso?", "o que sabemos e de onde?", "o que foi
-escrito e a que custo?" -- e misturar todas numa tabela de documentos tornaria
-impossivel responder qualquer uma delas por SQL.
+Cosas distintas, y no un almacén genérico: la **serie de señales** (del radar), el
+**libro de temas** (del curador), los **dossiers** (del investigador) y los
+**guiones** (del guionista). Cada una responde a una pregunta distinta --
+"¿está subiendo?", "¿ya hablamos de esto?", "¿qué sabemos y de dónde?", "¿qué se
+escribió y a qué coste?" -- y mezclarlas todas en una tabla de documentos haría
+imposible responder cualquiera de ellas por SQL.
 
-A serie de sinais e o que permite calcular velocidade
-para fontes que reportam nivel e nao taxa (Wikipedia, Google Trends). Sem
-historico, "500 mil pageviews" e um numero sem significado: nao da para saber se
-o assunto esta subindo ou ja passou.
+La serie de señales es lo que permite calcular velocidad
+para fuentes que reportan nivel y no tasa (Wikipedia, Google Trends). Sin
+historial, "500 mil pageviews" es un número sin significado: no se puede saber si
+el asunto está subiendo o ya pasó.
 """
 
 from __future__ import annotations
@@ -62,17 +62,17 @@ CREATE TABLE IF NOT EXISTS dossiers (
     provider      TEXT    NOT NULL,
     fact_count    INTEGER NOT NULL,
     source_count  INTEGER NOT NULL,
-    -- Custo medido na hora da pesquisa. Reconstruir isso do log depois nao da:
-    -- o provedor nao devolve consumo retroativo, e o eval do M5 compara custo.
+    -- Coste medido durante la investigación. Reconstruirlo después desde el log no sirve:
+    -- el proveedor no devuelve consumo retroactivo y la evaluación M5 compara costes.
     input_tokens  INTEGER NOT NULL,
     output_tokens INTEGER NOT NULL,
     latency_s     REAL    NOT NULL,
     -- JSON do Dossier inteiro. Guardar o contrato serializado, em vez de uma
-    -- tabela de fatos normalizada, mantem o dossie reproduzivel palavra por
-    -- palavra -- que e o que o juiz vai reler no M5 para julgar o mesmo material.
+    -- tabla de hechos normalizada, mantiene el dossier reproducible palabra por
+    -- palabras, que es lo que el juez releerá en M5 para juzgar el mismo material.
     dossier_json  TEXT    NOT NULL,
-    -- Fatos que os portoes derrubaram, com motivo. Mesma regra do ledger de
-    -- temas: sem o descartado, so se sabe o que entrou, nunca o que foi perdido.
+    -- Hechos que las puertas derribaron, con motivo. Misma regla del libro de
+    -- temas: sin lo descartado, solo se sabe lo que entró, nunca lo que se perdió.
     discarded_json TEXT   NOT NULL,
     failures_json TEXT    NOT NULL,
     created_at    TEXT    NOT NULL
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS scripts (
     dossier_id    INTEGER,
     word_count    INTEGER NOT NULL,
     -- Quantas tentativas o roteirista precisou para passar nos portoes
-    -- mecanicos. Se toda execucao gasta duas, o defeito esta no prompt, nao no
+    -- mecánicos. Si cada ejecución gasta dos, el defecto está en el prompt, no en
     -- modelo -- e isso so aparece se o numero for gravado tambem no sucesso.
     attempts      INTEGER NOT NULL,
     input_tokens  INTEGER NOT NULL,
@@ -103,9 +103,9 @@ CREATE TABLE IF NOT EXISTS scripts (
 CREATE INDEX IF NOT EXISTS idx_scripts_topic_created
     ON scripts(topic, created_at DESC);
 
--- Tabela propria, e nao colunas em `scripts`, porque o mesmo roteiro pode ser
--- julgado mais de uma vez: o eval do M5 compara juizes de modelos diferentes
--- sobre o MESMO texto, e isso e uma relacao de um para muitos.
+-- Tabla propia, y no columnas en `scripts`, porque el mismo guion puede ser
+-- juzgado más de una vez: el eval del M5 compara jueces de modelos distintos
+-- sobre el MISMO texto, y eso es una relación de uno a muchos.
 CREATE TABLE IF NOT EXISTS reviews (
     id            INTEGER PRIMARY KEY,
     script_id     INTEGER,
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     provider      TEXT    NOT NULL,
     total         INTEGER NOT NULL,
     approved      INTEGER NOT NULL,
-    -- Parecer completo: nota e motivo de cada um dos sete criterios. E o que
+    -- Informe completo: nota y motivo de cada uno de los siete criterios. Es lo que
     -- permite, depois, agregar por criterio em vez de so pela soma.
     review_json   TEXT    NOT NULL,
     input_tokens  INTEGER NOT NULL,
@@ -138,12 +138,12 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 CREATE INDEX IF NOT EXISTS idx_posts_publish ON posts(publish_id, created_at DESC);
 
--- Metricas do post publicado, serie temporal: o mesmo publish_id pode ter
+-- Métricas de la publicación, serie temporal: el mismo publish_id puede tener
 -- varias coletas (views sobem com o tempo), e a curva e o unico sinal real de
 -- viralidade. Leitura manual do app por enquanto: a Content Posting API, no
--- escopo video.upload da inbox, nao expoe endpoint de metricas -- e a Research
--- API e restrita a pesquisa academica. `script_id` fecha o loop com o roteiro
--- que gerou o video; NULL quando o vinculo nao e conhecido.
+-- el ámbito video.upload de la bandeja no expone un endpoint de métricas. Research es
+-- API está restringida a investigación académica. `script_id` cierra el lazo con el guion
+-- quien generó el vídeo; NULL cuando no se conoce el vínculo.
 CREATE TABLE IF NOT EXISTS metrics (
     id              INTEGER PRIMARY KEY,
     publish_id      TEXT    NOT NULL,
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS metrics (
 );
 CREATE INDEX IF NOT EXISTS idx_metrics_publish ON metrics(publish_id, collected_at DESC);
 
--- Carrossel: roteiro de 5 slides + parecer embutido. Parecer proprio (e nao
+-- Carrusel: guion de 5 slides + parecer incrustado. Parecer propio (y no
 -- linha em `reviews`) porque a rubrica do carrossel tem 4 critérios, e
 -- `reviews.review_json` valida como Review de 7. `format` em scripts existe
 -- pelo mesmo motivo: o eval agrupa por formato sem desserializar JSON.
@@ -191,8 +191,8 @@ class SignalStore:
     def _migrate(conn: sqlite3.Connection) -> None:
         """Colunas de fatias novas em bancos criados por fatias velhas.
 
-        CREATE TABLE IF NOT EXISTS nao adiciona coluna em tabela que ja
-        existe -- sem isso, o banco real da maquina (criado no M3) rejeita
+        CREATE TABLE IF NOT EXISTS no añade columnas a una tabla que ya
+        existe. Sin esto, la base de datos real de la máquina (creada en M3) rechaza
         INSERT com `format` e o teste hermetico nunca acusaria, porque tmp
         sempre nasce do SCHEMA novo.
         """
@@ -203,8 +203,8 @@ class SignalStore:
         for col in ("saves", "comments", "shares"):
             if col not in cols("metrics"):
                 conn.execute(f"ALTER TABLE metrics ADD COLUMN {col} INTEGER")
-        # Piloto automatico: o post sabe de qual roteiro/formato/slot veio, e
-        # e isso que deixa as metricas voltarem ao planejador de formato.
+        # Piloto automático: el post sabe de qué guion/formato/slot vino, y
+        # es eso lo que deja las métricas volver al planificador de formato.
         for col, tipo in (("format", "TEXT"), ("script_id", "INTEGER"),
                           ("carousel_id", "INTEGER"), ("slot", "TEXT")):
             if col not in cols("posts"):
@@ -255,10 +255,10 @@ class SignalStore:
     # ------------------------------------------------------------ ledger de temas
 
     def record_decisions(self, decisions: Iterable[Decision]) -> int:
-        """Grava toda decisao, aprovada ou nao.
+        """Graba toda decisión, aprobada o no.
 
-        Rejeicao gravada e o que permite calibrar o score depois em vez de
-        chutar: sem ela, so se sabe o que foi escolhido, nunca o que foi perdido.
+        El rechazo guardado permite calibrar después la puntuación en lugar de
+        adivinar: sin ella solo se sabe qué se eligió, nunca qué se perdió.
         """
         rows = [
             (d.term, d.source, d.verdict.value, d.reason, d.score, d.niche_fit,
@@ -278,7 +278,7 @@ class SignalStore:
     def recent_topics(self, days: int = 30, limit: int = 500) -> list[str]:
         """Temas ja aprovados, para o deduplicador comparar.
 
-        So os aprovados entram: um tema rejeitado por politica ou por nicho nao
+        Solo entran los aprobados: un tema rechazado por política o por nicho no
         "ja foi coberto" -- ele nunca virou video, e bloquear o parecido seria
         estender o veto a assuntos que nunca foram julgados.
         """
@@ -289,10 +289,10 @@ class SignalStore:
                 " ORDER BY decided_at DESC LIMIT ?",
                 (corte, limit),
             ).fetchall()
-            # O que virou roteiro ou carrossel tambem foi coberto, mesmo sem
-            # ter passado pelo curador (`research --topic` e o piloto
-            # automatico escrevem direto). Visto em 19/09: o short do cerebro
-            # foi produzido de manha e o tema voltou ao topo a tarde.
+            # Lo que se volvió guion o carrusel también fue cubierto, incluso sin
+            # haber pasado por el curador (`research --topic` y el piloto
+            # automático escriben directo). Visto el 19/09: el short del cerebro
+            # se produjo por la mañana y el tema volvió al topl tarde.
             produzidos = conn.execute(
                 "SELECT topic FROM scripts WHERE created_at >= ?"
                 " UNION SELECT topic FROM carousels WHERE created_at >= ?",
@@ -320,7 +320,7 @@ class SignalStore:
         discarded: list[dict] | None = None,
         failures: dict[str, str] | None = None,
     ) -> int:
-        """Grava o dossie com o custo medido. Devolve o id da linha."""
+        """Graba el dossier con el coste medido. Devuelve el id de la fila."""
         with self._conn() as conn:
             cur = conn.execute(
                 "INSERT INTO dossiers (topic, model, provider, fact_count, source_count,"
@@ -338,10 +338,10 @@ class SignalStore:
         return int(cur.lastrowid or 0)
 
     def latest_dossier(self, topic: str | None = None) -> Dossier | None:
-        """O dossie mais recente, do tema pedido ou de qualquer tema.
+        """El dossier más reciente, del tema pedido o de cualquier tema.
 
-        E o que liga o pesquisador ao roteirista sem passar arquivo na mao: o
-        roteiro sai do que ficou gravado, nao de um JSON solto no disco.
+        Es lo que conecta al investigador con el guionista sin pasar archivos manualmente: el
+        guion sale de lo que quedó grabado, no de un JSON suelto en disco.
         """
         sql = "SELECT dossier_json FROM dossiers"
         params: tuple = ()
@@ -358,7 +358,7 @@ class SignalStore:
             return int(conn.execute("SELECT COUNT(*) AS n FROM dossiers").fetchone()["n"])
 
     def latest_dossier_id(self, topic: str | None = None) -> int | None:
-        """Id do dossie mais recente, para o roteiro apontar para a fonte dele."""
+        """Id del dossier más reciente, para que el guion apunte a su fuente."""
         sql = "SELECT id FROM dossiers"
         params: tuple = ()
         if topic:
@@ -369,7 +369,7 @@ class SignalStore:
             row = conn.execute(sql, params).fetchone()
         return int(row["id"]) if row else None
 
-    # ------------------------------------------------------------------ roteiros
+    # ------------------------------------------------------------------ guiones
 
     def record_script(
         self,
@@ -466,11 +466,11 @@ class SignalStore:
         carousel_id: int | None = None,
         slot: str | None = None,
     ) -> int:
-        """Grava uma subida a inbox, com ou sem publish_id da API.
+        """Graba una subida a la inbox, con o sin publish_id de la API.
 
-        Falha antes do init (ex. arquivo inexistente) tambem e gravada, com
-        publish_id vazio: sem isso, tentativa que nao gerou nada some do
-        historico e nao entra na calibracao.
+        Un fallo antes de la inicialización (p. ej., un archivo inexistente) también se guarda, con
+        publish_id vacío: sin esto, un intento que no generó nada desaparece del
+        historial y no entra en la calibración.
         """
         with self._conn() as conn:
             cur = conn.execute(
@@ -484,9 +484,9 @@ class SignalStore:
         return int(cur.lastrowid or 0)
 
     def format_performance_rows(self) -> list[dict]:
-        """Ultima metrica de cada post com o formato dele (para o planejador).
+        """Última métrica de cada publicación con su formato (para el planificador).
 
-        Formato vem do proprio post (piloto automatico) ou do roteiro ligado
+        El formato viene del propio post (piloto automático) o del guion ligado
         pela metrica (`metrics-record --script-id`).
         """
         with self._conn() as conn:
@@ -532,10 +532,10 @@ class SignalStore:
         with self._conn() as conn:
             return int(conn.execute("SELECT COUNT(*) AS n FROM posts").fetchone()["n"])
 
-    # ------------------------------------------------------------------ roteiros/pareceres (eval)
+    # ------------------------------------------------------------------ guiones/informes (eval)
 
     def list_scripts(self, topic: str | None = None) -> list[dict]:
-        """Linhas de roteiro para o eval, com custo. Sem parsing aqui."""
+        """Filas de guion para el eval, con coste. Sin parsing aquí."""
         sql = ("SELECT id, topic, model, provider, word_count, attempts,"
                " input_tokens, output_tokens, latency_s, format FROM scripts")
         params: tuple = ()
@@ -572,12 +572,12 @@ class SignalStore:
         comments: int | None = None,
         shares: int | None = None,
     ) -> int:
-        """Grava uma coleta de metricas. Devolve o id da linha.
+        """Graba una recogida de métricas. Devuelve el id de la fila.
 
         Falha cedo em numero impossivel: views negativo, completion fora de
         0..1 ou watch negativo entram na serie e corrompem a curva sem aviso.
         saves/comments/shares sao o placar do carrossel (e o desempate do
-        video): completion sozinho nao diz se o post gerou acao.
+        vídeo): la finalización por sí sola no indica si la publicación produjo acción.
         """
         if not publish_id:
             raise ValueError("metrica sem publish_id")
@@ -616,7 +616,7 @@ class SignalStore:
         return dict(row) if row else None
 
     def metrics_for(self, publish_id: str) -> list[dict]:
-        """A serie inteira de um post, em ordem de coleta (a curva)."""
+        """La serie completa de una publicación, en orden de recolección (la curva)."""
         with self._conn() as conn:
             rows = conn.execute(
                 "SELECT publish_id, script_id, views, avg_watch_s,"
@@ -644,7 +644,7 @@ class SignalStore:
         attempts: list[dict],
         review: CarouselReview | None = None,
     ) -> int:
-        """Grava carrossel com parecer embutido (rubrica propria, 4 critérios)."""
+        """Graba carrusel con parecer incrustado (rúbrica propia, 4 criterios)."""
         with self._conn() as conn:
             cur = conn.execute(
                 "INSERT INTO carousels (topic, model, provider, approved,"
@@ -709,6 +709,6 @@ def _parse_iso(value: str) -> datetime:
     dt = datetime.fromisoformat(value)
     # Datas gravadas antes de uma normalizacao, ou por outra ferramenta, podem
     # vir sem tzinfo. Comparar naive com aware levanta TypeError no meio da
-    # coleta, entao assume-se UTC, que e o que o agente sempre grava.
+    # recolección, se asume UTC, que es lo que el agente siempre graba.
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 

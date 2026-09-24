@@ -1,31 +1,32 @@
-"""Boca por fonema, nao por volume: visemas de pt-BR sobre o tempo do TTS.
+"""Boca por visema, no por volumen: forma de la boca sobre el tiempo del TTS.
 
-O apresentador anterior abria a boca pela envoltoria de energia da narracao.
-Numa silhueta escura isso passava -- o limite estava declarado em CLAUDE.md e a
-escolha de polir amplitude primeiro foi do autor. Num rosto fotorrealista
-nao passa: energia nao distingue "mamae" de "papai", e a boca fica **aberta no
-/m/ e no /b/**, que e o gatilho classico de vale da estranheza. Quem le labios
-sem saber que le labios e todo mundo; o erro nao precisa ser nomeado para
-incomodar.
+El presentador anterior abria la boca por la envolvente de energia de la
+narracion. En una silueta oscura eso pasaba -- el limite estaba declarado y la
+ decision de pulir amplitud primero fue del autor. En un rostro fotorrealista
+no pasa: la energia no distingue "mama" de "papa", y la boca queda **abierta
+en la /m/ y en la /b/**, que es el gatillo clasico del valle inquietante.
+Quien lee labios sin saber que lee labios es todo el mundo; el error no
+necesita nombre para incomodar.
 
-Aqui a forma da boca vem da letra e o tamanho vem do audio:
+Aqui la forma de la boca viene de la letra y el tamano del audio:
 
-- **forma** -- cada palavra falada vira fonemas por regra de grafema de pt-BR,
-  cada fonema vira um visema (abertura + largura), e os visemas se espalham na
-  duracao que o edge-tts devolveu para aquela palavra. Determinista e $0: nao
-  ha modelo, nao ha chamada, o mesmo texto da sempre a mesma boca.
-- **tamanho** -- a envoltoria RMS modula a abertura. Sem ela, a boca declama
-  com a mesma intensidade a frase inteira; com ela sozinha, a boca nao sabe
-  fechar. Uma governa a outra: `presenter_video` multiplica as duas.
+- **forma** -- cada palabra hablada se convierte en visemas (abertura +
+  anchura) por reglas de grafema castellano, y los visemas se reparten en la
+  duracion que edge-tts devolvio para esa palabra. Determinista y $0: no hay
+  modelo, no hay llamada, el mismo texto da siempre la misma boca.
+- **tamano** -- la envolvente RMS modula la abertura. Sin ella la boca recita
+  la frase entera a la misma intensidad; con ella sola, la boca no sabe
+  cerrarse. Una gobierna a la otra: `presenter_video` multiplica las dos.
 
-O fonema e do texto **falado** (o respelling de `voice/pronounce.py`, que
-escreve "Djemini"), nunca do texto da legenda -- e a voz que a boca acompanha,
-e a voz diz "Djemini".
+El visema es del texto **hablado** (el respelling de `voice/pronounce.py`, que
+escribe "Yemini"), nunca del texto de la leyenda -- es la voz la que la boca
+acompana, y la voz dice "Yemini".
 
-Onde isto para, declarado: sao visemas de grafema, sem dicionario de excecao e
-sem silaba tonica de verdade. "Exceto" ou "sublinhar" saem aproximados. A
-diferenca que importa num feed vertical -- labio colado na consoante fechada,
-boca redonda no /o/, boca espalhada no /i/ -- essa sai certa.
+Donde esto para, declarado: son visemas de grafema, sin diccionario de
+excepcion ni silaba tonica de verdad. "Excepto" o "subrayar" salen
+aproximados. La diferencia que importa en un feed vertical -- labio pegado en
+la consonante cerrada, boca redonda en la /o/, boca estirada en la /i/ -- esa
+sale bien.
 """
 
 from __future__ import annotations
@@ -36,317 +37,325 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# ---------------------------------------------------------------- visemas
-# (abertura 0..1, largura -1 arredondada .. +1 espalhada, peso de duracao).
-# A abertura e relativa: 1,0 e a silaba mais aberta que a boca faz, e quem
-# converte isso em pixel e o `presenter_video` com a altura do rosto medida.
+# --------------------------------------------------------------- visemas
+# (abertura 0..1, anchura -1 redondeada .. +1 estirada, peso de duracion).
+# La abertura es relativa: 1,0 es la silaba mas abierta que la boca hace, y
+# quien lo convierte en pixel es el `presenter_video` con la altura del rostro
+# medida.
 
 
 @dataclass(frozen=True)
 class Visema:
     abertura: float
-    largura: float
+    anchura: float
     peso: float
-    fechado: bool = False   # bilabial: labio colado, custe o que custar
+    cerrado: bool = False   # bilabial: labio pegado, cueste lo que cueste
 
 
-REPOUSO = Visema(0.0, 0.0, 1.0)
+REPOSO = Visema(0.0, 0.0, 1.0)
 
 VISEMAS: dict[str, Visema] = {
-    # vogais orais
+    # vocales orales
     "a": Visema(1.00, 0.15, 1.00),
     "e": Visema(0.62, 0.45, 1.00),
     "i": Visema(0.34, 0.85, 0.90),
     "o": Visema(0.62, -0.55, 1.00),
     "u": Visema(0.30, -0.95, 0.90),
-    # vogais nasais: a mesma boca, um pouco menos aberta (o ar sai pelo nariz)
+    # vocales nasales: la misma boca, un poco menos abierta (el aire sale por la nariz)
     "a~": Visema(0.80, 0.10, 1.05),
     "e~": Visema(0.50, 0.35, 1.05),
     "i~": Visema(0.28, 0.70, 0.95),
     "o~": Visema(0.50, -0.50, 1.05),
     "u~": Visema(0.26, -0.85, 0.95),
-    # consoantes
-    "P": Visema(0.00, 0.00, 0.42, fechado=True),   # p, b, m
+    # consonantes
+    "P": Visema(0.00, 0.00, 0.42, cerrado=True),   # p, b, m
     "F": Visema(0.16, 0.25, 0.75),                 # f, v
-    "T": Visema(0.28, 0.10, 0.45),                 # t, d, n, l, r simples
-    "s": Visema(0.18, 0.50, 0.75),                 # s, z, c cedilha
-    "S": Visema(0.30, -0.60, 0.80),                # ch, j, x, g antes de e/i
-    "K": Visema(0.35, 0.05, 0.45),                 # c, g, qu, r forte, h
-    "N": Visema(0.24, 0.10, 0.55),                 # nh
-    "L": Visema(0.30, 0.15, 0.55),                 # lh
-    ".": REPOUSO,                                  # silencio
+    "T": Visema(0.28, 0.10, 0.45),                 # t, d, n, l, r simple
+    "s": Visema(0.18, 0.50, 0.75),                 # s, z, c cedilla
+    "S": Visema(0.30, -0.60, 0.80),                # ch, j, g antes de e/i
+    "K": Visema(0.35, 0.05, 0.45),                 # c, g, qu, r fuerte, h
+    "N": Visema(0.24, 0.10, 0.55),                 # ñ
+    "L": Visema(0.30, 0.15, 0.55),                 # ll
+    ".": REPOSO,                                  # silencio
 }
 
-VOGAIS = set("aeiouáéíóúâêôàãõ")
-# Vogal anterior, com ou sem acento: e o que amolece `c` e `g` ("voce" e [v-o-s-e],
-# nao [v-o-k-e]). Testar contra a string "ei" crua deixava "voce" e "inteligencia"
-# com o [k] duro -- e a boca de [k] e visivelmente mais aberta que a de [s].
+VOCALES = set("aeiouáéíóúâêôàãõ")
+# Vocal anterior, con o sin acento: es lo que ablanda `c` y `g` ("voz" y
+# "gente" llevan /s/ y /x/, no /k/). Comprobar contra la string "ei" cruda
+# dejaba "vez" y "inteligencia" con la [k] dura -- y la boca de la [k] es
+# visiblemente mas abierta que la de la [s].
 _ANTERIOR = frozenset("eiéêíî")
 _ACENTO_ABRE = {"á": "a", "à": "a", "â": "a", "é": "e", "ê": "e",
                 "í": "i", "ó": "o", "ô": "o", "ú": "u"}
 _NASAL = {"ã": "a~", "õ": "o~"}
 
 
-def _limpa(palavra: str) -> str:
-    """Minusculas, sem pontuacao, acento preservado (ele muda o fonema)."""
-    return re.sub(r"[^a-záéíóúâêôàãõçñ]", "", palavra.lower())
+def _limpa(palabra: str) -> str:
+    """Minusculas, sin puntuacion, acento conservado (cambia el fonema)."""
+    return re.sub(r"[^a-záéíóúâêôàãõçñ]", "", palabra.lower())
 
 
-def fonemas(palavra: str) -> list[str]:
-    """Grafema -> fonema de pt-BR, no nivel que a boca enxerga.
+def fonemas(palabra: str) -> list[str]:
+    """Grafema -> visema, al nivel que la boca ve.
 
-    Regras que valem a pena, porque sao as que mudam a forma do labio:
+    Reglas que valen la pena, porque son las que cambian la forma del labio:
 
-    - `m`/`n` **antes de consoante ou no fim** nasalizam a vogal e NAO colam o
-      labio ("bom" nao fecha a boca; "boi**m**a" fecha). Tratar todo `m` como
-      bilabial poria um labio colado onde o audio nao tem nenhum -- erro pior
-      que o que este modulo veio corrigir.
-    - `e`/`o` **atonos no fim** reduzem para [i]/[u]: "bonito" e "bonitu". E
-      assim que o edge-tts fala, e a boca tem de concordar com a voz.
-    - `l` **no fim de silaba** vira semivogal [u] ("sal" -> "sau"): labio
-      arredondado, nao lingua no dente.
+    - `m`/`n` **antes de consonante o al final** nasalizan la vocal y NO pegan
+      el labio ("dar" no cierra la boca; "can**t**ar" tampoco, la nasal va con
+      la vocal). Tratar todo `m` como bilabial ponia un labio pegado donde el
+      audio no tiene ninguno -- error peor que el que este modulo vino a
+      corregir. "Yo**m**" cierra: ahi el m cierra la silaba.
+    - las consonantes que el castellano comparte con pt-BR mantienen su boca;
+      la diferencia castellana (la /x/ de "gente" en vez de la /S/)
+      comparte labio, y por eso la forma sigue siendo correcta.
+    - `l` **en final de silaba** se vuelve semivocal [u] ("sal" -> "sau"):
+      labio redondeado, no lengua en el diente.
     """
-    p = _limpa(palavra)
+    p = _limpa(palabra)
     if not p:
         return []
-    saida: list[str] = []
+    salida: list[str] = []
     i, n = 0, len(p)
     while i < n:
         c = p[i]
-        prox = p[i + 1] if i + 1 < n else ""
-        depois = p[i + 2] if i + 2 < n else ""
+        sig = p[i + 1] if i + 1 < n else ""
+        luego = p[i + 2] if i + 2 < n else ""
 
         # --- digrafos
-        if c == "c" and prox == "h":
-            saida.append("S")
+        if c == "c" and sig == "h":
+            salida.append("S")
             i += 2
             continue
-        if c == "l" and prox == "h":
-            saida.append("L")
+        if c == "l" and sig == "h":
+            salida.append("L")
             i += 2
             continue
-        if c == "n" and prox == "h":
-            saida.append("N")
+        if c == "n" and sig == "h":
+            salida.append("N")
             i += 2
             continue
-        if c == "r" and prox == "r":
-            saida.append("K")
+        if c == "r" and sig == "r":
+            salida.append("K")
             i += 2
             continue
-        if c == "s" and prox == "s":
-            saida.append("s")
+        if c == "s" and sig == "s":
+            salida.append("s")
             i += 2
             continue
-        if c in "sx" and prox == "c" and depois in _ANTERIOR:
-            saida.append("s")
+        if c in "sx" and sig == "c" and luego in _ANTERIOR:
+            salida.append("s")
             i += 2
             continue
-        if c == "q" and prox == "u":
-            saida.append("K")
-            if depois in ("a", "o", "á", "ó", "ô"):   # "quatro": sobra o [w]
-                saida.append("u")
+        if c == "q" and sig == "u":
+            salida.append("K")
+            if luego in ("a", "o", "á", "ó", "ô"):   # "cuatro": sobra el [w]
+                salida.append("u")
             i += 2
             continue
-        if c == "g" and prox == "u" and depois in _ANTERIOR:
-            saida.append("K")
+        if c == "g" and sig == "u" and luego in _ANTERIOR:
+            salida.append("K")
             i += 2
             continue
 
-        # --- vogais
-        if c in VOGAIS:
+        # --- vocales
+        if c in VOCALES:
             base = _NASAL.get(c) or _ACENTO_ABRE.get(c, c)
-            # vogal + m/n travando silaba = vogal nasal, e o m/n some
-            if prox in ("m", "n") and depois not in VOGAIS:
+            # vocal + m/n cerrando silaba = vocal nasal, y el m/n se consume
+            if sig in ("m", "n") and luego not in VOCALES:
                 base = base.rstrip("~") + "~"
-                i += 1                    # consome tambem o m/n
+                i += 1                    # consume tambien el m/n
             elif c not in _NASAL and _fim_atono(p, i, c):
                 base = "i" if base == "e" else "u"
-            saida.append(base)
+            salida.append(base)
             i += 1
             continue
 
-        # --- consoantes
+        # --- consonantes
         if c in "pb":
-            saida.append("P")
+            salida.append("P")
         elif c == "m":
-            # so chega aqui o m que a vogal NAO consumiu como nasal: bilabial.
-            saida.append("P")
+            # solo llega aqui el m que la vocal NO consumio como nasal: bilabial.
+            salida.append("P")
         elif c in "fv":
-            saida.append("F")
+            salida.append("F")
         elif c in "tdn":
-            saida.append("T")
+            salida.append("T")
         elif c == "l":
-            # final de silaba (sem vogal em seguida) vira [u] velarizado
-            saida.append("T" if prox in VOGAIS else "u")
+            # final de silaba (sin vocal a continuacion) se vuelve [u] velarizado
+            salida.append("T" if sig in VOCALES else "u")
         elif c == "r":
-            # inicio de palavra ou depois de n/l/s = r forte; entre vogais = tap
-            forte = i == 0 or (i > 0 and p[i - 1] in "nls")
-            saida.append("K" if forte else "T")
+            # inicio de palabra o tras n/l/s = r fuerte; entre vocales = tap
+            fuerte = i == 0 or (i > 0 and p[i - 1] in "nls")
+            salida.append("K" if fuerte else "T")
         elif c in "zç":
-            saida.append("s")
+            salida.append("s")
         elif c == "s":
-            # entre vogais o som e [z], mas o labio faz a mesma coisa nos dois.
-            saida.append("s")
+            # entre vocales el sonido es [z], pero el labio hace lo mismo en ambos.
+            salida.append("s")
         elif c == "c":
-            saida.append("s" if prox in _ANTERIOR else "K")
+            salida.append("s" if sig in _ANTERIOR else "K")
         elif c == "g":
-            saida.append("S" if prox in _ANTERIOR else "K")
+            salida.append("S" if sig in _ANTERIOR else "K")
         elif c in "jx":
-            saida.append("S")
+            salida.append("S")
         elif c in "kw":
-            saida.append("K")
+            salida.append("K")
         elif c == "y":
-            saida.append("i")
+            salida.append("i")
         elif c == "ñ":
-            saida.append("N")
-        # 'h' mudo cai fora sozinho
+            salida.append("N")
+        # la 'h' muda cae fuera sola
         i += 1
-    return saida
+    return salida
 
 
 def _fim_atono(p: str, i: int, c: str) -> bool:
-    """`e`/`o` sem acento na ultima letra da palavra (reduz para [i]/[u])."""
+    """`e`/`o` sin acento en la ultima letra de la palabra (se reduce a [i]/[u])."""
     return c in "eo" and i == len(p) - 1 and len(p) > 2
 
 
-def visemas(palavra: str) -> list[Visema]:
-    return [VISEMAS.get(f, VISEMAS["T"]) for f in fonemas(palavra)]
+def visemas(palabra: str) -> list[Visema]:
+    return [VISEMAS.get(f, VISEMAS["T"]) for f in fonemas(palabra)]
 
 
-# ------------------------------------------------------------------ trilha
-# Amostras por quadro no calculo da dinamica. Nao e capricho: e a mesma licao
-# ja paga na envoltoria do apresentador parado -- uma constante de tempo de 40
-# ms e MAIS CURTA que o quadro de 33,3 ms, entao rodar o filtro na taxa de
-# quadro nao filtra nada. A 4x (120 Hz) ela vale 5 amostras e de fato suaviza;
-# so depois a curva desce para o quadro, por media.
+# ------------------------------------------------------------------ pista
+# Muestras por cuadro en el calculo de la dinamica. No es capricho: es la misma
+# leccion ya pagada en la envolvente del presentador quieto -- una constante de
+# tiempo de 40 ms es MAS CORTA que el cuadro de 33,3 ms, asi que correr el
+# filtro a la tasa de cuadro no filtra nada. A 4x (120 Hz) vale 5 muestras y de
+# verdad suaviza; solo despues la curva baja al cuadro, por media.
 SUB = 4
-# Constante de tempo do maxilar e do labio. Sao diferentes de proposito: o
-# maxilar e osso com massa e chega devagar; o labio (espalhar no /i/,
-# arredondar no /u/) e leve e chega antes. Usar um numero so para os dois
-# deixava a boca inteira com a mesma cadencia, que e metade do que denuncia
-# marionete.
+# Constante de tiempo de la mandibula y del labio. Son distintas a proposito:
+# la mandibula es hueso con masa y llega despacio; el labio (estirar en la /i/,
+# redondear en la /u/) es ligero y llega antes. Usar un numero solo para los
+# dos dejaba la boca entera con la misma cadencia, que es la mitad de lo que
+# delata marioneta.
 TAU_MAXILAR = 0.035
 TAU_LABIO = 0.024
-# A consoante fechada tem de CHEGAR a zero, senao nao le como labio colado.
-# Reimposta na taxa de SUB (nao na de quadro) e com janela de cosseno elevado:
-# em 30 fps um "V" de um quadro so lia como piscada da boca, um defeito no
-# lugar do outro. No sub-quadro o fecho e continuo, e a media do quadro vira
-# sozinha o borrao de um gesto rapido -- que e o que a camera faria.
-FECHO_S = 0.055
-# Buraco entre palavras que ja conta como pausa: abaixo disso a boca segue de
-# uma palavra para a outra sem passar pelo repouso, que e como se fala.
+# La consonante cerrada tiene que LLEGAR a cero, si no no se lee como labio
+# pegado. Se reimpone a la tasa de SUB (no a la de cuadro) y con ventana de
+# coseno elevado: a 30 fps una "V" de un cuadro solo se leia como parpadeo de
+# la boca, un defecto en el lugar del otro. En sub-cuadro el cierre es
+# continuo, y la media del cuadro se convierte sola en el borron de un gesto
+# rapido -- que es lo que haria la camara.
+CIERRE_S = 0.055
+# Hueco entre palabras que ya cuenta como pausa: por debajo de eso la boca pasa
+# de una palabra a la otra sin pasar por el reposo, que es como se habla.
 PAUSA_S = 0.12
 
 
-def _inercia(alvo: np.ndarray, dt: float, tau: float) -> np.ndarray:
-    """Resposta criticamente amortecida de `alvo`: boca com massa.
+def _inercia(objetivo: np.ndarray, dt: float, tau: float) -> np.ndarray:
+    """Respuesta criticamente amortiguada de `objetivo`: boca con masa.
 
-    O interpolador anterior segurava o visema parado e saltava para o proximo
-    em 70 ms. Medido na narracao real de 16,5 s: salto medio de 0,109 entre
-    quadros e 0,381 no p95 -- a boca andava 38% do curso em 33 ms. Isso le como
-    estalo, nao como fala, e nenhum ajuste de forma do visema conserta, porque
-    o defeito esta na DINAMICA e nao na pose.
+    El interpolador anterior sostenia el visema quieto y saltaba al siguiente
+    en 70 ms. Medido en narracion real de 16,5 s: salto medio de 0,109 entre
+    cuadros y 0,381 en el p95 -- la boca recorría 38% del curso en 33 ms. Eso
+    se lee como chasquido, no como habla, y ningun ajuste de forma del visema
+    lo arregla, porque el defecto esta en la DINAMICA y no en la pose.
 
-    Massa-mola criticamente amortecida chega rapido, nao oscila, e sobretudo
-    **nao alcanca o alvo quando o alvo muda depressa**. Essa falta de alcance e
-    a coarticulacao: na fala corrida ninguem articula cada fonema por inteiro,
-    e era exatamente isso que a escada fazia -- pronunciava tudo com a mesma
-    perfeicao, que e o jeito mais rapido de soar robo.
+    Masa-muelle criticamente amortiguada llega rapido, no oscila, y sobre todo
+    **no alcanza el objetivo cuando el objetivo cambia deprisa**. Esa falta de
+    alcance es la coarticulacion: en el habla corrida nadie articula cada
+    fonema por entero, y era exactamente eso lo que la escalera hacia --
+    pronunciaba todo con la misma perfeccion, que es el modo mas rapido de
+    sonar a robot.
     """
-    y = np.empty_like(alvo)
-    pos = float(alvo[0])
+    y = np.empty_like(objetivo)
+    pos = float(objetivo[0])
     vel = 0.0
     k = 1.0 / (tau * tau)
     c = 2.0 / tau
-    for i in range(len(alvo)):
-        vel += dt * (k * (float(alvo[i]) - pos) - c * vel)
+    for i in range(len(objetivo)):
+        vel += dt * (k * (float(objetivo[i]) - pos) - c * vel)
         pos += dt * vel
         y[i] = pos
     return y
 
 
-def _degraus(alvos: list[tuple[float, float, Visema]], campo: str,
-             t: np.ndarray) -> np.ndarray:
-    """Alvo constante por fonema: cada visema vale a DURACAO dele, nao um ponto.
+def _escalones(objetivos: list[tuple[float, float, Visema]], campo: str,
+               t: np.ndarray) -> np.ndarray:
+    """Objetivo constante por visema: cada uno vale su DURACION, no un punto.
 
-    Segurar o visema so no centro do fonema e interpolar entre centros dava uma
-    rampa permanente, sem patamar nenhum; com o patamar, quem decide se o
-    fonema e alcancado ou nao passa a ser a inercia -- que e quem decide na
-    boca de verdade.
+    Sostener el visema solo en el centro del fonema e interpolar entre centros
+    daba una rampa permanente, sin escalon ninguno; con el escalon, quien decide
+    si el fonema se alcanza o no pasa a ser la inercia -- que es quien decide en
+    una boca de verdad.
     """
-    fora = np.zeros(len(t), dtype=np.float32)
-    for ini, fim, v in alvos:
-        fora[(t >= ini) & (t < fim)] = getattr(v, campo)
-    return fora
+    fuera = np.zeros(len(t), dtype=np.float32)
+    for ini, fin, v in objetivos:
+        fuera[(t >= ini) & (t < fin)] = getattr(v, campo)
+    return fuera
 
 
-def trilha(palavras, n: int, fps: int) -> tuple[np.ndarray, np.ndarray]:
-    """Abertura e largura da boca em cada um dos `n` quadros.
+def pista(palabras, n: int, fps: int) -> tuple[np.ndarray, np.ndarray]:
+    """Abertura y anchura de la boca en cada uno de los `n` cuadros.
 
-    `palavras` sao os tempos do TTS (`voice/edge.WordTiming`) do texto FALADO.
-    Entre duas palavras a boca volta ao repouso se a pausa passar de
-    `PAUSA_S` -- e o que separa palavra de palavra visualmente.
+    `palabras` son los tiempos del TTS (`voice/edge.WordTiming`) del texto
+    HABLADO. Entre dos palabras la boca vuelve al reposo si la pausa pasa de
+    `PAUSA_S` -- es lo que separa palabra de palabra visualmente.
     """
     if n <= 0:
         return (np.zeros(0, dtype=np.float32), np.zeros(0, dtype=np.float32))
 
-    # --- 1. o que a boca deveria fazer, fonema a fonema, com duracao
-    alvos: list[tuple[float, float, Visema]] = []
-    fechos: list[tuple[float, float]] = []
-    fim_anterior = 0.0
-    for w in palavras:
+    # --- 1. lo que la boca deberia hacer, visema a visema, con duracion
+    objetivos: list[tuple[float, float, Visema]] = []
+    cierres: list[tuple[float, float]] = []
+    fin_anterior = 0.0
+    for w in palabras:
         ini = float(getattr(w, "start_s", getattr(w, "start", 0.0)))
-        fim = float(getattr(w, "end_s", getattr(w, "end", 0.0)))
+        fin = float(getattr(w, "end_s", getattr(w, "end", 0.0)))
         vs = visemas(getattr(w, "text", ""))
-        if not vs or fim <= ini:
+        if not vs or fin <= ini:
             continue
-        # Descanso no FIM da palavra anterior, e nao so um pouco antes da
-        # proxima: com o descanso so na entrada, o ultimo visema da palavra
-        # valia ate a palavra seguinte comecar -- numa pausa de 2,4 s entre
-        # frases a boca ficava escancarada no /a/ final o tempo todo.
-        if fim_anterior > 0 and ini - fim_anterior > PAUSA_S:
-            alvos.append((fim_anterior + 0.04, ini - 0.04, REPOUSO))
+        # Descanso al FINAL de la palabra anterior, y no solo un poco antes de
+        # la siguiente: con el descanso solo a la entrada, el ultimo visema de
+        # la palabra valia hasta que la palabra siguiente empezaba -- en una
+        # pausa de 2,4 s entre frases la boca quedaba escancarada en la /a/
+        # final todo el tiempo.
+        if fin_anterior > 0 and ini - fin_anterior > PAUSA_S:
+            objetivos.append((fin_anterior + 0.04, ini - 0.04, REPOSO))
         total = sum(v.peso for v in vs)
         t = ini
         for v in vs:
-            dur = (fim - ini) * v.peso / total
-            alvos.append((t, t + dur, v))
-            if v.fechado:
-                fechos.append((t, t + dur))
+            dur = (fin - ini) * v.peso / total
+            objetivos.append((t, t + dur, v))
+            if v.cerrado:
+                cierres.append((t, t + dur))
             t += dur
-        fim_anterior = fim
-    if not alvos:
+        fin_anterior = fin
+    if not objetivos:
         return (np.zeros(n, dtype=np.float32), np.zeros(n, dtype=np.float32))
 
-    # --- 2. a dinamica, no sub-quadro
+    # --- 2. la dinamica, en sub-cuadro
     m = n * SUB
     dt = 1.0 / (fps * SUB)
     t_sub = np.arange(m, dtype=np.float32) * dt
-    abertura = _inercia(_degraus(alvos, "abertura", t_sub), dt, TAU_MAXILAR)
-    largura = _inercia(_degraus(alvos, "largura", t_sub), dt, TAU_LABIO)
+    abertura = _inercia(_escalones(objetivos, "abertura", t_sub), dt, TAU_MAXILAR)
+    anchura = _inercia(_escalones(objetivos, "anchura", t_sub), dt, TAU_LABIO)
 
-    # --- 3. o labio colado, reimposto depois da dinamica
-    # Entre duas vogais abertas a inercia nunca chega a zero num /p/ de 40 ms:
-    # sobraria um respiro de abertura justamente onde o espectador confere o
-    # labio sem saber que confere.
-    for ini, fim in fechos:
-        centro = (ini + fim) / 2
-        k0 = max(0, int((centro - FECHO_S) / dt))
-        k1 = min(m, int((centro + FECHO_S) / dt) + 1)
+    # --- 3. el labio pegado, reimpuesto despues de la dinamica
+    # Entre dos vocales abiertas la inercia nunca llega a cero en una /p/ de
+    # 40 ms: sobraria un respiro de abertura justo donde el espectador comprueba
+    # el labio sin saber que lo comprueba.
+    for ini, fin in cierres:
+        centro = (ini + fin) / 2
+        k0 = max(0, int((centro - CIERRE_S) / dt))
+        k1 = min(m, int((centro + CIERRE_S) / dt) + 1)
         if k1 <= k0:
             continue
-        d = (t_sub[k0:k1] - centro) / FECHO_S
-        # cosseno elevado: vale 0 no centro e volta a 1 nas pontas, sem quina
+        d = (t_sub[k0:k1] - centro) / CIERRE_S
+        # coseno elevado: vale 0 en el centro y vuelve a 1 en las puntas, sin
+        # esquina
         abertura[k0:k1] *= (1 - np.cos(np.pi * np.clip(np.abs(d), 0, 1))) / 2
 
-    # --- 4. de volta para o quadro, por media (o borrao de quem filma)
+    # --- 4. de vuelta al cuadro, por media (el borron de quien filma)
     abertura = np.clip(abertura, 0.0, 1.0).reshape(n, SUB).mean(axis=1)
-    largura = np.clip(largura, -1.0, 1.0).reshape(n, SUB).mean(axis=1)
-    return abertura.astype(np.float32), largura.astype(np.float32)
+    anchura = np.clip(anchura, -1.0, 1.0).reshape(n, SUB).mean(axis=1)
+    return abertura.astype(np.float32), anchura.astype(np.float32)
 
 
-def texto_falado(respelled) -> str:
-    """O texto que a voz diz, para conferencia em teste e no log."""
+def texto_hablado(respelled) -> str:
+    """El texto que la voz dice, para verificacion en test y en el log."""
     return " ".join(getattr(respelled, "spoken", []) or [])
 
 
@@ -355,6 +364,6 @@ def _sem_acento(s: str) -> str:
     return "".join(c for c in d if not unicodedata.combining(c))
 
 
-__all__ = ["FECHO_S", "PAUSA_S", "REPOUSO", "SUB", "TAU_LABIO", "TAU_MAXILAR",
+__all__ = ["CIERRE_S", "PAUSA_S", "REPOSO", "SUB", "TAU_LABIO", "TAU_MAXILAR",
            "VISEMAS", "Visema",
-           "fonemas", "texto_falado", "trilha", "visemas"]
+           "fonemas", "pista", "texto_hablado", "visemas"]

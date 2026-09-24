@@ -1,14 +1,14 @@
 """OAuth do TikTok (Login Kit) para o escopo `video.upload`.
 
-Cobre so o que o M4 precisa: montar a URL de autorizacao, trocar o `code` por
+Cubre solo lo que necesita M4: construir la URL de autorización, canjear el `code` por
 tokens e renovar com o `refresh_token`. Os tokens nunca vao para o banco --
 moram so no `.env` (`AGENT_TIKTOK_ACCESS_TOKEN`, `AGENT_TIKTOK_REFRESH_TOKEN`),
-como todo segredo do projeto.
+como todo secreto del proyecto.
 
 O formato exato da troca (form-encoded em `/v2/oauth/token/`) segue o Login
-Kit documentado, mas ainda nao foi exercitado contra o servico real: nao ha
-app registrado nesta maquina. Quando houver, `agent publish` e o exercicio
-real -- e qualquer divergencia aparece ali, nao num teste mockado.
+Kit documentado, pero aún no se ha probado con el servicio real: no hay
+una app registrada en esta máquina. Cuando exista, `agent publish` será la prueba
+real, y cualquier divergencia aparecerá allí, no en una prueba simulada.
 """
 
 from __future__ import annotations
@@ -103,7 +103,7 @@ class TikTokOAuth:
         if r.status_code != 200 or not isinstance(corpo, dict) or corpo.get("error"):
             erro = corpo.get("error", "") if isinstance(corpo, dict) else ""
             # O endpoint v2 devolve `error` como string + `error_description`,
-            # nao como objeto; tratar os dois evita um AttributeError no lugar
+            # como objeto; tratar ambos evita un AttributeError en lugar
             # do motivo real.
             detalhe = (erro.get("message", "") if isinstance(erro, dict)
                        else f"{erro} {corpo.get('error_description', '')}".strip())

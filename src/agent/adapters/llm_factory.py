@@ -1,16 +1,16 @@
-"""Escolhe o adaptador de LLM a partir da configuracao.
+"""Elige el adaptador de LLM a partir de la configuración.
 
 Existe para que nenhum estagio precise saber qual provedor esta em uso: o
-pesquisador recebe uma porta `LLM` pronta e nao importa nada de `adapters/`. E
+el investigador recibe una puerta `LLM` lista y no importa nada de `adapters/`. Es
 tambem o unico lugar que sabe qual variavel de ambiente carrega qual chave, o
 que mantem a mensagem de erro de chave faltando em um lugar so.
 
 Dois caminhos:
 
-- `build_llm(provider)`: um modelo so, o do `.env` -- o que os comandos
+- `build_llm(provider)`: un solo modelo, el del `.env`, que es lo que usan los comandos
   manuais (`research`, `write`, `judge`) sempre usaram;
 - `build_routed(stage)`: a rota do estagio, com troca de modelo por cota
-  (`adapters/router.py`) -- o que o piloto automatico usa.
+  (`adapters/router.py`), que es lo que usa el piloto automático.
 """
 
 from __future__ import annotations
@@ -24,12 +24,12 @@ from agent.ports.llm import LLM, LLMError
 PROVEDORES = ("openrouter", "groq", "gemini")
 
 # Rotas por estagio, da preferencia para a reserva. Cada modelo e um balde de
-# cota separado; a ordem diz onde gastar o que e escasso.
+# cuota independiente; el orden indica dónde gastar lo escaso.
 #
 # Desde 20/09/2026 o OpenRouter abre toda rota: a cota do Gemini no AI Studio
 # disputa requisicao com outras automacoes do autor, e o endpoint pago do
-# OpenRouter nao consome aquela cota -- o Gemini direto fica POR ULTIMO, como
-# reserva que nao disputa nada. Dentro do OpenRouter, o preco segue a
+# OpenRouter no consume esa cuota. Gemini directo queda el último, como
+# reserva que no compite por nada. Dentro de OpenRouter, el precio sigue la
 # exigencia da tarefa (medido o teto do autor em ~$0.10-0.15/video):
 # extracao e rankeamento ficam nos centavos (deepseek-v4-flash); o texto que
 # vira audio e o julgamento vao no degrau acima (gemini-2.5-flash no escritor,
@@ -37,7 +37,7 @@ PROVEDORES = ("openrouter", "groq", "gemini")
 # assim o video fecha em ~$0.03-0.05 -- folga de 3-5x no teto, de proposito:
 # pagar mais sem medida de qualidade seria queimar credito a toa.
 #
-# - research: extracao literal, 1 chamada por fonte (o estagio de maior
+# - research: extracción literal, una llamada por fuente (la etapa de mayor
 #   volume). deepseek-v4-flash primeiro: ~$0.04/M tokens de entrada.
 # - writer/humanize: o texto que vira audio. gemini-2.5-flash-lite primeiro:
 #   mesma familia do escritor medido (flash), sem tocar a cota disputada.
@@ -166,8 +166,8 @@ def build_routed(stage: str, settings: Settings | None = None,
 def configured(settings: Settings | None = None) -> list[str]:
     """Provedores que tem chave preenchida, na ordem de preferencia.
 
-    Usado por `agent llm-health` para checar o que da para checar, em vez de
-    falhar em quem o usuario nunca configurou.
+    Usado por `agent llm-health` para comprobar lo que se puede comprobar, en lugar de
+    fallar en un proveedor que el usuario nunca configuró.
     """
     cfg = settings or default_settings
     chaves = {"openrouter": cfg.openrouter_api_key, "gemini": cfg.gemini_api_key,

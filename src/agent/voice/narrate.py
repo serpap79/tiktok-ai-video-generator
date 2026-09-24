@@ -1,15 +1,15 @@
-"""Roteiro para wav: frase a frase, com pausa e enfase marcadas no texto.
+"""Guion a wav: frase a frase, con pausa y enfasis marcadas en el texto.
 
-Marcacao (opcional, some antes da sintese):
-- `[PAUSA CURTA]` 0,3s · `[PAUSA MEDIA]` 0,6s · `[PAUSA LONGA]` 1,0s
-- `*palavra*` poe micro-pausa (0,12s) antes e depois -- aproximacao honesta
-  de enfase: o Piper nao tem SSML, e a pausa e o que o ouvido percebe como
-  destaque sem mudar o timbre.
+Marcacion (opcional, desaparece antes de la sintesis):
+- `[PAUSA CORTA]` 0,3s · `[PAUSA MEDIA]` 0,6s · `[PAUSA LARGA]` 1,0s
+- `*palabra*` mete micro-pausa (0,12s) antes y despues -- aproximacion honesta
+  de enfasis: el Piper no tiene SSML, y la pausa es lo que el oido percibe como
+  destaque sin cambiar el timbre.
 
-Pontuacao vira pausa sozinha: ponto final e quebra de linha respiram pelo
-`pausa_frase_s` do estilo. Variacao entre geracoes vem do proprio VITS
-(amostragem com noise_scale): o mesmo roteiro nunca sai byte-identico, sem
-parametro de seed porque o motor nao expoe um.
+Puntuacion se vuelve pausa sola: punto final y salto de linea respiran por el
+`pausa_frase_s` del estilo. La variacion entre generaciones viene del propio
+VITS (muestreo con noise_scale): el mismo guion nunca sale byte-identico, sin
+parametro de seed porque el motor no expone uno.
 """
 
 from __future__ import annotations
@@ -21,13 +21,13 @@ from dataclasses import dataclass
 from agent.voice.engine import TTS, Utterance
 
 PAUSAS = {
-    "pausa curta": 0.3,
+    "pausa corta": 0.3,
     "pausa media": 0.6,
-    "pausa longa": 1.0,
+    "pausa larga": 1.0,
 }
 _MICRO_PAUSA = 0.12
-_MARCADOR = re.compile(r"\[(pausa curta|pausa media|pausa longa)\]", re.IGNORECASE)
-_ENFASE = re.compile(r"\*([^*]{1,60})\*")
+_MARCADOR = re.compile(r"\[(pausa corta|pausa media|pausa larga)\]", re.IGNORECASE)
+_ENFASIS = re.compile(r"\*([^*]{1,60})\*")
 _FRASE = re.compile(r"(?<=[.!?…])\s+|\n+")
 
 
@@ -63,12 +63,12 @@ class Narrator:
 
     def narrate(self, text: str, *, speed: float = 1.0,
                 noise: float = 0.667) -> Narration:
-        """Texto (ou narracao hook+body+closing) para audio concatenado."""
-        blocos = _expandir_marcadores(text)
+        """Texto (o narracion hook+body+closing) a audio concatenado."""
+        bloques = _expandir_marcadores(text)
         pcm = bytearray()
-        falas = 0
+        hablas = 0
         pausas = 0.0
-        for kind, valor in blocos:
+        for kind, valor in bloques:
             if kind == "pausa":
                 pcm += _silencio(self.sample_rate, valor)
                 pausas += valor
@@ -78,45 +78,45 @@ class Narrator:
                     pcm += u.pcm16
                     pcm += _silencio(self.sample_rate, self.pausa_frase_s)
                     pausas += self.pausa_frase_s
-                    falas += 1
+                    hablas += 1
         return Narration(sample_rate=self.sample_rate, pcm16=bytes(pcm),
-                         utterances=falas, pauses_s=round(pausas, 2))
+                         utterances=hablas, pauses_s=round(pausas, 2))
 
     def _tts_speak(self, frase: str, speed: float, noise: float) -> Utterance:
-        # Enfase vira pausa ao redor do trecho, nao tag enviada ao motor.
-        partes = _ENFASE.split(frase)
+        # El enfasis se vuelve pausa alrededor del pasaje, no tag enviada al motor.
+        partes = _ENFASIS.split(frase)
         if len(partes) == 1:
             return self.tts.speak(frase, speed=speed, noise=noise)
-        saida = bytearray()
+        salida = bytearray()
         rate = self.sample_rate
         for i, p in enumerate(partes):
             if not p:
                 continue
             if i % 2 == 1:
-                saida += _silencio(rate, _MICRO_PAUSA)
+                salida += _silencio(rate, _MICRO_PAUSA)
                 u = self.tts.speak(p, speed=speed, noise=noise)
-                saida += u.pcm16
-                saida += _silencio(rate, _MICRO_PAUSA)
+                salida += u.pcm16
+                salida += _silencio(rate, _MICRO_PAUSA)
                 rate = u.sample_rate
             else:
                 u = self.tts.speak(p, speed=speed, noise=noise)
-                saida += u.pcm16
+                salida += u.pcm16
                 rate = u.sample_rate
-        return Utterance(sample_rate=rate, pcm16=bytes(saida))
+        return Utterance(sample_rate=rate, pcm16=bytes(salida))
 
 
 def _expandir_marcadores(text: str) -> list[tuple[str, object]]:
-    """Texto para [('fala', trecho), ('pausa', segundos), ...]."""
-    saida: list[tuple[str, object]] = []
+    """Texto a [('habla', pasaje), ('pausa', segundos), ...]."""
+    salida: list[tuple[str, object]] = []
     pos = 0
     for m in _MARCADOR.finditer(text):
         if m.start() > pos:
-            saida.append(("fala", text[pos:m.start()]))
-        saida.append(("pausa", PAUSAS[m.group(1).lower()]))
+            salida.append(("habla", text[pos:m.start()]))
+        salida.append(("pausa", PAUSAS[m.group(1).lower()]))
         pos = m.end()
     if pos < len(text):
-        saida.append(("fala", text[pos:]))
-    return [(k, v) for k, v in saida if (k == "pausa" or str(v).strip())]
+        salida.append(("habla", text[pos:]))
+    return [(k, v) for k, v in salida if (k == "pausa" or str(v).strip())]
 
 
 __all__ = ["Narration", "Narrator", "PAUSAS"]

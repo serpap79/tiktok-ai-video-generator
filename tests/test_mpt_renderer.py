@@ -1,10 +1,10 @@
-"""Testes do adaptador do renderizador, contra um MPT simulado.
+"""Tests del adaptador del renderizador, contra un MPT simulado.
 
-O contrato aqui foi lido do codigo do MoneyPrinterTurbo, nao suposto:
-  - prefixo /api/v1 (app/controllers/v1/base.py)
-  - envelope {"status": ..., "data": {...}} (app/utils/utils.py:get_response)
-  - estados -1 falha / 1 completo / 4 processando (app/models/const.py)
-  - artefato como URI relativa /tasks/<...> quando `endpoint` esta vazio
+El contrato aquí se leyó del código de MoneyPrinterTurbo, no se supuso:
+  - prefijo /api/v1 (app/controllers/v1/base.py)
+  - envoltorio {"status": ..., "data": {...}} (app/utils/utils.py:get_response)
+  - estados -1 fallo / 1 completo / 4 procesando (app/models/const.py)
+  - artefacto como URI relativa /tasks/<...> cuando `endpoint` está vacío
 """
 
 from __future__ import annotations
@@ -20,11 +20,11 @@ from agent.config import Settings
 from agent.models import RenderState, Script
 from agent.ports.renderer import Renderer, RendererError
 
-FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "roteiro_manual.json"
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "guion_manual.json"
 
 
 def _noop(request: httpx.Request) -> httpx.Response:
-    """Handler que nunca deveria ser chamado: usado so para montar payload."""
+    """Handler que nunca debería llamarse: usado solo para montar payload."""
     return httpx.Response(200)
 
 
@@ -38,7 +38,7 @@ def script() -> Script:
 def make_renderer(handler, tmp_path: Path) -> MptRenderer:
     settings = Settings(
         renderer_url="http://mpt.test",
-        renderer_api_key="chave-de-teste",
+        renderer_api_key="clave-de-prueba",
         renderer_poll_interval_s=0.0,
         renderer_timeout_s=5.0,
         output_dir=tmp_path / "output",
@@ -47,12 +47,12 @@ def make_renderer(handler, tmp_path: Path) -> MptRenderer:
     client = httpx.Client(
         transport=httpx.MockTransport(handler),
         base_url="http://mpt.test",
-        headers={"x-api-key": "chave-de-teste"},
+        headers={"x-api-key": "clave-de-prueba"},
     )
     return MptRenderer(settings=settings, client=client)
 
 
-def test_adaptador_satisfaz_a_porta(tmp_path):
+def test_adaptador_satisface_el_puerto(tmp_path):
     def _ok(request):
         return httpx.Response(200)
 
@@ -60,47 +60,47 @@ def test_adaptador_satisfaz_a_porta(tmp_path):
 
 
 class TestPayload:
-    def test_roteiro_pronto_contorna_o_llm_do_mpt(self, script, tmp_path):
-        """task.py:generate_script so chama o LLM quando video_script vem vazio.
+    def test_guion_listo_sortea_el_llm_del_mpt(self, script, tmp_path):
+        """task.py:generate_script solo llama al LLM cuando video_script llega vacío.
 
-        Se este campo parar de ser enviado, o MPT passa a gerar roteiro proprio
-        em silencio - o agente perde o controle sem nenhum erro aparecer.
+        Si este campo dejara de enviarse, el MPT pasaría a generar guion propio
+        en silencio -- el agente pierde el control sin que aparezca ningún error.
         """
         payload = make_renderer(_noop, tmp_path).build_payload(script)
         assert payload["video_script"].strip()
         assert payload["video_script"] == script.narration
         assert payload["video_terms"] == script.search_terms
 
-    def test_pede_vertical_e_legenda_karaoke(self, script, tmp_path):
+    def test_pide_vertical_y_leyenda_karaoke(self, script, tmp_path):
         payload = make_renderer(_noop, tmp_path).build_payload(script)
         assert payload["video_aspect"] == "9:16"
         assert payload["subtitle_display_mode"] == "word_by_word"
         assert payload["subtitle_enabled"] is True
 
-    def test_voz_e_fonte_compativeis_com_ptbr(self, script, tmp_path):
-        """Voz sem sufixo -V2 roteia para o edge-tts gratuito, nao para o Azure pago.
+    def test_voz_y_fuente_compatibles_con_es(self, script, tmp_path):
+        """Voz es-ES del edge-tts gratuito: el canal es de España.
 
-        E BeVietnamPro-Bold e a unica fonte do MPT que tem os acentos do pt-BR;
-        as outras renderizam tofu no lugar de "c-cedilha" e "a-til".
+        Y BeVietnamPro-Bold es la única fuente del MPT que tiene los acentos
+        del castellano; las otras renderizan tofu en lugar de la "ñ" y los
+        acentos.
         """
         payload = make_renderer(_noop, tmp_path).build_payload(script)
-        assert payload["voice_name"].startswith("pt-BR-")
-        assert not payload["voice_name"].endswith("-V2")
+        assert payload["voice_name"].startswith("es-ES-")
         assert payload["font_name"] == "BeVietnamPro-Bold.ttf"
 
 
-class TestFluxoFeliz:
-    def test_renderiza_e_mede_o_resultado(self, script, tmp_path, monkeypatch):
-        chamadas = {"post": 0, "get": 0, "download": 0}
+class TestFlujoFeliz:
+    def test_renderiza_y_mide_el_resultado(self, script, tmp_path, monkeypatch):
+        llamadas = {"post": 0, "get": 0, "download": 0}
 
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/api/v1/videos":
-                chamadas["post"] += 1
+                llamadas["post"] += 1
                 return httpx.Response(200, json={"status": 200, "data": {"task_id": "t-1"}})
             if request.url.path == "/api/v1/tasks/t-1":
-                chamadas["get"] += 1
-                # primeiro processando, depois completo: garante que o poll roda
-                if chamadas["get"] < 2:
+                llamadas["get"] += 1
+                # primero procesando, después completo: garantiza que el poll corre
+                if llamadas["get"] < 2:
                     return httpx.Response(
                         200, json={"status": 200, "data": {"state": 4, "progress": 40}}
                     )
@@ -116,7 +116,7 @@ class TestFluxoFeliz:
                     },
                 )
             if request.url.path == "/api/v1/download/t-1/final-1.mp4":
-                chamadas["download"] += 1
+                llamadas["download"] += 1
                 return httpx.Response(200, content=b"\x00" * 1024)
             return httpx.Response(404)
 
@@ -127,24 +127,24 @@ class TestFluxoFeliz:
                 "width": 1080, "height": 1920, "duration_s": 78.4, "has_audio": True,
             },
         )
-
         result = renderer.render(script)
 
         assert result.state is RenderState.complete
         assert result.is_portrait_1080x1920
         assert result.duration_in_monetizable_range
-        assert chamadas == {"post": 1, "get": 2, "download": 1}
+        assert llamadas == {"post": 1, "get": 2, "download": 1}
         assert Path(result.video_path).read_bytes() == b"\x00" * 1024
 
-    def test_baixa_o_final_e_nao_o_combinado(self, script, tmp_path, monkeypatch):
-        """Regressao: `combined_videos` NAO e o corte final.
+    def test_descarga_el_final_y_no_el_combinado(self, script, tmp_path, monkeypatch):
+        """Regresión: `combined_videos` NO es el corte final.
 
-        No MPT, combined-N.mp4 e o concat so de video e final-N.mp4 e o corte com
-        narracao e legenda. Preferir "combined" pelo nome entrega um MP4 mudo que
-        passa em qualquer checagem de dimensao e duracao. Foi exatamente o que
-        aconteceu na primeira execucao real contra o renderizador.
+        En el MPT, combined-N.mp4 es el concat solo de vídeo y final-N.mp4 es el
+        corte con narración y leyenda. Preferir "combined" por el nombre entrega
+        un MP4 mudo que pasa cualquier comprobación de dimensión y duración. Fue
+        exactamente lo que pasó en la primera ejecución real contra el
+        renderizador.
         """
-        baixado = {"path": None}
+        bajado = {"path": None}
 
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/api/v1/videos":
@@ -161,7 +161,7 @@ class TestFluxoFeliz:
                         },
                     },
                 )
-            baixado["path"] = request.url.path
+            bajado["path"] = request.url.path
             return httpx.Response(200, content=b"x")
 
         monkeypatch.setattr(
@@ -172,41 +172,41 @@ class TestFluxoFeliz:
         )
         result = make_renderer(handler, tmp_path).render(script)
         assert result.state is RenderState.complete
-        assert baixado["path"] == "/api/v1/download/t-2/final-1.mp4"
+        assert bajado["path"] == "/api/v1/download/t-2/final-1.mp4"
         assert result.has_audio
 
 
-class TestFalhas:
-    def test_falha_de_dominio_vira_resultado_e_nao_excecao(self, script, tmp_path):
-        """Render que falha e fato do dominio: precisa ser gravavel na memoria."""
+class TestFallos:
+    def test_fallo_de_dominio_se_vuelve_resultado_y_no_excepcion(self, script, tmp_path):
+        """Render que falla es un hecho del dominio: debe ser grabable en memoria."""
 
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/api/v1/videos":
                 return httpx.Response(200, json={"status": 200, "data": {"task_id": "t-3"}})
             return httpx.Response(
                 200,
-                json={"status": 200, "data": {"state": -1, "error": "pexels sem material"}},
+                json={"status": 200, "data": {"state": -1, "error": "pexels sin material"}},
             )
 
         result = make_renderer(handler, tmp_path).render(script)
         assert result.state is RenderState.failed
         assert "pexels" in result.error
 
-    def test_fila_cheia_e_erro_de_infraestrutura(self, script, tmp_path):
+    def test_cola_llena_es_error_de_infraestructura(self, script, tmp_path):
         def handler(request):
             return httpx.Response(429, json={"status": 429, "message": "queue full"})
 
-        with pytest.raises(RendererError, match="fila"):
+        with pytest.raises(RendererError, match="cola"):
             make_renderer(handler, tmp_path).render(script)
 
-    def test_chave_errada_e_reportada_como_tal(self, script, tmp_path):
+    def test_clave_errada_se_reporta_como_tal(self, script, tmp_path):
         def handler(request):
             return httpx.Response(401, json={"status": 401})
 
         with pytest.raises(RendererError, match="x-api-key"):
             make_renderer(handler, tmp_path).render(script)
 
-    def test_timeout_nao_trava_para_sempre(self, script, tmp_path):
+    def test_timeout_no_se_cuelga_para_siempre(self, script, tmp_path):
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/api/v1/videos":
                 return httpx.Response(200, json={"status": 200, "data": {"task_id": "t-4"}})
@@ -217,8 +217,8 @@ class TestFalhas:
         with pytest.raises(RendererError, match="timeout"):
             renderer.render(script)
 
-    def test_completo_sem_artefato_nao_passa_por_sucesso(self, script, tmp_path):
-        """O pior modo de falha seria reportar sucesso sem video."""
+    def test_completo_sin_artefacto_no_pasa_por_exito(self, script, tmp_path):
+        """El peor modo de fallo sería reportar éxito sin vídeo."""
 
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/api/v1/videos":
@@ -227,20 +227,20 @@ class TestFalhas:
 
         result = make_renderer(handler, tmp_path).render(script)
         assert result.state is RenderState.failed
-        assert "sem video" in result.error
+        assert "sin video" in result.error
 
-    def test_resposta_fora_do_envelope_e_erro_claro(self, script, tmp_path):
+    def test_respuesta_fuera_del_envoltorio_es_error_claro(self, script, tmp_path):
         def handler(request):
             return httpx.Response(200, text="<html>nginx</html>")
 
-        with pytest.raises(RendererError, match="nao-JSON"):
+        with pytest.raises(RendererError, match="no es JSON"):
             make_renderer(handler, tmp_path).render(script)
 
 
 class TestHealth:
-    def test_servico_fora_do_ar_nao_levanta(self, tmp_path):
+    def test_servicio_caido_no_levanta(self, tmp_path):
         def handler(request):
-            raise httpx.ConnectError("recusado")
+            raise httpx.ConnectError("rechazado")
 
         assert make_renderer(handler, tmp_path).health() is False
 

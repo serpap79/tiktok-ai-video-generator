@@ -1,32 +1,35 @@
-"""Juiz: decide se o roteiro merece ser renderizado.
+"""Juez: decide si el guion merece ser renderizado.
 
-Dois critérios da rubrica **nao sao perguntados ao modelo**, e isso e o desenho e
-nao economia:
+Dos criterios de la rubrica **no se le preguntan al modelo**, y eso es diseno y
+no economia:
 
-- **duracao** e contagem de palavra. Perguntar a um LLM quantos segundos o texto
-  leva falado e trocar uma medida por um chute.
-- **politica** ja tem filtro escrito contra o radar real (`curator/policy.py`).
-  Reusar o mesmo filtro garante que o roteiro seja julgado pela mesma regra que
-  barrou o tema, em vez de duas listas que divergem com o tempo.
+- **duracion** es conteo de palabra. Preguntarle a un LLM cuantos segundos
+  tarda el texto en hablarse es cambiar una medida por un palo.
+- **politica** ya tiene filtro escrito contra el radar real
+  (`curator/policy.py`). Reutilizar el mismo filtro garantiza que el guion sea
+  juzgado por la misma regla que bloqueo el tema, en vez de dos listas que
+  divergen con el tiempo.
 
-Um terceiro, **fonte**, tem uma parte medida: se a narracao cita numero em digito
-que nao esta em nenhum fato do dossie, o critério vai a zero sem consultar
-ninguem. O resto do critério -- afirmacao que vai alem do dossie, numero escrito
-por extenso -- continua sendo leitura.
+Un tercero, **fuente**, tiene una parte medida: si la narracion cita numero en
+digito que no esta en ningun hecho del dossier, el criterio va a cero sin
+consultar a nadie. El resto del criterio -- afirmacion que va mas alla del
+dossier, numero escrito con letras -- sigue siendo lectura.
 
-E a ordem entre as duas metades e a mesma do curador: **medir e barato, julgar
-custa cota**. Quando a medida ja reprova em criterio de requisito, o modelo nao e
-chamado, e os criterios de leitura ficam marcados como nao avaliados. Pagar um
-parecer para confirmar uma reprovacao ja decidida seria queimar free tier -- e,
-de graca, isso torna a reprovacao demonstravel sem nenhuma chave de API.
+Y el orden entre las dos mitades es el mismo del curador: **medir es barato,
+juzgar cuesta cuota**. Cuando la medida ya reprueba en criterio de requisito,
+el modelo no se llama, y los criterios de lectura quedan marcados como no
+evaluados. Pagar un informe para confirmar un reprobo ya decidido seria quemar
+free tier -- y, de regalo, eso hace el reprobo demostrable sin ninguna clave de
+API.
 
-Sobram quatro critérios que sao mesmo julgamento -- hook, ponto de vista,
-portugues falado e fechamento -- e para esses nao existe alternativa a um leitor.
+Quedan cuatro criterios que son juicio de verdad -- hook, punto de vista,
+castellano hablado y cierre -- y para esos no existe alternativa a un lector.
 
-O corte nao e so a soma. Soma sozinha permite compensacao errada: um roteiro que
-e resumo de noticia (zero em ponto de vista) chegaria a 12 de 14 com o resto
-perfeito, sendo exatamente o "AI slop" que o Creator Rewards exclui. Por isso
-aprovar exige 11/14, **nenhum critério zerado** e nenhum veto violado.
+El corte no es solo la suma. La suma sola permite compensacion equivocada: un
+guion que es resumen de noticia (cero en punto de vista) llegaria a 12 de 14
+con el resto perfecto, siendo exactamente el "AI slop" que el Creator Rewards
+excluye. Por eso aprobar exige 11/14, **ningun criterio a cero** y ningun veto
+violado.
 """
 
 from __future__ import annotations
@@ -51,53 +54,54 @@ from agent.models import (
 from agent.ports.llm import LLM, Completion, LLMError, Usage, parse_json_object
 from agent.research.grounding import missing_numbers
 
-# Duas chances para o parecer. Truncamento e JSON malformado sao intermitentes, e
-# perder um roteiro ja escrito por causa disso custaria a proxima execucao inteira.
-MAX_TENTATIVAS = 2
+# Dos oportunidades para el informe. Truncamiento y JSON malformado son
+# intermitentes, y perder un guion ya escrito por eso costaria la ejecucion
+# entera siguiente.
+MAX_INTENTOS = 2
 
-# Criterios que dependem de leitura. A ordem e a da rubrica original.
-JULGADOS = (Criterion.hook, Criterion.fonte, Criterion.ponto_de_vista,
-            Criterion.pt_br, Criterion.cta)
+# Criterios que dependen de lectura. El orden es el de la rubrica original.
+JULGADOS = (Criterion.hook, Criterion.fuente, Criterion.punto_de_vista,
+            Criterion.idioma, Criterion.cta)
 
-DESCRICOES: dict[Criterion, str] = {
+DESCRIPCIONES: dict[Criterion, str] = {
     Criterion.hook: (
-        "A primeira frase abre uma lacuna de informacao e nao a responde? "
-        "2 = da vontade de continuar ouvindo; 1 = interessa mas entrega o assunto "
-        "de graca; 0 = anuncia o tema ('hoje vou falar sobre'). "
-        "Promessa que o video nao paga (ex. anunciar '5 IAs' e mostrar uma) "
-        "zera, mesmo com frase boa."
+        "La primera frase abre un hueco de informacion y no lo responde? "
+        "2 = dan ganas de seguir escuchando; 1 = interesa pero regala el asunto "
+        "de gratis; 0 = anuncia el tema ('hoy voy a hablar de'). "
+        "Promesa que el video no paga (ej. anunciar '5 IAs' y mostrar una) "
+        "puntua cero, incluso con frase buena."
     ),
-    Criterion.fonte: (
-        "Toda afirmacao factual da narracao esta sustentada por um fato do "
-        "dossie? 2 = todas; 1 = alguma afirmacao vai alem do que o dossie diz; "
-        "0 = ha afirmacao factual sem nenhum apoio no dossie."
+    Criterion.fuente: (
+        "Toda afirmacion factual de la narracion esta sostenida por un hecho del "
+        "dossier? 2 = todas; 1 = alguna afirmacion va mas alla de lo que el "
+        "dossier dice; 0 = hay afirmacion factual sin ningun apoyo en el dossier."
     ),
-    Criterion.ponto_de_vista: (
-        "O roteiro tem ponto de vista proprio, ou e resumo de noticia? 2 = "
-        "oferece leitura, contraste ou aponta o que as fontes NAO dizem; 1 = "
-        "quase so recontagem, com um comentario; 0 = resumo da materia."
+    Criterion.punto_de_vista: (
+        "El guion tiene punto de vista propio, o es resumen de noticia? 2 = "
+        "ofrece lectura, contraste o apunta lo que las fuentes NO dicen; 1 = "
+        "casi solo recuento, con un comentario; 0 = resumen de la noticia."
     ),
-    Criterion.pt_br: (
-        "E portugues do Brasil falado? 2 = frase curta, voz ativa, soa natural "
-        "lido em voz alta; 1 = passagens escritas demais, jargao nao explicado "
-        "ou numeros em sequencia (ficha tecnica lida em voz alta); 0 = travado, "
-        "traduzido ao pe da letra."
+    Criterion.idioma: (
+        "Es castellano hablado? 2 = frase corta, voz activa, suena natural "
+        "leido en voz alta; 1 = pasajes demasiado escritos, jerga sin explicar "
+        "o numeros en secuencia (ficha tecnica leida en voz alta); 0 = trabado, "
+        "traducido al pie de la letra."
     ),
     Criterion.cta: (
-        "O fechamento chama para algo especifico, que nao seja 'siga para "
-        "mais'? 2 = pergunta ou convite concreto ligado ao tema; 1 = generico; "
-        "0 = pede seguidor ou nao fecha."
+        "El cierre llama a algo concreto, que no sea 'sigue para mas'? 2 = "
+        "pregunta o invitacion concreta ligada al tema; 1 = generica; "
+        "0 = pide seguidor o no cierra."
     ),
 }
 
 SISTEMA = (
-    "Voce e editor de um canal brasileiro de tech, IA e ciencia, e avalia roteiros "
-    "antes da producao. Voce e severo e especifico: nota alta e excecao, e cada "
-    "nota vem com o motivo escrito de forma que o roteirista saiba o que mudar. "
-    "Voce nao reescreve o roteiro, apenas julga."
+    "Eres editor de un canal espanol de tech, IA y ciencia, y evalua guiones "
+    "antes de la produccion. Eres severo y especifico: nota alta es excepcion, y "
+    "cada nota viene con el motivo escrito de forma que el guionista sepa que "
+    "cambiar. No reescribes el guion, solo juzgas."
 )
 
-SCHEMA_PARECER: dict[str, Any] = {
+SCHEMA_INFORME: dict[str, Any] = {
     "type": "object",
     "properties": {
         criterio.value: {
@@ -116,7 +120,7 @@ SCHEMA_PARECER: dict[str, Any] = {
 
 @dataclass
 class ReviewReport:
-    """O parecer e o custo de produzi-lo."""
+    """El informe y el coste de producirlo."""
 
     review: Review | None = None
     usage: Usage = field(default_factory=Usage)
@@ -136,48 +140,48 @@ class Judge:
         self._llm = llm
 
     def review(self, script: Script, dossier: Dossier) -> ReviewReport:
-        antecipado = review_measured_only(
+        anticipado = review_measured_only(
             script, dossier,
             model=getattr(self._llm, "model", ""),
             provider=getattr(self._llm, "provider", ""),
         )
-        if antecipado is not None:
-            # Reprovado na medida: nenhuma chamada, custo zero.
-            return ReviewReport(review=antecipado)
+        if anticipado is not None:
+            # Reprobado en la medida: ninguna llamada, coste cero.
+            return ReviewReport(review=anticipado)
 
         uso = Usage()
         latencia = 0.0
         ultimo = ""
 
-        for _ in range(MAX_TENTATIVAS):
-            resposta = self._llm.complete(
+        for _ in range(MAX_INTENTOS):
+            respuesta = self._llm.complete(
                 build_prompt(script, dossier),
                 system=SISTEMA,
-                schema=SCHEMA_PARECER,
-                temperature=0.0,  # parecer precisa ser reproduzivel para o M5 comparar
+                schema=SCHEMA_INFORME,
+                temperature=0.0,  # el informe necesita ser reproducible para que el M5 compare
                 max_output_tokens=1536,
             )
-            uso = uso + resposta.usage
-            latencia = round(latencia + resposta.latency_s, 3)
+            uso = uso + respuesta.usage
+            latencia = round(latencia + respuesta.latency_s, 3)
             try:
-                julgadas = _notas_julgadas(resposta)
+                juzgados = _notas_juzgadas(respuesta)
             except LLMError as exc:
-                # Resposta malformada e truncamento sao intermitentes: o roteiro
-                # ja escrito nao pode ser perdido por causa de um JSON que abriu
-                # e nao fechou. Uma segunda chance custa menos que refazer o
-                # roteiro inteiro na proxima execucao.
+                # Respuesta malformada y truncamiento son intermitentes: el guion
+                # ya escrito no puede perderse por un JSON que abrio y no cerro.
+                # Una segunda oportunidad cuesta menos que rehacer el guion
+                # entero en la ejecucion siguiente.
                 ultimo = str(exc)
                 continue
 
             return ReviewReport(
-                review=self._montar(script, _notas_medidas(script) + julgadas),
+                review=self._montar(script, _notas_medidas(script) + juzgados),
                 usage=uso,
                 latency_s=latencia,
             )
 
         raise LLMError(
-            f"parecer invalido em {MAX_TENTATIVAS} tentativas ({ultimo}); "
-            f"gastos {uso.total_tokens} tokens"
+            f"informe invalido en {MAX_INTENTOS} intentos ({ultimo}); "
+            f"gastados {uso.total_tokens} tokens"
         )
 
     def _montar(self, script: Script, notas: list[CriterionScore]) -> Review:
@@ -193,166 +197,166 @@ class Judge:
 def review_measured_only(
     script: Script, dossier: Dossier, *, model: str = "", provider: str = ""
 ) -> Review | None:
-    """Parecer completo sem consultar modelo, quando a medida ja reprova.
+    """Informe completo sin consultar al modelo, cuando la medida ya reprueba.
 
-    Devolve None quando o roteiro passa nos critérios de requisito -- ai o
-    parecer depende de leitura e nao ha como produzi-lo sem modelo.
+    Devuelve None cuando el guion pasa los criterios de requisito -- ahi el
+    informe depende de lectura y no hay forma de producirlo sin modelo.
 
-    E funcao livre, e nao metodo, para que quem chama possa descobrir que o
-    roteiro ja reprovou **antes** de construir um adaptador e exigir chave de
-    API. E o que permite reprovar a fixture adversarial do M3 sem nenhuma conta
-    em provedor nenhum.
+    Es funcion libre, y no metodo, para que quien llama pueda descubrir que el
+    guion ya reprobo **antes** de construir un adaptador y exigir clave de API.
+    Es lo que permite reprobar la fixture adversarial del M3 sin ninguna cuenta
+    en proveedor ninguno.
     """
     medidas = measured_scores(script, dossier)
-    bloqueio = [s for s in medidas if s.score < VETO_MINIMO.get(s.criterion, 1)]
-    if not bloqueio:
+    bloqueo = [s for s in medidas if s.score < VETO_MINIMO.get(s.criterion, 1)]
+    if not bloqueo:
         return None
     return Review(
         topic=script.topic,
-        scores=medidas + _nao_avaliados(bloqueio),
+        scores=medidas + _no_evaluados(bloqueo),
         reviewed_at=datetime.now(UTC),
         model=model,
         provider=provider,
     )
 
 
-def _notas_julgadas(resposta: Completion) -> list[CriterionScore]:
-    corpo = parse_json_object(resposta.text)
+def _notas_juzgadas(respuesta: Completion) -> list[CriterionScore]:
+    cuerpo = parse_json_object(respuesta.text)
     notas: list[CriterionScore] = []
     for criterio in JULGADOS:
-        bruto = corpo.get(criterio.value)
-        if not isinstance(bruto, dict):
-            raise LLMError(f"parecer sem o criterio {criterio.value!r}")
+        crudo = cuerpo.get(criterio.value)
+        if not isinstance(crudo, dict):
+            raise LLMError(f"informe sin el criterio {criterio.value!r}")
 
-        score = bruto.get("score")
+        score = crudo.get("score")
         if isinstance(score, bool) or not isinstance(score, int) or not 0 <= score <= 2:
-            # Nota fora da escala nao e arredondada para dentro: a rubrica e de
-            # 0 a 2, e aceitar 5 seria deixar o modelo redefinir o corte.
+            # Nota fuera de la escala no se redondea hacia dentro: la rubrica es
+            # de 0 a 2, y aceptar 5 seria dejar al modelo redefinir el corte.
             raise LLMError(
-                f"criterio {criterio.value!r} veio com nota invalida: {score!r}"
+                f"criterio {criterio.value!r} vino con nota invalida: {score!r}"
             )
-        motivo = " ".join(str(bruto.get("reason") or "").split())
-        # Motivo curto demais ("ok") estourava o min_length do CriterionScore
-        # como ValidationError -- fora do LLMError que o laco trata -- e
-        # derrubava o slot inteiro. Achado no teste do piloto (20/09).
+        motivo = " ".join(str(crudo.get("reason") or "").split())
+        # Motivo demasiado corto ("ok") rebasaba el min_length del CriterionScore
+        # como ValidationError -- fuera del LLMError que el lazo trata -- y
+        # tiraba abajo el slot entero. Hallado en el test del piloto (20/09).
         if len(motivo) < 3:
-            motivo = (f"o modelo nao justificou a nota ({motivo})" if motivo
-                      else "o modelo nao justificou a nota")
+            motivo = (f"el modelo no justifico la nota ({motivo})" if motivo
+                      else "el modelo no justifico la nota")
         notas.append(CriterionScore(criterion=criterio, score=score, reason=motivo))
     return notas
 
 
 def measured_scores(script: Script, dossier: Dossier) -> list[CriterionScore]:
-    """Os critérios de requisito, medidos sem consultar modelo.
+    """Los criterios de requisito, medidos sin consultar al modelo.
 
-    Devolve duracao e politica sempre, e fonte **apenas quando a ancoragem
-    numerica falha** -- porque so nesse caso a medida decide o critério sozinha.
-    Quando os numeros conferem, fonte continua sendo leitura e sai do parecer do
-    modelo.
+    Devuelve duracion y politica siempre, y fuente **solo cuando el anclaje
+    numerico falla** -- porque solo en ese caso la medida decide el criterio
+    sola. Cuando los numeros cuadran, fuente sigue siendo lectura y sale del
+    informe del modelo.
     """
     notas = _notas_medidas(script)
-    fora = missing_numbers(script.narration, _texto_do_dossie(dossier))
-    if fora:
+    fuera = missing_numbers(script.narration, _texto_del_dossier(dossier))
+    if fuera:
         notas.append(CriterionScore(
-            criterion=Criterion.fonte,
+            criterion=Criterion.fuente,
             score=0,
-            reason=f"numero citado sem respaldo no dossie: {', '.join(fora[:4])}",
+            reason=f"numero citado sin respaldo en el dossier: {', '.join(fuera[:4])}",
             measured=True,
         ))
     return notas
 
 
-def _nao_avaliados(bloqueio: list[CriterionScore]) -> list[CriterionScore]:
-    """Preenche a rubrica com os critérios que nao foram julgados, e diz por que.
+def _no_evaluados(bloqueo: list[CriterionScore]) -> list[CriterionScore]:
+    """Rellena la rubrica con los criterios que no fueron juzgados, y dice por que.
 
-    A rubrica continua completa -- parecer com criterio faltando nao valida --
-    mas zero aqui significa "nao sei", e `evaluated=False` marca isso para que a
-    nota nao volte ao roteirista como se fosse critica ao texto.
+    La rubrica sigue completa -- informe con criterio faltante no valida -- pero
+    cero aqui significa "no se", y `evaluated=False` lo marca para que la nota
+    no vuelva al guionista como si fuera critica al texto.
     """
     motivo = (
-        "nao avaliado: o roteiro reprovou antes em "
-        + ", ".join(sorted(s.criterion.value for s in bloqueio))
-        + " (medido), e o parecer do modelo nao mudaria o resultado"
+        "no evaluado: el guion reprobo antes en "
+        + ", ".join(sorted(s.criterion.value for s in bloqueo))
+        + " (medido), y el informe del modelo no cambiaria el resultado"
     )
-    ja_medidos = {s.criterion for s in bloqueio}
+    ya_medidos = {s.criterion for s in bloqueo}
     return [
         CriterionScore(criterion=c, score=0, reason=motivo, evaluated=False)
         for c in JULGADOS
-        if c not in ja_medidos
+        if c not in ya_medidos
     ]
 
 
 def _notas_medidas(script: Script) -> list[CriterionScore]:
-    """Duracao e politica: medida, nunca leitura."""
-    duracao = script.estimated_duration_s
-    faixa = ((SHORT_MIN_DURATION_S, SHORT_MAX_DURATION_S) if script.format == "short"
-             else (MIN_DURATION_S, MAX_DURATION_S))
-    na_faixa = faixa[0] <= duracao <= faixa[1]
-    # Nao existe meio ponto para duracao: ou o video esta na faixa do formato,
-    # ou nao e.
-    nota_duracao = CriterionScore(
-        criterion=Criterion.duracao,
-        score=2 if na_faixa else 0,
+    """Duracion y politica: medida, nunca lectura."""
+    duracion = script.estimated_duration_s
+    franja = ((SHORT_MIN_DURATION_S, SHORT_MAX_DURATION_S) if script.format == "short"
+              else (MIN_DURATION_S, MAX_DURATION_S))
+    en_franja = franja[0] <= duracion <= franja[1]
+    # No existe medio punto para duracion: o el video esta en la franja del
+    # formato, o no lo esta.
+    nota_duracion = CriterionScore(
+        criterion=Criterion.duracion,
+        score=2 if en_franja else 0,
         reason=(
-            f"{script.word_count} palavras, ~{duracao:.0f}s estimados "
-            f"(faixa exigida: {faixa[0]}-{faixa[1]}s)"
-            + ("" if na_faixa else "; fora da faixa do formato")
+            f"{script.word_count} palabras, ~{duracion:.0f}s estimados "
+            f"(franja exigida: {franja[0]}-{franja[1]}s)"
+            + ("" if en_franja else "; fuera de la franja del formato")
         ),
         measured=True,
     )
 
-    veredito = policy.check(script.narration)
+    veredicto = policy.check(script.narration)
     nota_politica = CriterionScore(
         criterion=Criterion.politica,
-        score=2 if veredito.allowed else 0,
+        score=2 if veredicto.allowed else 0,
         reason=(
-            "nenhum termo da lista de politica na narracao"
-            if veredito.allowed
-            else f"politica/{veredito.rule}: '{veredito.matched}' — {veredito.reason}"
+            "ningun termino de la lista de politica en la narracion"
+            if veredicto.allowed
+            else f"politica/{veredicto.rule}: '{veredicto.matched}' — {veredicto.reason}"
         ),
         measured=True,
     )
-    return [nota_duracao, nota_politica]
+    return [nota_duracion, nota_politica]
 
 
-def _texto_do_dossie(dossier: Dossier) -> str:
+def _texto_del_dossier(dossier: Dossier) -> str:
     return "\n".join(f"{f.claim}\n{f.quote}" for f in dossier.facts)
 
 
 def build_prompt(script: Script, dossier: Dossier) -> str:
-    """Monta o prompt do parecer. Funcao livre para o teste inspecionar o texto."""
-    fatos = "\n".join(
-        f"[{i}] {f.claim} (fonte: {f.source_name})" for i, f in enumerate(dossier.facts)
+    """Compone el prompt del informe. Funcion libre para que el test inspeccione el texto."""
+    hechos = "\n".join(
+        f"[{i}] {f.claim} (fuente: {f.source_name})" for i, f in enumerate(dossier.facts)
     )
-    rubrica = "\n".join(f"- {c.value}: {DESCRICOES[c]}" for c in JULGADOS)
-    loop = (
-        "\nFECHAMENTO EM LOOP: video curto vive de replay automatico; o "
-        "criterio cta vale 2 quando o fechamento reconecta com a pergunta do "
-        "hook, e 0 quando e CTA generico."
+    rubrica = "\n".join(f"- {c.value}: {DESCRIPCIONES[c]}" for c in JULGADOS)
+    lazo = (
+        "\nCIERRE EN BUCLE: el video corto vive del replay automatico; el "
+        "criterio cta vale 2 cuando el cierre reconecta con la pregunta del "
+        "hook, y 0 cuando es CTA generico."
         if script.format == "short" else ""
     )
     tipo = _expectativa(script.pillar)
     return (
         f"TEMA: {script.topic}\n\n"
-        f"DOSSIE DISPONIVEL AO ROTEIRISTA:\n{fatos}\n\n"
-        "ROTEIRO A AVALIAR\n"
+        f"DOSSIER DISPONIBLE PARA EL GUIONISTA:\n{hechos}\n\n"
+        "GUION A EVALUAR\n"
         f"HOOK: {script.hook}\n\n"
-        f"CORPO: {script.body}\n\n"
-        f"FECHAMENTO: {script.closing}\n\n"
-        "RUBRICA (nota de 0 a 2 em cada critério)\n"
-        f"{rubrica}{loop}{tipo}\n\n"
-        "Devolva um objeto json com um campo por critério, cada um com 'reason' "
-        "(uma frase dizendo o que precisa mudar, em portugues) e 'score' (0, 1 ou 2). "
-        "Escreva a razao antes da nota. Nao avalie duracao nem politica: "
-        "esses dois sao medidos fora do seu parecer."
+        f"CUERPO: {script.body}\n\n"
+        f"CIERRE: {script.closing}\n\n"
+        "RUBRICA (nota de 0 a 2 en cada criterio)\n"
+        f"{rubrica}{lazo}{tipo}\n\n"
+        "Devuelve un objeto json con un campo por criterio, cada uno con 'reason' "
+        "(una frase diciendo lo que hay que cambiar, en castellano) y 'score' (0, 1 o 2). "
+        "Escribe la razon antes de la nota. No evalues duracion ni politica: "
+        "esos dos se miden fuera de tu informe."
     )
 
 
 def _expectativa(pillar: str) -> str:
-    """A formula do tipo de conteudo, para o juiz cobrar o que o roteirista recebeu.
+    """La formula del tipo de contenido, para que el juez exija lo que el guionista recibio.
 
-    Sem isso o juiz julgaria um tutorial pela regua de noticia: o ponto de
-    vista de um tutorial e "o erro comum que anula tudo", nao uma opiniao.
+    Sin esto el juez juzgaria un tutorial con la regla de noticia: el punto de
+    vista de un tutorial es "el error comun que lo anula todo", no una opinion.
     """
     if not pillar:
         return ""
@@ -362,5 +366,4 @@ def _expectativa(pillar: str) -> str:
     if p is None:
         return ""
     return (f"\nTIPO {p.tag}: gancho esperado = {p.hook_formula}; batidas = "
-            + " -> ".join(p.beats) + ". Use isso para ler hook e ponto_de_vista.")
-
+            + " -> ".join(p.beats) + ". Usa esto para leer hook y punto_de_vista.")

@@ -1,12 +1,12 @@
-"""Laco roteirista <-> juiz: escreve, julga, devolve para revisao, no maximo 2x.
+"""Bucle guionista <-> juez: escribe, juzga y devuelve para revisión, como máximo 2 veces.
 
 Mora fora dos dois estagios de proposito. Se o roteirista soubesse do juiz, ele
 passaria a escrever para a rubrica e o parecer deixaria de ser independente; se o
-juiz soubesse do roteirista, ele julgaria a tentativa e nao o texto. O que
+el juez conociera al guionista, juzgaría el intento y no el texto. Lo que
 coordena os dois e uma terceira coisa, pequena, que so sabe contar rodadas.
 
-O teto de duas revisoes nao e arbitrario: a partir da terceira, o que costuma
-acontecer nao e o roteiro melhorar, e o modelo comecar a trocar de assunto para
+El límite de dos revisiones no es arbitrario: desde la tercera, lo habitual no es
+que el guion mejore, sino que el modelo empiece a cambiar de tema para
 agradar a rubrica. Melhor reprovar com o motivo gravado e escolher outro tema.
 """
 
@@ -26,12 +26,12 @@ MAX_REVISOES = 2
 
 @dataclass
 class Round:
-    """Uma rodada: o que foi escrito, com que notas, e o que o juiz achou."""
+    """Una ronda: lo escrito, las notas recibidas y lo que encontró el juez."""
 
     notes_in: list[str] = field(default_factory=list)
     write: WriteReport | None = None
     review: ReviewReport | None = None
-    # Falha de provedor no meio da rodada, com o estagio em que aconteceu.
+    # Fallo del proveedor a mitad de la ronda, con la etapa en la que ocurrió.
     failure: str = ""
 
     @property
@@ -43,8 +43,8 @@ class Round:
 class ProductionReport:
     """O resultado do laco, com as rodadas todas -- inclusive as reprovadas.
 
-    A rodada reprovada e o dado mais util aqui: ela diz em que critério a
-    rubrica bate com mais frequencia, e e por isso que o roteiro final nao chega
+    La ronda suspendida aporta el dato más útil: indica con qué frecuencia la rúbrica
+    incumple un criterio y por eso el guion final no llega
     sozinho.
     """
 
@@ -122,23 +122,22 @@ def produce(
                 dossier, mode=mode, notes=notas or None, pillar=pillar,
                 previous=_narracao(report) if notas else "")
         except LLMError as exc:
-            # Cota ou instabilidade. O laco termina aqui, mas registrando o
-            # estagio e mantendo o custo ja gasto no relatorio -- sob restricao de
-            # $0, saber quanto se pagou por uma execucao que nao entregou nada e
-            # parte do resultado.
-            rodada.failure = f"roteirista: {type(exc).__name__}: {exc}"
+            # Cuota o inestabilidad. El bucle termina aquí, pero registrando la
+            # etapa y conservando el coste ya gastado. Con la restricción de $0,
+            # saber cuánto se pagó por una ejecución fallida es parte del resultado.
+            rodada.failure = f"guionista: {type(exc).__name__}: {exc}"
             return report
 
         if rodada.write.script is None:
-            # O roteirista nao passou nos proprios portoes mecanicos em tres
-            # tentativas. Chamar o juiz agora seria pagar por um parecer sobre um
-            # texto que ja se sabe fora da faixa de duracao.
+            # El guionista no superó sus propias comprobaciones mecánicas en tres
+            # intentos. Llamar ahora al juez sería pagar un informe sobre un texto
+            # que ya se sabe fuera del intervalo de duración.
             return report
 
         try:
             rodada.review = judge.review(rodada.write.script, dossier)
         except LLMError as exc:
-            rodada.failure = f"juiz: {type(exc).__name__}: {exc}"
+            rodada.failure = f"juez: {type(exc).__name__}: {exc}"
             return report
 
         if rodada.review.approved:
@@ -232,14 +231,14 @@ def produce_carousel(
         try:
             rodada.write = write_carousel(dossier, llm, notes=notas or None, pillar=pillar)
         except LLMError as exc:
-            rodada.failure = f"roteirista: {type(exc).__name__}: {exc}"
+            rodada.failure = f"guionista: {type(exc).__name__}: {exc}"
             return report
         if rodada.write.carousel is None:
             return report
         try:
             rodada.review = judge_carousel(rodada.write.carousel, dossier, judge_llm or llm)
         except LLMError as exc:
-            rodada.failure = f"juiz: {type(exc).__name__}: {exc}"
+            rodada.failure = f"juez: {type(exc).__name__}: {exc}"
             return report
         if rodada.review.approved:
             return report
@@ -249,7 +248,7 @@ def produce_carousel(
 
 
 def _narracao(report: ProductionReport) -> str:
-    """Narracao do ultimo roteiro escrito, para a revisao ajustar e nao recomecar."""
+    """Narración del último guion escrito, para que la revisión lo ajuste sin reiniciar."""
     for r in reversed(report.rounds):
         if r.write is not None and r.write.script is not None:
             return r.write.script.narration

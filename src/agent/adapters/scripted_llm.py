@@ -1,19 +1,19 @@
-"""Adaptador da porta LLM que nao chama modelo nenhum.
+"""Adaptador de la puerta LLM que no llama a ningún modelo.
 
-Vive em `src/` e nao em `tests/` por dois motivos:
+Vive en `src/` y no en `tests/` por dos motivos:
 
 - **a suite inteira roda offline.** Um estagio que so funciona com chave de API
-  nao teria teste, e o pesquisador e o juiz sao exatamente onde um bug custa
+  no tendría pruebas, y el investigador y el juez son precisamente donde un error cuesta
   caro: dossie com fato sem fonte passa despercebido.
 - **o eval do M5 vai reexecutar respostas gravadas.** Comparar provedores na
   mesma rubrica exige poder rejulgar o mesmo material sem gastar cota outra vez,
-  e este e o encaixe onde a resposta gravada entra. Nao esta exposto na CLI hoje
-  porque ainda nao ha o que reexecutar.
+  este es el punto donde entra la respuesta grabada. No está expuesto en la CLI hoy
+  porque todavía no hay nada que reejecutar.
 
-Nao finge ser modelo: devolve respostas na ordem em que foram dadas. A esperteza
-que ele tem e registrar as chamadas, o que permite ao teste afirmar que o
-pesquisador mandou **uma chamada por fonte** -- que e o que garante que a URL de
-cada fato vem de nos e nao do modelo.
+No finge ser un modelo: devuelve las respuestas en el orden recibido. La inteligencia
+que aporta consiste en registrar las llamadas, lo que permite al test afirmar que el
+investigador envió **una llamada por fuente**, lo que garantiza que la URL de
+cada hecho venga de nosotros y no del modelo.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class ScriptedLLM:
         elif self.responses:
             texto = self.responses.pop(0)
         else:
-            # Erro de teste, nao de dominio: significa que o estagio chamou o
+            # Error de prueba, no de dominio: significa que la etapa llamó al
             # modelo mais vezes do que o teste previu, e silenciar isso esconderia
             # justamente a chamada extra que se queria contar.
             raise LLMError("ScriptedLLM sem resposta restante para esta chamada")
@@ -68,7 +68,7 @@ class ScriptedLLM:
             text=texto,
             model=self.model,
             provider=self.provider,
-            # Contagem grosseira por palavra. Nao vale como medida de custo -- e
+            # Estimación aproximada por palabras. No sirve como medida de coste: es
             # so o suficiente para que o encanamento de uso do M5 seja exercitado
             # pelos testes em vez de existir sem nunca ser somado.
             usage=Usage(

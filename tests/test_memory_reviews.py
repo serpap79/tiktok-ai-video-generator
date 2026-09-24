@@ -1,8 +1,8 @@
-"""Testes da memoria de pareceres.
+"""Tests de la memoria de informes.
 
-Tabela propria, e nao colunas em `scripts`, porque o mesmo roteiro pode ser
-julgado mais de uma vez: o eval do M5 compara juizes de modelos diferentes sobre
-o MESMO texto, e isso e uma relacao de um para muitos.
+Tabla propia, y no columnas en `scripts`, porque el mismo guion puede ser
+juzgado mas de una vez: el eval del M5 compara jueces de modelos diferentes sobre
+el MISMO texto, y eso es una relacion de uno a muchos.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import pytest
 from agent.memory.store import SignalStore
 from agent.models import Criterion, CriterionScore, Review
 
-AGORA = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+AHORA = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -22,96 +22,96 @@ def store(tmp_path) -> SignalStore:
     return SignalStore(tmp_path / "agent.db")
 
 
-def parecer(nota_hook: int = 2, model: str = "gemini-2.5-flash",
+def informe(nota_hook: int = 2, model: str = "gemini-2.5-flash",
             provider: str = "gemini") -> Review:
     notas = [
-        CriterionScore(criterion=c, score=2, reason=f"sem ressalva em {c.value}")
-        for c in Criterion if c not in (Criterion.hook, Criterion.fluxo)
+        CriterionScore(criterion=c, score=2, reason=f"sin salvedad en {c.value}")
+        for c in Criterion if c not in (Criterion.hook, Criterion.flujo)
     ]
     notas.append(CriterionScore(
-        criterion=Criterion.hook, score=nota_hook, reason="o hook entrega o assunto",
+        criterion=Criterion.hook, score=nota_hook, reason="el hook entrega el asunto",
     ))
-    return Review(topic="Bonsai 2 27B", scores=notas, reviewed_at=AGORA,
+    return Review(topic="Bonsai 2 27B", scores=notas, reviewed_at=AHORA,
                   model=model, provider=provider)
 
 
-class TestGravacao:
-    def test_parecer_volta_com_nota_e_motivo_de_cada_criterio(self, store):
-        store.record_review(parecer(), usage=(1500, 200), latency_s=2.2)
-        lido = store.latest_review()
-        assert set(lido.by_criterion) == set(Criterion) - {Criterion.fluxo}
-        assert lido.by_criterion[Criterion.hook].reason == "o hook entrega o assunto"
-        assert lido.total == parecer().total
+class TestGrabacion:
+    def test_el_informe_vuelve_con_nota_y_motivo_de_cada_criterio(self, store):
+        store.record_review(informe(), usage=(1500, 200), latency_s=2.2)
+        leido = store.latest_review()
+        assert set(leido.by_criterion) == set(Criterion) - {Criterion.flujo}
+        assert leido.by_criterion[Criterion.hook].reason == "el hook entrega el asunto"
+        assert leido.total == informe().total
 
-    def test_soma_e_aprovacao_ficam_em_coluna(self, store):
-        """Agregar por SQL sem abrir o JSON de cada parecer."""
-        store.record_review(parecer(nota_hook=0), usage=(1, 1), latency_s=0.1)
+    def test_suma_y_aprobacion_se_quedan_en_columna(self, store):
+        """Agregar por SQL sin abrir el JSON de cada informe."""
+        store.record_review(informe(nota_hook=0), usage=(1, 1), latency_s=0.1)
         with store._conn() as conn:
             row = conn.execute("SELECT total, approved, provider FROM reviews").fetchone()
         assert row["total"] == 12
         assert row["approved"] == 0
         assert row["provider"] == "gemini"
 
-    def test_dois_pareceres_para_o_mesmo_roteiro(self, store):
-        """E o formato do eval do M5: juizes diferentes, texto identico."""
+    def test_dos_informes_para_el_mismo_guion(self, store):
+        """Y es el formato del eval del M5: jueces distintos, texto identico."""
         from agent.models import Fact, Script
 
         script_id = store.record_script(
             Script(
                 topic="Bonsai 2 27B",
-                hook="Um modelo enorme cabe num pendrive.",
-                body="Corpo do roteiro com tamanho suficiente para o contrato do modelo.",
-                closing="Que numero voce confere hoje?",
+                hook="Un modelo enorme cabe en un pendrive.",
+                body="Cuerpo del guion con tamano suficiente para el contrato del modelo.",
+                closing="En que numero confiaras hoy?",
                 search_terms=["memory chip", "server rack", "binary code"],
-                facts=[Fact(claim="Ocupa 5,9 GB, mais de 9x menor",
+                facts=[Fact(claim="Ocupa 5,9 GB, mas de 9 veces menor",
                             source_url="https://prismml.com/x", source_name="PrismML")],
             ),
             model="m", provider="p", usage=(1, 1), latency_s=0.1,
             attempts=[{"violations": [], "word_count": 180}],
         )
-        store.record_review(parecer(model="gemini-2.5-flash", provider="gemini"),
+        store.record_review(informe(model="gemini-2.5-flash", provider="gemini"),
                             usage=(1, 1), latency_s=0.1, script_id=script_id)
-        store.record_review(parecer(nota_hook=1, model="llama-3.3-70b", provider="groq"),
+        store.record_review(informe(nota_hook=1, model="llama-3.3-70b", provider="groq"),
                             usage=(1, 1), latency_s=0.1, script_id=script_id)
 
         with store._conn() as conn:
-            linhas = conn.execute(
+            filas = conn.execute(
                 "SELECT provider, total FROM reviews WHERE script_id = ? ORDER BY id",
                 (script_id,),
             ).fetchall()
-        assert [(r["provider"], r["total"]) for r in linhas] == [("gemini", 14), ("groq", 13)]
+        assert [(r["provider"], r["total"]) for r in filas] == [("gemini", 14), ("groq", 13)]
         assert store.review_count() == 2
 
 
-class TestLeitura:
-    def test_mais_recente_por_tema(self, store):
-        store.record_review(parecer(nota_hook=0), usage=(1, 1), latency_s=0.1)
-        store.record_review(parecer(nota_hook=2), usage=(1, 1), latency_s=0.1)
+class TestLectura:
+    def test_el_mas_reciente_por_tema(self, store):
+        store.record_review(informe(nota_hook=0), usage=(1, 1), latency_s=0.1)
+        store.record_review(informe(nota_hook=2), usage=(1, 1), latency_s=0.1)
         assert store.latest_review("Bonsai 2 27B").approved
 
-    def test_memoria_vazia_devolve_none(self, store):
+    def test_memoria_vacia_devuelve_none(self, store):
         assert store.latest_review() is None
         assert store.review_count() == 0
 
 
-def test_parecer_interrompido_e_identificavel_depois(store):
-    """O eval do M5 precisa filtrar parecer interrompido antes de agregar nota:
-    4/14 de um roteiro reprovado na medida nao e comparavel com 4/14 julgado."""
+def test_informe_interrumpido_es_identificable_despues(store):
+    """El eval del M5 necesita filtrar informe interrumpido antes de agregar nota:
+    4/14 de un guion reprobado en la medida no es comparable con 4/14 juzgado."""
     notas = [
-        CriterionScore(criterion=Criterion.duracao, score=2, reason="210 palavras"),
-        CriterionScore(criterion=Criterion.politica, score=2, reason="sem termo vetado"),
-        CriterionScore(criterion=Criterion.fonte, score=0, reason="numero 12 sem respaldo",
+        CriterionScore(criterion=Criterion.duracion, score=2, reason="210 palabras"),
+        CriterionScore(criterion=Criterion.politica, score=2, reason="sin termino vetado"),
+        CriterionScore(criterion=Criterion.fuente, score=0, reason="numero 12 sin respaldo",
                        measured=True),
     ]
     notas += [
-        CriterionScore(criterion=c, score=0, reason="nao avaliado: reprovou antes",
+        CriterionScore(criterion=c, score=0, reason="no evaluado: reprobo antes",
                        evaluated=False)
-        for c in (Criterion.hook, Criterion.ponto_de_vista, Criterion.pt_br, Criterion.cta)
+        for c in (Criterion.hook, Criterion.punto_de_vista, Criterion.idioma, Criterion.cta)
     ]
     store.record_review(
-        Review(topic="t", scores=notas, reviewed_at=AGORA), usage=(0, 0), latency_s=0.0
+        Review(topic="t", scores=notas, reviewed_at=AHORA), usage=(0, 0), latency_s=0.0
     )
-    lido = store.latest_review()
-    assert lido.short_circuited
-    assert lido.total == 4
-    assert lido.revision_notes == ["[fonte 0/2] numero 12 sem respaldo"]
+    leido = store.latest_review()
+    assert leido.short_circuited
+    assert leido.total == 4
+    assert leido.revision_notes == ["[fuente 0/2] numero 12 sin respaldo"]

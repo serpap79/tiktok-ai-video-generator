@@ -1,14 +1,14 @@
-"""Vocabulario visual do canal: 4 pilares esteticos, tags fixas em ingles.
+"""Vocabulario visual del canal: 5 pilares esteticos, tags fijas en ingles.
 
-Canal dark vive de identidade repetida: quem assiste tres videos precisa
-reconhecer o quarto pelo visual antes da primeira palavra. Busca generica
-("server rack blue lights") rende material aleatorio a cada render e nunca
-constrói essa assinatura. Por isso `search_terms` nao e texto livre: sai
-verbatim de um dos quatro pilares abaixo, todos de um unico pilar por roteiro.
+Un canal dark vive de identidad repetida: quien ve tres videos tiene que
+reconocer el cuarto por el visual antes de la primera palabra. Busca generica
+("server rack blue lights") da material aleatorio en cada render y nunca
+construye esa firma. Por eso `search_terms` no es texto libre: sale verbatim de
+uno de los cinco pilares de abajo, todos de un unico pilar por guion.
 
-As tags vao direto para o Pexels sem traducao, entao valem as mesmas regras do
-`Script.search_terms`: ASCII e cena filmavel concreta. Tag fora do pool e
-defeito mecanico -- volta ao modelo com a lista, como contagem de palavra.
+Las tags van directo a Pexels sin traduccion, asi que valen las mismas reglas
+del `Script.search_terms`: ASCII y escena filmable concreta. Tag fuera del pool
+es defecto mecanico -- vuelve al modelo con la lista, como el conteo de palabra.
 """
 
 from __future__ import annotations
@@ -19,14 +19,14 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Pillar:
     id: str
-    nome: str
+    nombre: str
     tags: tuple[str, ...]
 
 
 PILLARS: dict[str, Pillar] = {
     "A": Pillar(
         id="A",
-        nome="IA Sombria / Consciencia de Maquina (Dark AI / Sci-Fi)",
+        nombre="IA Oscura / Conciencia de Maquina (Dark AI / Sci-Fi)",
         tags=(
             "cybernetic brain",
             "sentient ai",
@@ -38,7 +38,7 @@ PILLARS: dict[str, Pillar] = {
     ),
     "B": Pillar(
         id="B",
-        nome="Programacao / Hacking / Dados (Cyberpunk Code)",
+        nombre="Programacion / Hacking / Datos (Cyberpunk Code)",
         tags=(
             "matrix code rain",
             "cyberpunk hacking terminal",
@@ -49,7 +49,7 @@ PILLARS: dict[str, Pillar] = {
     ),
     "C": Pillar(
         id="C",
-        nome="Redes Neurais / Deep Web / Conectividade (Abstract Tech)",
+        nombre="Redes Neuronales / Deep Web / Conectividad (Abstract Tech)",
         tags=(
             "neural network nodes",
             "abstract digital plexus",
@@ -60,7 +60,7 @@ PILLARS: dict[str, Pillar] = {
     ),
     "D": Pillar(
         id="D",
-        nome='Estilo "Futuro Proximo" / Corporativo High-Tech (Sleek Tech)',
+        nombre='Estilo "Futuro Cercano" / Corporativo High-Tech (Sleek Tech)',
         tags=(
             "futuristic clean UI",
             "augmented reality hud",
@@ -68,12 +68,12 @@ PILLARS: dict[str, Pillar] = {
             "minimalist tech laboratory",
         ),
     ),
-    # Adicionado em 19/09/2026: o primeiro video de ciencia do piloto (Marte)
-    # saiu com androides e olho bionico, porque nenhum dos quatro pilares de
-    # tech tinha estetica de ciencia e espaco. Mesma regra: escuro, filmavel.
+    # Anadido en 19/09/2026: el primer video de ciencia del piloto (Marte)
+    # salio con androides y ojo bionico, porque ninguno de los cuatro pilares
+    # de tech tenia estetica de ciencia y espacio. Misma regla: oscuro, filmable.
     "E": Pillar(
         id="E",
-        nome="Ciencia e Espaco (Cosmos / Lab)",
+        nombre="Ciencia y Espacio (Cosmos / Lab)",
         tags=(
             "galaxy stars timelapse",
             "nebula deep space",
@@ -86,7 +86,7 @@ PILLARS: dict[str, Pillar] = {
 }
 
 def normalize(term: str) -> str:
-    """Minuscula e espaco simples: '  Bionic  Eye NEON ' casa com o pool."""
+    """Minusculas y espacio simple: '  Bionic  Eye NEON ' casa con el pool."""
     return " ".join(term.lower().split())
 
 
@@ -96,81 +96,82 @@ _TAG_TO_PILLAR: dict[str, str] = {
 
 
 def pillar_of(terms: list[str]) -> str | None:
-    """O pilar com mais tags entre os termos, ou None se nenhum casa.
+    """El pilar con mas tags entre los terminos, o None si ninguno casa.
 
-    Derivavel a qualquer momento dos `search_terms` gravados -- por isso o
-    pilar nao e coluna no banco: e funcao do roteiro, nao dado novo.
+    Derivable en cualquier momento de los `search_terms` grabados -- por eso el
+    pilar no es columna en la base: es funcion del guion, no dato nuevo.
     """
-    contagem: dict[str, int] = {}
+    conteo: dict[str, int] = {}
     for t in terms:
         pid = _TAG_TO_PILLAR.get(normalize(t))
         if pid is not None:
-            contagem[pid] = contagem.get(pid, 0) + 1
-    if not contagem:
+            conteo[pid] = conteo.get(pid, 0) + 1
+    if not conteo:
         return None
-    return max(sorted(contagem), key=lambda pid: contagem[pid])
+    return max(sorted(conteo), key=lambda pid: conteo[pid])
 
 
 def validate_terms(terms: list[str]) -> list[str]:
-    """Violoes de vocabulario, em texto que volta ao modelo como correcao."""
+    """Violaciones de vocabulario, en texto que vuelve al modelo como correccion."""
     problemas: list[str] = []
-    fora = sorted({t for t in terms if normalize(t) not in _TAG_TO_PILLAR})
-    if fora:
+    fuera = sorted({t for t in terms if normalize(t) not in _TAG_TO_PILLAR})
+    if fuera:
         problemas.append(
-            "search_terms fora do vocabulario visual: "
-            + ", ".join(f"{t!r}" for t in fora) + ". "
-            "Use tags EXATAS de um unico pilar da lista de ESTETICA."
+            "search_terms fuera del vocabulario visual: "
+            + ", ".join(f"{t!r}" for t in fuera) + ". "
+            "Usa tags EXACTAS de un unico pilar de la lista de ESTETICA."
         )
     pilares = sorted({_TAG_TO_PILLAR[normalize(t)] for t in terms
                       if normalize(t) in _TAG_TO_PILLAR})
     if len(pilares) > 1:
         problemas.append(
-            "search_terms misturam pilares "
-            + "/".join(pilares) + ": um roteiro, um pilar. "
-            "Identidade visual se constrói por repeticao, nao por variedade."
+            "search_terms mezclan pilares "
+            + "/".join(pilares) + ": un guion, un pilar. "
+            "La identidad visual se construye por repeticion, no por variedad."
         )
     return problemas
 
 
-# Palavras do tema (pt e en) que puxam cada pilar. Ordem importa: A antes de B
-# antes de C; o que nao casar cai no D, que e o pilar generico do canal.
-_PALAVRAS: dict[str, tuple[str, ...]] = {
-    "E": ("marte", "mars", "espaco", "espaço", "space", "nasa", "esa ", "planeta",
-          "planet", "galaxia", "galáxia", "galaxy", "estrela", "telescopio",
-          "telescópio", "telescope", "astronom", "cosmos", "universo", "universe",
-          " lua", "moon", "satelite", "satélite", "orbita", "órbita", "sonda",
-          "foguete", "rocket", "cerebro", "cérebro", "brain", "dna", "celula",
-          "célula", "genoma", "fisica", "física", "quimica", "química", "biolog",
-          "neurocien", "cientistas", "scientists", "fossil", "fóssil", "vulcao"),
-    "A": ("robo", "robô", "robot", "android", "humanoide", "humanoid",
-          "consciencia", "consciência", "consciousness", "sentient",
-          "bionic", "biônic", "cyborg", "ciborgue"),
-    "B": ("codigo", "código", "code", "hack", "cyber", "seguranca",
-          "segurança", "security", "servidor", "server", "terminal",
-          "breach", "vazamento", "malware", "ransomware", "programa",
+# Palabras del tema (castellano e ingles) que tiran de cada pilar. El orden
+# importa: A antes de B antes de C; lo que no case cae en D, el pilar generico
+# del canal.
+_PALABRAS: dict[str, tuple[str, ...]] = {
+    "E": ("marte", "mars", "espacio", "space", "nasa", "esa ", "planeta",
+          "planet", "galaxia", "galaxia", "galaxy", "estrella", "telescopio",
+          "telescopio", "telescope", "astronom", "cosmos", "universo", "universe",
+          " luna", "moon", "satelite", "satelite", "orbita", "orbita", "sonda",
+          "cohete", "rocket", "cerebro", "cerebro", "brain", "dna", "celula",
+          "celula", "genoma", "fisica", "fisica", "quimica", "quimica", "biolog",
+          "neurocien", "cientificos", "scientists", "fosil", "fosil", "volcan"),
+    "A": ("robot", "robot", "robot", "android", "humanoide", "humanoid",
+          "conciencia", "conciencia", "consciousness", "sentient",
+          "bionic", "bionic", "cyborg", "ciborg"),
+    "B": ("codigo", "codigo", "code", "hack", "cyber", "seguridad",
+          "seguridad", "security", "servidor", "server", "terminal",
+          "breach", "fuga", "malware", "ransomware", "programa",
           "programador", "developer"),
-    "C": ("neural", "quantum", "quantic", "quântic", "deep learning",
-          "aprendizado", "network", "rede", "conectividade", "plexus",
-          "stream", "dados", "data", "modelo", "model", "parametro",
-          "parâmetro", "token", "treinamento", "training"),
+    "C": ("neural", "quantum", "quantic", "cuantic", "deep learning",
+          "aprendizaje", "network", "red", "conectividad", "plexus",
+          "stream", "datos", "data", "modelo", "model", "parametro",
+          "parametro", "token", "entrenamiento", "training"),
 }
 
-_PILAR_SUGERIDO_POR_OMISSAO = "D"
+_PILAR_SUGERIDO_POR_DEFECTO = "D"
 
 
 def suggest_pillar(topic: str) -> str:
-    """Pilar sugerido pelo assunto. Orientacao, nao decisao: o modelo escolhe."""
-    baixo = f" {topic.lower()} "
-    # Robo antes de ciencia ("robo em Marte" e robo); ciencia antes de dados.
+    """Pilar sugerido por el asunto. Orientacion, no decision: el modelo elige."""
+    bajo = f" {topic.lower()} "
+    # Robot antes de ciencia ("robot en Marte" es robot); ciencia antes de datos.
     for pid in ("A", "E", "B", "C"):
-        if any(p in baixo for p in _PALAVRAS[pid]):
+        if any(p in bajo for p in _PALABRAS[pid]):
             return pid
-    return _PILAR_SUGERIDO_POR_OMISSAO
+    return _PILAR_SUGERIDO_POR_DEFECTO
 
 
-# Conceito nao e cena: o Pexels devolve qualquer coisa para "innovation". O
-# b-roll do assunto precisa ser objeto ou lugar filmavel.
-_ABSTRATOS = frozenset("""
+# Concepto no es escena: Pexels devuelve cualquier cosa para "innovation". El
+# b-roll del asunto tiene que ser objeto o lugar filmable.
+_ABSTRACTOS = frozenset("""
 innovation innovative future futuristic technology tech concept success idea ideas
 growth business progress digital transformation disruption intelligence artificial ai
 data information knowledge change revolution power potential solution strategy
@@ -180,69 +181,69 @@ MAX_BROLL = {"long": 2, "short": 1, "carousel": 2}
 
 
 def validate_broll(terms: list[str], mode: str = "long") -> list[str]:
-    """B-roll do assunto: ate N termos EM INGLES de objeto/lugar filmavel.
+    """B-roll del asunto: hasta N terminos EN INGLES de objeto/lugar filmable.
 
-    Existe porque a identidade sozinha nao correlaciona: o short do cerebro
-    (19/09) saiu com "futuristic clean UI" e uma mao segurando celular em fundo
-    bege -- nada a ver com cerebro, e fora da marca. O pilar continua dando a
-    assinatura; o b-roll poe na tela a coisa de que o video fala.
+    Existe porque la identidad sola no correlaciona: el corto del cerebro
+    (19/09) salio con "futuristic clean UI" y una mano sosteniendo un movil en
+    fondo beis -- nada que ver con un cerebro, y fuera de marca. El pilar sigue
+    dando la firma; el b-roll pone en pantalla la cosa de la que habla el video.
     """
     problemas: list[str] = []
-    teto = MAX_BROLL.get(mode, 2)
-    if len(terms) > teto:
-        problemas.append(f"broll tem {len(terms)} termos; o modo {mode} aceita ate {teto}.")
+    techo = MAX_BROLL.get(mode, 2)
+    if len(terms) > techo:
+        problemas.append(f"broll tiene {len(terms)} terminos; el modo {mode} acepta hasta {techo}.")
     for t in terms:
-        palavras = t.lower().split()
+        palabras = t.lower().split()
         if not t.isascii():
-            problemas.append(f"broll {t!r} nao e ASCII: o Pexels espera ingles.")
-        elif not 1 <= len(palavras) <= 5:
-            problemas.append(f"broll {t!r} precisa ter de 1 a 5 palavras.")
+            problemas.append(f"broll {t!r} no es ASCII: Pexels espera ingles.")
+        elif not 1 <= len(palabras) <= 5:
+            problemas.append(f"broll {t!r} necesita tener de 1 a 5 palabras.")
         elif normalize(t) in _TAG_TO_PILLAR:
-            problemas.append(f"broll {t!r} e tag de pilar: ela vai em search_terms, "
-                             "o broll e o objeto concreto do assunto.")
-        elif all(p in _ABSTRATOS for p in palavras):
-            problemas.append(f"broll {t!r} e conceito, nao cena: use um objeto ou "
-                             "lugar filmavel ('graphics card', 'human brain model').")
+            problemas.append(f"broll {t!r} es tag de pilar: esa va en search_terms; "
+                             "el broll es el objeto concreto del asunto.")
+        elif all(p in _ABSTRACTOS for p in palabras):
+            problemas.append(f"broll {t!r} es concepto, no escena: usa un objeto o "
+                             "lugar filmable ('graphics card', 'human brain model').")
     return problemas
 
 
 def brief(pilar_sugerido: str) -> str:
-    """Bloco de ESTETICA do prompt, com as tags verbatim para copiar."""
-    blocos = []
+    """Bloco de ESTETICA del prompt, con las tags verbatim para copiar."""
+    bloques = []
     for pid, p in PILLARS.items():
         marca = " <-- pilar sugerido para este tema" if pid == pilar_sugerido else ""
         tags = "\n".join(f"    - {t}" for t in p.tags)
-        blocos.append(f"  Pilar {pid} ({p.nome}){marca}:\n{tags}")
+        bloques.append(f"  Pilar {pid} ({p.nombre}){marca}:\n{tags}")
     return (
-        "ESTETICA (identidade do canal)\n"
-        "O canal tem assinatura visual fixa: todo search_terms sai COPIADO, "
-        "letra por letra, da lista de UM unico pilar abaixo, na ordem "
-        "cronologica da narracao. Nada de sinonimo, traducao ou invencao -- "
-        "termo fora da lista reprova o roteiro.\n"
-        + "\n".join(blocos)
+        "ESTETICA (identidad del canal)\n"
+        "El canal tiene firma visual fija: todo search_terms sale COPIADO, "
+        "letra por letra, de la lista de UN unico pilar de abajo, en el orden "
+        "cronologico de la narracion. Nada de sinonimo, traduccion ni invencion -- "
+        "termino fuera de la lista reprueba el guion.\n"
+        + "\n".join(bloques)
     )
 
 
 def compact_brief(pilar_sugerido: str, mode: str = "long") -> str:
-    """ESTETICA em uma linha por pilar + a regra do b-roll do assunto.
+    """ESTETICA en una linea por pilar + la regla del b-roll del asunto.
 
-    Mesma informacao do `brief`, com metade dos tokens: vai em TODA chamada
-    do roteirista, e no free tier token de prompt e cota.
+    Misma informacion del `brief`, con la mitad de los tokens: va en TODA llamada
+    del guionista, y en free tier el token de prompt es cuota.
     """
-    linhas = []
+    lineas = []
     for pid, p in PILLARS.items():
         marca = " (sugerido)" if pid == pilar_sugerido else ""
-        linhas.append(f"  {pid}{marca}: " + " | ".join(p.tags))
-    teto = MAX_BROLL.get(mode, 2)
+        lineas.append(f"  {pid}{marca}: " + " | ".join(p.tags))
+    techo = MAX_BROLL.get(mode, 2)
     return (
-        "ESTETICA (identidade visual fixa)\n"
-        "- search_terms: tags COPIADAS letra por letra de UM unico pilar -- o sugerido, "
-        "salvo se outro combinar claramente melhor com o assunto --, na ordem "
-        "cronologica da narracao (termo fora da lista reprova):\n"
-        + "\n".join(linhas) + "\n"
-        f"- broll: 0 a {teto} termos EM INGLES do assunto concreto, objeto ou lugar "
-        "filmavel que a narracao cita ('graphics card', 'human brain model', "
-        "'smartphone screen'); o primeiro abre o video. Nada de conceito abstrato."
+        "ESTETICA (identidad visual fija)\n"
+        "- search_terms: tags COPIADAS letra por letra de UN unico pilar -- el sugerido, "
+        "salvo que otro combine claramente mejor con el asunto --, en el orden "
+        "cronologico de la narracion (termino fuera de la lista reprueba):\n"
+        + "\n".join(lineas) + "\n"
+        f"- broll: 0 a {techo} terminos EN INGLES del asunto concreto, objeto o lugar "
+        "filmable que la narracion cita ('graphics card', 'human brain model', "
+        "'smartphone screen'); el primero abre el video. Nada de concepto abstracto."
     )
 
 

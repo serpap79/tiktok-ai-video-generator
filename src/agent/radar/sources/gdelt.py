@@ -1,9 +1,9 @@
-"""GDELT DOC 2.0: volume de cobertura jornalistica global. Sem chave.
+"""GDELT DOC 2.0: volumen de cobertura periodística mundial. Sin clave.
 
-Entra com disjuntor porque **e instavel na pratica**: devolveu 429 em 2 de 3
-tentativas nos testes de viabilidade, sem chave e sem cota publicada. Depois de
-algumas falhas seguidas a fonte e desligada pelo resto da execucao, para nao
-gastar o orcamento de tempo da coleta batendo numa porta fechada.
+Entra con disyuntor porque **es inestable en la práctica**: devolvió 429 en 2 de 3
+intentos en las pruebas de viabilidad, sin clave y sin cuota publicada. Tras varios
+fallos consecutivos, la fuente se desactiva durante el resto de la ejecución para no
+gastar el presupuesto de tiempo de la recolección golpeando una puerta cerrada.
 """
 
 from __future__ import annotations
@@ -17,8 +17,8 @@ from agent.ports.radar import SourceUnavailable
 
 ENDPOINT = "https://api.gdeltproject.org/api/v2/doc/doc"
 
-# Termos do nicho. O GDELT nao tem "o que esta em alta": ele responde consultas,
-# entao o recorte tematico precisa vir de nos.
+# Términos del nicho. GDELT no ofrece «qué está en tendencia»: responde consultas,
+# por lo que el recorte temático debe proceder de nosotros.
 CONSULTAS_PADRAO = (
     "artificial intelligence",
     "quantum computing",
@@ -44,7 +44,7 @@ class Gdelt:
 
         for consulta in self._queries:
             if falhas >= self._max_falhas:
-                # Disjuntor aberto: para de tentar, mas devolve o que ja coletou.
+                # Disyuntor abierto: deja de intentarlo, pero devuelve lo ya recolectado.
                 break
             try:
                 r = self._client.get(ENDPOINT, params={
@@ -61,7 +61,7 @@ class Gdelt:
             try:
                 artigos = (r.json() or {}).get("articles") or []
             except ValueError:
-                # 200 com corpo vazio e comum aqui quando a consulta nao casa.
+                # Una respuesta 200 con cuerpo vacío es habitual cuando la consulta no coincide.
                 falhas += 1
                 continue
 
@@ -77,6 +77,6 @@ class Gdelt:
 
         if not sinais and falhas >= self._max_falhas:
             raise SourceUnavailable(
-                f"gdelt indisponivel apos {falhas} falhas (429 e comum sem chave)"
+                f"gdelt no disponible tras {falhas} fallos (429 es habitual sin clave)"
             )
         return sinais

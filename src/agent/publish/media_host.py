@@ -1,10 +1,10 @@
 """Hospedagem das imagens do carrossel num GitHub Pages proprio, a $0.
 
-A API de foto do TikTok nao recebe arquivo: ela BAIXA as imagens de URLs
+La API de fotos de TikTok no recibe archivos: DESCARGA las imágenes desde URL
 publicas, e so de um dominio ou prefixo de URL verificado no portal do app
 (PULL_FROM_URL). Um repositorio com GitHub Pages resolve os dois lados de
 graca: as imagens ficam publicas (o post vai ser publico de todo jeito) e o
-prefixo `https://<usuario>.github.io/<repo>/` e verificavel no portal.
+prefijo `https://<usuario>.github.io/<repo>/` y verificable en el portal.
 
 Desligado por padrao. Liga com duas variaveis no `.env`:
 
@@ -28,11 +28,11 @@ from PIL import Image
 
 
 class MediaHostError(RuntimeError):
-    """Nao foi possivel publicar ou servir as imagens."""
+    """No fue posible publicar ni servir las imágenes."""
 
 
 def to_jpeg(pngs: list[Path], destino: Path) -> list[Path]:
-    """PNG -> JPEG (a API de foto aceita JPEG/WebP, nao PNG)."""
+    """PNG -> JPEG (la API de fotos acepta JPEG/WebP, no PNG)."""
     destino.mkdir(parents=True, exist_ok=True)
     saida = []
     for png in pngs:
@@ -58,7 +58,7 @@ class GitPagesHost:
     def publish(self, files: list[Path], subdir: str) -> list[str]:
         """Copia, faz commit e push, e devolve as URLs ja servidas."""
         if not (self.repo_dir / ".git").exists():
-            raise MediaHostError(f"{self.repo_dir} nao e um clone git")
+            raise MediaHostError(f"{self.repo_dir} no es un clon de Git")
         pasta = self.repo_dir / subdir
         pasta.mkdir(parents=True, exist_ok=True)
         nomes = []
@@ -70,7 +70,7 @@ class GitPagesHost:
                     ["git", "push", "--quiet"]):
             r = self._run(cmd, cwd=self.repo_dir, capture_output=True, text=True, timeout=120)
             if r.returncode != 0 and not (cmd[1] == "commit" and "nothing to commit" in r.stdout):
-                raise MediaHostError(f"{' '.join(cmd[:2])} falhou: {(r.stderr or r.stdout)[-300:]}")
+                raise MediaHostError(f"{' '.join(cmd[:2])} falló: {(r.stderr or r.stdout)[-300:]}")
         urls = [f"{self.base_url}/{n}" for n in nomes]
         self._esperar(urls)
         return urls
@@ -83,7 +83,7 @@ class GitPagesHost:
             if not pendentes:
                 return
             if time.monotonic() > limite:
-                raise MediaHostError(f"Pages nao serviu {pendentes[0]} em {self._timeout:.0f}s")
+                raise MediaHostError(f"Pages no sirvió {pendentes[0]} en {self._timeout:.0f} s")
             self._sleep(10)
 
     def _ok(self, url: str) -> bool:

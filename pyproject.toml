@@ -1,7 +1,7 @@
 [project]
 name = "tiktok-viral-generator"
 version = "0.1.0"
-description = "Agente que detecta assunto em alta em tech/IA/ciencia, ancora cada afirmacao numa fonte e produz video curto em pt-BR"
+description = "Agente que detecta temas en alta de tecnología, IA y ciencia, ancla cada afirmación en una fuente y produce vídeos cortos en castellano de España"
 readme = "README.md"
 authors = [
     { name = "guilhermehrsilva", email = "guilhermehrsilva@users.noreply.github.com" }
@@ -11,9 +11,9 @@ dependencies = [
     "edge-tts>=7.2.8",
     "fonttools>=4.65.0",
     "httpx>=0.28",
-    # Vinha de carona pelo onnxruntime do piper-tts. Duas pecas do render
-    # dependem dela agora (trilha sintetizada e apresentador animado), e
-    # dependencia de caminho critico nao pode ser transitiva.
+    # Dependencia transitiva de piper-tts a través de onnxruntime. Dos componentes del render
+    # dependen de ella ahora (pista sintetizada y presentador animado), y
+    # una dependencia crítica no puede ser transitiva.
     "numpy>=2.0",
     "pillow>=12.3.0",
     "piper-tts>=1.8.0",
@@ -48,7 +48,7 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
-# typer.Option em default de argumento e a forma idiomatica da biblioteca.
+# typer.Option en un valor predeterminado es la forma idiomática de la biblioteca.
 "src/agent/cli.py" = ["B008"]
 
 [tool.pytest.ini_options]

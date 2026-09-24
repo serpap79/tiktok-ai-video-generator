@@ -42,14 +42,14 @@ def _parecer(notas: dict[Criterion, int], **kw) -> Review:
 
 
 NOTAS_12 = {
-    Criterion.hook: 1, Criterion.fonte: 2, Criterion.duracao: 2,
-    Criterion.ponto_de_vista: 1, Criterion.politica: 2,
-    Criterion.pt_br: 2, Criterion.cta: 2,
+    Criterion.hook: 1, Criterion.fuente: 2, Criterion.duracion: 2,
+    Criterion.punto_de_vista: 1, Criterion.politica: 2,
+    Criterion.idioma: 2, Criterion.cta: 2,
 }
 NOTAS_14 = {
-    Criterion.hook: 2, Criterion.fonte: 2, Criterion.duracao: 2,
-    Criterion.ponto_de_vista: 2, Criterion.politica: 2,
-    Criterion.pt_br: 2, Criterion.cta: 2,
+    Criterion.hook: 2, Criterion.fuente: 2, Criterion.duracion: 2,
+    Criterion.punto_de_vista: 2, Criterion.politica: 2,
+    Criterion.idioma: 2, Criterion.cta: 2,
 }
 
 
@@ -75,12 +75,12 @@ def _interrompido() -> Review:
     return Review(
         topic=TEMA,
         scores=[
-            _nota(Criterion.duracao, 0, measured=True),
+            _nota(Criterion.duracion, 0, measured=True),
             _nota(Criterion.politica, 2, measured=True),
             _nota(Criterion.hook, 0, evaluated=False),
-            _nota(Criterion.fonte, 0, evaluated=False),
-            _nota(Criterion.ponto_de_vista, 0, evaluated=False),
-            _nota(Criterion.pt_br, 0, evaluated=False),
+            _nota(Criterion.fuente, 0, evaluated=False),
+            _nota(Criterion.punto_de_vista, 0, evaluated=False),
+            _nota(Criterion.idioma, 0, evaluated=False),
             _nota(Criterion.cta, 0, evaluated=False),
         ],
         reviewed_at=datetime.now(UTC),

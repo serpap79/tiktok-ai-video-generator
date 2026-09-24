@@ -1,12 +1,12 @@
-"""Google Trends via feed RSS de buscas em alta. Sem chave, sem conta.
+"""Google Trends via feed RSS de busquedas en tendencia. Sin clave, sin cuenta.
 
-Cobre o Brasil, que o Hacker News nao cobre, e entrega **as materias ja
-associadas a cada tema** -- titulo, veiculo e URL. Isso adianta parte do
-trabalho do pesquisador (M3) sem custar uma requisicao a mais.
+Cubre Espana, que Hacker News no cubre, y entrega **las noticias ya asociadas
+a cada tema** -- titulo, medio y URL. Eso adelanta parte del trabajo del
+investigador (M3) sin costar una peticion mas.
 
-Nao e API oficial e pode mudar sem aviso. A oficial seguia em alpha por
-inscricao em ago/2026 e o `pytrends` foi arquivado em abr/2025, entao este feed
-e o que existe de gratuito e estavel na pratica.
+No es API oficial y puede cambiar sin aviso. La oficial seguia en alpha por
+inscripcion en ago/2026 y `pytrends` fue archivado en abr/2025, asi que este
+feed es lo que existe de gratuito y estable en la practica.
 """
 
 from __future__ import annotations
@@ -25,15 +25,16 @@ ENDPOINT = "https://trends.google.com/trending/rss"
 # O feed nao e servido para clientes sem user agent de navegador.
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-# "200+", "2 mil+", "1 mi+" -> o numero e uma ordem de grandeza, nao uma medida.
-_TRAFEGO = re.compile(r"([\d.,]+)\s*(mil|mi|k|m)?", re.IGNORECASE)
+# "200+", "2 mil+", "1 M+" -> el numero es un orden de magnitud, no una medida.
+# El feed ES escribe "2 mil+" y "1 M+"; el PT escribía "mi". Aceptamos ambos.
+_TRAFEGO = re.compile(r"([\d.,]+)\s*(mil|mi|m|k)?", re.IGNORECASE)
 _MULTIPLICADOR = {"mil": 1_000, "k": 1_000, "mi": 1_000_000, "m": 1_000_000}
 
 
 class GoogleTrends:
     name = "google_trends"
 
-    def __init__(self, client: httpx.Client | None = None, geo: str = "BR"):
+    def __init__(self, client: httpx.Client | None = None, geo: str = "ES"):
         self._client = client or httpx.Client(timeout=httpx.Timeout(20.0), headers=HEADERS)
         self._geo = geo
 
@@ -41,9 +42,9 @@ class GoogleTrends:
         try:
             r = self._client.get(ENDPOINT, params={"geo": self._geo}, headers=HEADERS)
         except httpx.HTTPError as exc:
-            raise SourceUnavailable(f"google trends inacessivel: {exc}") from exc
+            raise SourceUnavailable(f"google trends inaccesible: {exc}") from exc
         if r.status_code != 200:
-            raise SourceUnavailable(f"google trends devolveu {r.status_code}")
+            raise SourceUnavailable(f"google trends devolvio {r.status_code}")
         return self.parse(r.content, now=datetime.now(UTC))
 
     @staticmethod
@@ -51,18 +52,18 @@ class GoogleTrends:
         try:
             raiz = ET.fromstring(xml_bytes)
         except ET.ParseError as exc:
-            raise SourceUnavailable(f"google trends devolveu XML invalido: {exc}") from exc
+            raise SourceUnavailable(f"google trends devolvio XML invalido: {exc}") from exc
 
         canal = raiz.find("channel")
         if canal is None:
-            raise SourceUnavailable("google trends devolveu RSS sem <channel>")
+            raise SourceUnavailable("google trends devolvio RSS sin <channel>")
 
         sinais: list[Signal] = []
         for item in canal.findall("item"):
             termo = (item.findtext("title") or "").strip()
-            # O feed tambem tem tema de uma letra ("p", visto em 19/09/2026):
-            # estoura o min_length do Signal e derrubava a fonte inteira -- o
-            # mesmo defeito que a Wikipedia teve com o artigo "Q".
+            # El feed tambien tiene tema de una letra ("p", visto en 19/09/2026):
+            # rebasa el min_length del Signal y tiraba abajo la fuente entera --
+            # el mismo defecto que tuvo Wikipedia con el articulo "Q".
             if len(termo) < 2:
                 continue
 
@@ -85,8 +86,9 @@ class GoogleTrends:
                     source=GoogleTrends.name,
                     volume=_parse_trafego(item.findtext("{*}approx_traffic")),
                     unit="searches",
-                    # O feed da o nivel aproximado, nunca a taxa. A velocidade sai
-                    # da comparacao com a coleta anterior, feita pelo coletor.
+                    # El feed da el nivel aproximado, nunca la tasa. La velocidad
+                    # sale de la comparacion con la recolecta anterior, hecha
+                    # por el colector.
                     velocity=None,
                     seen_at=now,
                     news_items=materias,
@@ -96,7 +98,7 @@ class GoogleTrends:
 
 
 def _parse_trafego(bruto: str | None) -> float:
-    """Converte "2 mil+" em 2000.0. Devolve 0.0 quando o feed nao informa."""
+    """Convierte "2 mil+" en 2000.0. Devuelve 0.0 cuando el feed no informa."""
     if not bruto:
         return 0.0
     m = _TRAFEGO.search(bruto.strip())

@@ -1,15 +1,15 @@
-"""Atualiza chaves no `.env` sem tocar no resto do arquivo.
+"""Actualiza claves en `.env` sin tocar el resto del archivo.
 
-Existe por causa do token do TikTok: o access token vale 24 horas e o
-refresh token gira a cada renovacao. Um piloto automatico que posta as 9h,
-15h e 20h precisa gravar o token novo em algum lugar -- e a regra do projeto
+Existe por el token de TikTok: el access token dura 24 horas y el
+refresh token rota en cada renovación. Un piloto automático que publica a las 9:00,
+13:00 y 20:00 necesita guardar el token nuevo en algún lugar. La regla del proyecto
 e que segredo so vive no `.env` (git-ignored). Entao o `.env` e reescrito,
 com tres cuidados:
 
-- so as chaves pedidas mudam; comentario, ordem e as outras linhas ficam;
-- escrita atomica (arquivo temporario + rename): queda no meio nao deixa um
-  `.env` pela metade, que derrubaria todas as chaves de uma vez;
-- permissao 600: o arquivo tem credencial de tres servicos.
+- solo cambian las claves solicitadas; los comentarios, el orden y las demás líneas permanecen;
+- escritura atómica (archivo temporal + renombrado): una caída a mitad no deja un
+  `.env` a medias, lo que invalidaría todas las claves a la vez;
+- permisos 600: el archivo contiene credenciales de tres servicios.
 """
 
 from __future__ import annotations

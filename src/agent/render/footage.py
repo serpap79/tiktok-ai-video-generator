@@ -1,4 +1,4 @@
-"""Material de video escolhido por nos: relevante ao assunto e escuro como a marca.
+"""Material de vídeo elegido por nosotros: relevante al asunto y oscuro como la marca.
 
 Ate 19/09 o MoneyPrinterTurbo buscava no Pexels com os nossos termos e
 pegava os primeiros resultados. Dois defeitos medidos nos frames do que foi
@@ -8,16 +8,16 @@ publicado:
   3D segurando celular e uma cadeira de simulador -- o termo era de
   identidade ("futuristic clean UI"), e nada na tela falava de cerebro;
 - **identidade**: fundo bege e branco no meio de um canal "dark", porque o
-  primeiro resultado nao sabe o que e a marca.
+  el primer resultado no sabe cuál es la marca.
 
 Aqui cada termo vira uma busca, e cada candidato ganha nota por duas medidas
 baratas que o Pexels ja entrega: **relevancia** (palavras do termo no slug da
-pagina do video, que descreve a cena: `/video/brain-scan-on-a-monitor-123/`)
-e **escuridao** (luminancia media da miniatura). B-roll do assunto pesa mais
+página del vídeo, que describe la escena: `/video/brain-scan-on-a-monitor-123/`)
+y **oscuridad** (luminancia media de la miniatura). El B-roll del tema pesa más
 relevancia; tag de pilar pesa mais escuridao. Clipe usado nos ultimos dias
 perde pontos: os mesmos termos de pilar trariam os mesmos clipes todo dia.
 
-Os clipes escolhidos sobem ao renderizador como material local, NA ORDEM da
+Los clips elegidos se entregan al renderizador como material local, EN ORDEN DE
 narracao -- o MPT so monta.
 """
 
@@ -45,7 +45,7 @@ CLIP_S = 5
 FOLGA = 1.25
 # Teto de download por clipe: 1080x1920 de 20s fica em ~10-25 MB.
 MAX_BYTES = 60 * 1024 * 1024
-# Dias em que um clipe usado perde pontos.
+# Días en que un clip usado pierde puntos.
 JANELA_REUSO_DIAS = 14
 
 _PALAVRA = re.compile(r"[a-z0-9]+")
@@ -85,9 +85,9 @@ def needed_clips(script: Script) -> int:
 def timeline_terms(script: Script) -> list[tuple[str, bool]]:
     """Termos na ordem da tela: (termo, e_broll).
 
-    O primeiro b-roll abre o video -- e a imagem do assunto que segura os
+    El primer B-roll abre el vídeo; la imagen del tema sostiene el
     primeiros segundos; o segundo entra no meio. As tags do pilar preenchem o
-    resto, na ordem cronologica em que o roteirista as pos.
+    resto, en el orden cronológico en que el guionista las colocó.
     """
     tags = [(t, False) for t in script.search_terms]
     broll = [(t, True) for t in script.broll]
@@ -100,7 +100,7 @@ def timeline_terms(script: Script) -> list[tuple[str, bool]]:
 
 
 def relevance(term: str, page_url: str) -> float:
-    """Fracao das palavras do termo que aparecem no slug da pagina do video."""
+    """Fracción de palabras del término que aparecen en el slug de la página del vídeo."""
     alvo = {_raiz(p) for p in _PALAVRA.findall(term.lower()) if len(p) > 2}
     if not alvo:
         return 0.0
@@ -131,7 +131,7 @@ def score(clip: Clip, *, is_broll: bool, reused: bool) -> float:
 
 
 def best_file(video: dict) -> tuple[str, int, int] | None:
-    """O arquivo retrato mais proximo de 1080x1920 (sem baixar 4K a toa)."""
+    """El archivo vertical más cercano a 1080x1920 (sin descargar 4K a ciegas)."""
     arquivos = [f for f in video.get("video_files") or []
                 if (f.get("width") or 0) and (f.get("height") or 0)
                 and f["height"] > f["width"] and f.get("link")]
@@ -148,7 +148,7 @@ def best_file(video: dict) -> tuple[str, int, int] | None:
 
 
 class FootageLedger:
-    """Clipes usados, para o canal nao repetir as mesmas cenas todo dia."""
+    """Clips usados, para que el canal no repita las mismas escenas cada día."""
 
     def __init__(self, db_path: Path):
         self.db_path = Path(db_path)

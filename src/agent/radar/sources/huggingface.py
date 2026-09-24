@@ -1,14 +1,14 @@
-"""Modelos em alta no Hugging Face. Sem chave.
+"""Modelos en tendencia en Hugging Face. Sin clave.
 
-A fonte mais direta de "o que a comunidade de IA esta baixando agora": o
-Hub publica `trendingScore` por modelo, que e taxa (curtidas recentes), nao
+La fuente más directa de «qué está descargando ahora la comunidad de IA»: el
+Hub publica `trendingScore` por modelo, que es una tasa (me gusta recientes), no
 nivel -- velocidade nativa, como a do HN. Em 19/09/2026 o primeiro da lista
 era o Ternary Bonsai 2 27B, o mesmo tema que o radar tinha achado pelo HN
 dois dias antes.
 
 Filtro que importa: variantes quantizadas (GGUF, AWQ, MLX...) dominam a
-lista e sao o mesmo modelo. O nome e normalizado sem o sufixo, e as
-variantes do mesmo modelo viram um sinal so.
+lista y son el mismo modelo. El nombre se normaliza sin el sufijo y las
+variantes del mismo modelo se convierten en una sola señal.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ _QUANT = re.compile(
     re.IGNORECASE)
 # Menos que isso e experimento pessoal que entrou na lista por pouco.
 MIN_LIKES = 50
-# Modelo de seis meses atras em alta e reposicao, nao noticia.
+# Un modelo de hace seis meses en tendencia es reposición, no noticia.
 MAX_IDADE_DIAS = 60
 
 
@@ -58,7 +58,7 @@ class HuggingFaceTrending:
         try:
             modelos = r.json()
         except ValueError as exc:
-            raise SourceUnavailable("hugging face devolveu resposta nao-JSON") from exc
+            raise SourceUnavailable("hugging face devolvió una respuesta que no es JSON") from exc
         return self.parse(modelos, now=datetime.now(UTC))
 
     @staticmethod

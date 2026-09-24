@@ -1,8 +1,8 @@
-"""Estudio de vozes, sem baixar modelo e sem rede.
+"""Estudio de voces, sin descargar modelo y sin red.
 
-O `Narrator` fala contra a porta `TTS`, entao estes testes usam um fundo
-falso deterministico (0,1s por palavra). O adaptador Piper real e exercitado
-fora da suite, no `voice-fetch` + amostras de `output/vozes/`.
+El `Narrator` habla contra el puerto `TTS`, asi que estos tests usan un doble
+falso determinista (0,1s por palabra). El adaptador Piper real se ejercita
+fuera de la suite, en `voice-fetch` + muestras de `output/voces/`.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from agent.voice.narrate import Narrator, _expandir_marcadores
 
 
 class Falso:
-    """0,1s por palavra a 22050 Hz, gravando o que recebeu."""
+    """0,1s por palabra a 22050 Hz, grabando lo que recibe."""
 
     def __init__(self):
         self.textos: list[str] = []
@@ -24,43 +24,43 @@ class Falso:
         return Utterance(sample_rate=22050, pcm16=b"\x01\x02" * n)
 
 
-class TestMarcacao:
-    def test_pausas_viram_silencio_medido(self):
-        blocos = _expandir_marcadores("Oi. [PAUSA MEDIA] Tchau.")
-        assert blocos == [("fala", "Oi. "), ("pausa", 0.6), ("fala", " Tchau.")]
+class TestMarcas:
+    def test_pausas_se_convierten_en_silencio_medido(self):
+        bloques = _expandir_marcadores("Hola. [PAUSA MEDIA] Adios.")
+        assert bloques == [("habla", "Hola. "), ("pausa", 0.6), ("habla", " Adios.")]
 
-    def test_marcador_some_antes_da_sintese(self):
+    def test_la_marca_desaparece_antes_de_la_sintesis(self):
         n = Narrator(Falso())
-        nar = n.narrate("[PAUSA LONGA] Uma frase.")
+        nar = n.narrate("[PAUSA LARGA] Una frase.")
         assert nar.pauses_s >= 1.0
         assert all("[PAUSA" not in t for t in n.tts.textos)
 
-    def test_enfase_nao_vai_ao_motor(self):
+    def test_el_enfasis_no_llega_al_motor(self):
         falso = Falso()
-        Narrator(falso).narrate("Isto e *muito* importante.")
-        assert "muito" in falso.textos
+        Narrator(falso).narrate("Esto es *muy* importante.")
+        assert "muy" in falso.textos
         assert all("*" not in t for t in falso.textos)
 
-    def test_frase_quebra_em_falas(self):
+    def test_la_frase_se_rompe_en_habladas(self):
         falso = Falso()
-        nar = Narrator(falso).narrate("Primeira. Segunda! Terceira?")
+        nar = Narrator(falso).narrate("Primera. Segunda! Tercera?")
         assert nar.utterances == 3 and len(falso.textos) == 3
 
-    def test_duracao_conta_fala_e_pausa(self, tmp_path):
-        nar = Narrator(Falso(), pausa_frase_s=0.5).narrate("Uma frase.")
+    def test_la_duracion_cuenta_habla_y_pausa(self, tmp_path):
+        nar = Narrator(Falso(), pausa_frase_s=0.5).narrate("Una frase.")
         assert nar.duration_s > 0.5
-        caminho = str(tmp_path / "n.wav")
-        assert nar.write_wav(caminho) == caminho
+        camino = str(tmp_path / "n.wav")
+        assert nar.write_wav(camino) == camino
 
 
 class TestBiblioteca:
-    def test_toda_voz_tem_modelo_e_licenca(self):
+    def test_toda_voz_tiene_modelo_y_licencia(self):
         for v in VOICES.values():
-            assert v.modelo_url.startswith("https://") and v.licenca
+            assert v.modelo_url.startswith("https://") and v.licencia
 
-    def test_estilos_apontam_para_vozes_reais(self):
+    def test_los_estilos_apuntan_a_voces_reales(self):
         for s in STYLES.values():
             assert s.voz in VOICES
-            assert 0.5 <= s.velocidade <= 2.0
+            assert 0.5 <= s.velocidad <= 2.0
             assert 0.0 <= s.ruido <= 1.5
             assert s.pausa_frase_s >= 0

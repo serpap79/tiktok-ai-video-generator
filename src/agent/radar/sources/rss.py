@@ -1,29 +1,29 @@
-"""Feeds RSS de tecnologia e ciencia, agrupados por historia. Sem chave.
+"""Feeds RSS de tecnologia y ciencia, agrupados por historia. Sin clave.
 
-Por que RSS se ja ha Hacker News: o HN mede o que interessa a desenvolvedor
-americano; o publico do canal e brasileiro. Tecnoblog, Olhar Digital,
-Canaltech, TecMundo, TechTudo e Inovacao Tecnologica dizem o que a imprensa de
-tech BRASILEIRA esta cobrindo, e os feeds globais (Verge, TechCrunch, Ars, MIT
-TR, Wired, GitHub Blog, The New Stack, GameSpot, ScienceDaily, NASA) dizem o
-que o mundo cobre. Todos responderam 200 em 20/09/2026, salvo VentureBeat
-(429 com bot protection -- fora ate liberar; motivo registrado, nao falha
-silenciosa).
+Por que RSS si ya esta Hacker News: el HN mide lo que interesa a un
+desarrollador americano; el publico del canal es espanol. Xataka, El Androide
+Libre, Genbeta, Hipertextual, Computer Hoy y MuyComputer dicen lo que la
+prensa tech ESPANOLA esta cubriendo, y los feeds globales (Verge,
+TechCrunch, Ars, MIT TR, Wired, GitHub Blog, The New Stack, GameSpot,
+ScienceDaily, NASA) dicen lo que el mundo cubre. Todos respondieron 200 en
+20/09/2026, salvo VentureBeat (429 con bot protection -- fuera hasta liberar;
+motivo registrado, no fallo silencioso).
 
-Varios desses feeds espelham perfis que o autor acompanha no X
-(@olhardigital, @Tec_Mundo, @TechTudo, @canaltech, @TechCrunch, @verge,
-@WIRED, @VentureBeat, @GameSpot, @thenewstack, @GithubProjects). A API do X
-e paga e quebra a restricao de $0/mes, entao o radar le o mesmo conteudo na
-origem RSS em vez de ler no X.
+Varios de estos feeds reflejan perfiles que el autor sigue en X (@xataka,
+@hipertextual, @El_Androide_Libre, @genbeta_es, @ComputerHoy, @verge,
+@WIRED, @TechCrunch, @thenewstack, @GithubProjects). La API de X es de pago y
+rompe la restriccion de $0/mes, asi que el radar lee el mismo contenido en el
+origen RSS en lugar de leerlo en X.
 
-RSS nao tem ponto nem pageview. O sinal de engajamento aqui e outro, e e
-medido: **quantos veiculos diferentes publicaram a mesma historia nas ultimas
-horas**. Uma materia isolada e pauta de um veiculo; a mesma historia em
-quatro redacoes em seis horas e assunto do dia. Isso vira `volume`
-(veiculos) e `velocity` (veiculos por hora desde a primeira publicacao) --
-velocidade nativa, ja na primeira coleta, como a do HN.
+RSS no tiene punto ni pageview. La senal de engagement aqui es otra, y se
+mide: **cuantos medios distintos publicaron la misma historia en las ultimas
+horas**. Una noticia aislada es pauta de un medio; la misma historia en cuatro
+redacciones en seis horas es asunto del dia. Eso se convierte en `volume`
+(medios) y `velocity` (medios por hora desde la primera publicacion) --
+velocidad nativa, ya en la primera recolecta, como la del HN.
 
-De brinde, o grupo entrega as outras materias como `news_items`: o
-pesquisador recebe varias fontes da mesma historia sem buscador pago.
+De regalo, el grupo entrega las otras noticias como `news_items`: el
+investigador recibe varias fuentes de la misma historia sin buscador de pago.
 """
 
 from __future__ import annotations
@@ -47,19 +47,21 @@ _ATOM = "{http://www.w3.org/2005/Atom}"
 class Feed:
     name: str
     url: str
-    # Rotulo de fonte do Signal: separa o percentil do curador por familia de
-    # feed (redacao brasileira nao compete em escala com feed global).
+    # Etiqueta de fuente del Signal: separa el percentil del curador por familia
+    # de feed (redaccion espanola no compite en escala con feed global).
     kind: str
 
 
 FEEDS: tuple[Feed, ...] = (
-    Feed("tecnoblog", "https://tecnoblog.net/feed/", "rss_tech_br"),
-    Feed("olhardigital", "https://olhardigital.com.br/feed/", "rss_tech_br"),
-    Feed("canaltech", "https://canaltech.com.br/rss/", "rss_tech_br"),
-    Feed("tecmundo", "https://rss.tecmundo.com.br/feed", "rss_tech_br"),
-    Feed("techtudo", "https://www.techtudo.com.br/rss/techtudo/", "rss_tech_br"),
-    Feed("inovacaotecnologica", "https://www.inovacaotecnologica.com.br/boletim/rss.xml",
-         "rss_tech_br"),
+    Feed("xataka", "https://xataka.com/feednews", "rss_tech_es"),
+    Feed("elpais_tec", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/tecnologia/portada",
+         "rss_tech_es"),
+    Feed("elmundo_tec", "https://e00-elmundo.uecdn.es/rss/tecnologia.xml", "rss_tech_es"),
+    Feed("genbeta", "https://www.genbeta.com/feednews", "rss_tech_es"),
+    Feed("hipertextual", "https://hipertextual.com/feed", "rss_tech_es"),
+    Feed("computerhoy", "https://www.computerhoy.com/rss.xml", "rss_tech_es"),
+    Feed("muycomputer", "https://www.muycomputer.com/feed/", "rss_tech_es"),
+    Feed("microsiervos", "https://www.microsiervos.com/xml/rss.xml", "rss_tech_es"),
     Feed("theverge", "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
          "rss_tech"),
     Feed("techcrunch", "https://techcrunch.com/category/artificial-intelligence/feed/",
@@ -76,15 +78,15 @@ FEEDS: tuple[Feed, ...] = (
     Feed("nasa", "https://www.nasa.gov/news-release/feed/", "rss_ciencia"),
 )
 
-# Janela de "agora": materia de tres dias atras nao e tendencia, e arquivo.
+# Ventana de "ahora": noticia de tres dias atras no es tendencia, es archivo.
 JANELA_H = 36
-# Similaridade de titulo para duas materias contarem como a mesma historia.
-# Titulos de veiculos diferentes compartilham o nome proprio e pouco mais;
-# 0,3 junta "OpenAI lanca GPT-6" com "GPT-6 chega com..." sem juntar tudo
-# que fala de "IA".
-LIMIAR_GRUPO = 0.3
-# Piso de uma hora na idade: materia de 10 minutos em 2 veiculos daria
-# "12 veiculos por hora" por artefato de divisao.
+# Similaridad de titulo para que dos noticias cuenten como la misma historia.
+# Titulos de medios distintos comparten el nombre propio y poco mas; 0,3 junta
+# "OpenAI lanza GPT-6" con "GPT-6 llega con..." sin juntar todo lo que habla
+# de "IA".
+UMBRAL_GRUPO = 0.3
+# Suelo de una hora en la edad: noticia de 10 minutos en 2 medios daria
+# "12 medios por hora" por artefacto de division.
 IDADE_MINIMA_H = 1.0
 
 
@@ -108,95 +110,95 @@ class RssFeeds:
         self._window_h = window_h
 
     def collect(self) -> list[Signal]:
-        agora = datetime.now(UTC)
+        ahora = datetime.now(UTC)
         itens: list[Item] = []
-        falhas: list[str] = []
+        fallos: list[str] = []
         for feed in self._feeds:
             try:
                 r = self._client.get(feed.url, headers=HEADERS)
             except httpx.HTTPError as exc:
-                falhas.append(f"{feed.name}: {type(exc).__name__}")
+                fallos.append(f"{feed.name}: {type(exc).__name__}")
                 continue
             if r.status_code != 200:
-                falhas.append(f"{feed.name}: HTTP {r.status_code}")
+                fallos.append(f"{feed.name}: HTTP {r.status_code}")
                 continue
             try:
-                itens.extend(parse_feed(r.content, feed, now=agora, window_h=self._window_h))
+                itens.extend(parse_feed(r.content, feed, now=ahora, window_h=self._window_h))
             except SourceUnavailable as exc:
-                falhas.append(f"{feed.name}: {exc}")
-        if not itens and falhas:
-            raise SourceUnavailable("nenhum feed respondeu: " + "; ".join(falhas[:4]))
-        return cluster(itens, now=agora)
+                fallos.append(f"{feed.name}: {exc}")
+        if not itens and fallos:
+            raise SourceUnavailable("ningun feed respondio: " + "; ".join(fallos[:4]))
+        return cluster(itens, now=ahora)
 
 
 def parse_feed(xml_bytes: bytes, feed: Feed, *, now: datetime,
                window_h: float = JANELA_H) -> list[Item]:
-    """Itens RSS 2.0 ou Atom dentro da janela. Item sem data fica de fora:
-    sem data nao ha como dizer se e de hoje."""
+    """Items RSS 2.0 o Atom dentro de la ventana. Item sin fecha se queda
+    fuera: sin fecha no hay forma de saber si es de hoy."""
     try:
         raiz = ET.fromstring(xml_bytes)
     except ET.ParseError as exc:
         raise SourceUnavailable(f"XML invalido: {exc}") from exc
     corte = now - timedelta(hours=window_h)
-    saida: list[Item] = []
-    for no in list(raiz.iter("item")) + list(raiz.iter(f"{_ATOM}entry")):
-        titulo = " ".join((no.findtext("title") or no.findtext(f"{_ATOM}title") or "").split())
-        link = (no.findtext("link") or "").strip()
+    salida: list[Item] = []
+    for nodo in list(raiz.iter("item")) + list(raiz.iter(f"{_ATOM}entry")):
+        titulo = " ".join((nodo.findtext("title") or nodo.findtext(f"{_ATOM}title") or "").split())
+        link = (nodo.findtext("link") or "").strip()
         if not link:
-            atom_link = no.find(f"{_ATOM}link")
+            atom_link = nodo.find(f"{_ATOM}link")
             link = (atom_link.get("href") if atom_link is not None else "") or ""
-        data = _data(no.findtext("pubDate") or no.findtext(f"{_ATOM}published")
-                     or no.findtext(f"{_ATOM}updated") or "")
+        data = _data(nodo.findtext("pubDate") or nodo.findtext(f"{_ATOM}published")
+                     or nodo.findtext(f"{_ATOM}updated") or "")
         if not titulo or not link.startswith("http") or data is None:
             continue
         if data < corte or data > now + timedelta(hours=2):
             continue
-        saida.append(Item(titulo, link, feed, data, frozenset(content_tokens(titulo))))
-    return saida
+        salida.append(Item(titulo, link, feed, data, frozenset(content_tokens(titulo))))
+    return salida
 
 
 def cluster(itens: list[Item], *, now: datetime) -> list[Signal]:
-    """Agrupa a mesma historia entre veiculos e devolve um Signal por grupo.
+    """Agrupa la misma historia entre medios y devuelve un Signal por grupo.
 
-    Guloso e deterministico: itens em ordem de publicacao, cada um entra no
-    primeiro grupo com titulo parecido o bastante. O representante e o item
-    mais antigo do grupo (quem deu primeiro), e o `volume` conta VEICULOS
-    distintos -- o mesmo site republicando nao e corroboracao.
+    Goloso y determinista: items en orden de publicacion, cada uno entra en el
+    primer grupo con titulo parecido lo bastante. El representante es el item
+    mas antiguo del grupo (quien dio primero), y el `volume` cuenta MEDIOS
+    distintos -- el mismo sitio republicando no es corroboracion.
     """
     grupos: list[list[Item]] = []
     for item in sorted(itens, key=lambda i: i.published):
         for g in grupos:
-            if any(_jaccard(item.tokens, outro.tokens) >= LIMIAR_GRUPO for outro in g):
+            if any(_jaccard(item.tokens, otro.tokens) >= UMBRAL_GRUPO for otro in g):
                 g.append(item)
                 break
         else:
             grupos.append([item])
 
-    sinais: list[Signal] = []
+    senales: list[Signal] = []
     for g in grupos:
         rep = g[0]
-        veiculos = {i.feed.name for i in g}
-        idade_h = max((now - rep.published).total_seconds() / 3600, IDADE_MINIMA_H)
-        outros = [i for i in g[1:] if i.feed.name != rep.feed.name]
+        medios = {i.feed.name for i in g}
+        edad_h = max((now - rep.published).total_seconds() / 3600, IDADE_MINIMA_H)
+        otros = [i for i in g[1:] if i.feed.name != rep.feed.name]
         vistos: set[str] = set()
-        materias: list[NewsItem] = []
-        for i in outros:
+        noticias: list[NewsItem] = []
+        for i in otros:
             if i.feed.name in vistos:
                 continue
             vistos.add(i.feed.name)
             try:
-                materias.append(NewsItem(title=i.title, url=i.url, source_name=i.feed.name))
+                noticias.append(NewsItem(title=i.title, url=i.url, source_name=i.feed.name))
             except ValueError:
                 continue
         try:
-            sinais.append(Signal(
-                term=rep.title, source=rep.feed.kind, volume=float(len(veiculos)),
-                unit="veiculos", velocity=round(len(veiculos) / idade_h, 3),
-                seen_at=now, url=rep.url, news_items=materias,
+            senales.append(Signal(
+                term=rep.title, source=rep.feed.kind, volume=float(len(medios)),
+                unit="medios", velocity=round(len(medios) / edad_h, 3),
+                seen_at=now, url=rep.url, news_items=noticias,
             ))
         except ValueError:
             continue
-    return sinais
+    return senales
 
 
 def _jaccard(a: frozenset[str], b: frozenset[str]) -> float:

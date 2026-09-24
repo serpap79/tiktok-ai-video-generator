@@ -1,19 +1,19 @@
 """Livro de cota dos LLMs: cada chamada, e quem esta esgotado ate quando.
 
-Existe porque cota de free tier e o recurso escasso do projeto -- nao
+Existe porque la cuota del nivel gratuito es el recurso escaso del proyecto, no
 dinheiro. Medido em 19/09/2026: o gemini-2.5-flash tem 20 pedidos por dia no
-free tier, e um unico video (pesquisa + roteiro + juiz) chega perto disso.
+el nivel gratuito. Un solo vídeo (investigación + guion + juez) se acerca a ese límite.
 Com tres posts por dia, "qual modelo ainda tem cota agora?" precisa de
-resposta gravada, e nao de tentativa e erro a cada estagio.
+una respuesta grabada y no ensayo y error en cada etapa.
 
 Duas tabelas no mesmo banco do resto da memoria:
 
-- `llm_calls`: toda chamada, inclusive a negada, com estagio e custo. E o que
-  diz se o prompt do pesquisador esta caro ou se o juiz esta gastando cota
+- `llm_calls`: toda llamada, incluso la denegada, con etapa y coste. Permite
+  saber si el prompt del investigador es caro o si el juez consume demasiada cuota
   demais -- e a fonte do relatorio diario.
 - `llm_quota`: modelo esgotado e ate quando. Cada slot roda num processo
   proprio (timer do systemd), e sem isto o slot das 20h redescobriria, pagando
-  um 429 por modelo, o que o das 9h ja sabia.
+  un 429 por modelo, información que la ejecución de las 9:00 ya conocía.
 """
 
 from __future__ import annotations
@@ -130,11 +130,11 @@ class LLMLedger:
 
 
 def next_pacific_midnight(now: datetime | None = None) -> datetime:
-    """Reset diario do free tier do Gemini: meia-noite no horario do Pacifico.
+    """Reset diario del free tier de Gemini: medianoche en el horario del Pacífico.
 
-    Documentado em ai.google.dev/gemini-api/docs/rate-limits ("RPD quotas
-    reset at midnight Pacific time"). Em horario de Brasilia isso cai as 4h
-    ou 5h -- antes do slot das 9h, entao o dia comeca sempre com cota cheia.
+    Documentado en ai.google.dev/gemini-api/docs/rate-limits ("RPD quotas
+    reset at midnight Pacific time"). En hora de España eso cae a las 8h u 9h --
+    antes del slot de las 10h, así que el día empieza siempre con cuota llena.
     """
     from zoneinfo import ZoneInfo
 

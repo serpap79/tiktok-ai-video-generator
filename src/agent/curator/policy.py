@@ -1,17 +1,19 @@
-"""Filtro de politica: o que o canal nao fala, decidido antes de gastar token.
+"""Filtro de politica: de lo que el canal no habla, decidido antes de gastar token.
 
-O nicho tech/IA/ciencia ja exclui a maior parte do risco por construcao. Este
-filtro guarda as tres bordas que sobram, e todas apareceram no radar real:
+El nicho tech/IA/ciencia ya excluye la mayor parte del riesgo por construccion.
+Este filtro guarda las tres bordas que quedan, y todas aparecieron en el radar
+real:
 
-  (a) saude e medicamento com alegacao de eficacia -- "caneta emagrecedora" foi
-      o tema com mais trafego no Google Trends BR em 17/09/2026;
-  (b) ciencia instrumentalizada por politica partidaria -- os tres artigos mais
-      vistos da Wikipedia em pt eram ministros do STF;
-  (c) tragedia com vitima real.
+  (a) salud y medicamento con alegacion de eficacia -- "pluma de adelgazamiento"
+      fue el tema con mas trafico en Google Trends ES en 17/09/2026;
+  (b) ciencia instrumentalizada por politica partidista -- los tres articulos
+      mas vistos de la Wikipedia en espanol eran magistrados del Tribunal
+      Constitucional;
+  (c) tragedia con victima real.
 
-O filtro roda ANTES do score, nao depois: tema bloqueado nao deve consumir
-requisicao de pesquisa nem token de LLM, e nao deve poder ganhar no ranking por
-ter velocidade alta.
+El filtro corre ANTES del score, no despues: un tema bloqueado no debe consumir
+peticion de investigacion ni token de LLM, y no debe poder ganar en el ranking
+por tener velocidad alta.
 """
 
 from __future__ import annotations
@@ -24,81 +26,86 @@ from agent.text import normalize
 
 @dataclass(frozen=True)
 class PolicyRule:
-    nome: str
-    padrao: re.Pattern[str]
+    nombre: str
+    patron: re.Pattern[str]
     motivo: str
 
 
-def _regra(nome: str, termos: list[str], motivo: str) -> PolicyRule:
-    # \b nas bordas evita que "ia" case dentro de "midia" ou "sim" dentro de "assim".
-    juncao = "|".join(re.escape(t) for t in termos)
-    return PolicyRule(nome, re.compile(rf"\b(?:{juncao})\b"), motivo)
+def _regla(nombre: str, terminos: list[str], motivo: str) -> PolicyRule:
+    # \b en los bordes evita que "ia" case dentro de "media" o "si" dentro de "asis".
+    union = "|".join(re.escape(t) for t in terminos)
+    return PolicyRule(nombre, re.compile(rf"\b(?:{union})\b"), motivo)
 
 
-# Os termos ficam sem acento porque `normalize` remove os diacriticos antes do match.
-REGRAS: tuple[PolicyRule, ...] = (
-    _regra(
-        "saude",
+# Los terminos quedan sin acento porque `normalize` quita los diacriticos antes
+# del match.
+REGLAS: tuple[PolicyRule, ...] = (
+    _regla(
+        "salud",
         [
-            "emagrecedor", "emagrecedora", "emagrecimento", "ozempic", "mounjaro",
+            "adelgazante", "adelgazamiento", "perder peso", "ozempic", "mounjaro",
             "wegovy", "semaglutida", "tirzepatida", "anabolizante", "suplemento",
-            "remedio", "medicamento", "farmaco", "posologia", "dosagem",
-            "cura para", "tratamento para", "cancer", "quimioterapia", "canabidiol",
+            "medicamento", "medicina", "farmaco", "posologia", "dosificacion",
+            "cura para", "tratamiento para", "cancer", "quimioterapia", "canabidiol",
             "weight loss", "diet pill", "cure for", "treatment for",
         ],
-        "alegacao de saude ou medicamento exige responsabilidade clinica que o canal nao tem",
+        "una alegacion de salud o medicamento exige responsabilidad clinica que el canal no tiene",
     ),
-    _regra(
+    _regla(
         "politica",
         [
-            "stf", "supremo tribunal", "tse", "congresso nacional", "senado",
-            "camara dos deputados", "eleicao", "eleicoes", "eleitoral", "urna",
-            "lula", "bolsonaro", "ministro do stf", "impeachment", "cpi",
-            "deputado", "senador", "governador", "prefeito", "partido",
-            "election", "senate", "congress", "impeachment", "parliament",
-            # Nomes de chefe de governo em campanha permanente: tema de IA com
-            # eles vira politica partidaria no primeiro comentario (visto em
-            # 19/09/2026: "Trump abre enquete" passou pelo portao).
-            "trump", "biden", "kamala", "putin", "zelensky", "netanyahu", "milei",
-            "maduro", "casa branca", "white house",
+            "tribunal constitucional", "constitucional", "congreso de los diputados",
+            "senado", "congreso nacional", "eleccion", "elecciones", "electoral",
+            "urna", "votacion", "referendum", "mocion de censura", "diputado",
+            "senador", "presidente del gobierno", "ministro", "ministra",
+            "partido", "podemos", "vox", "sumar",
+            "election", "senate", "congress", "parliament",
+            # Nombres de jefe de gobierno en campana permanente: tema de IA con
+            # ellos se vuelve politica partidista en el primer comentario
+            # (visto en 19/09/2026: "Trump abre encuesta" paso la puerta).
+            "trump", "biden", "kamala", "sanchez", "feijoo", "ayuso", "putin",
+            "zelensky", "netanyahu", "milei", "maduro", "casa blanca", "moncloa",
+            "white house", "rey felipe", "abascal", "yolanda diaz",
         ],
-        "politica partidaria: fora do nicho e transforma qualquer erro em crise",
+        "politica partidista: fuera del nicho y convierte cualquier error en crisis",
     ),
-    _regra(
+    _regla(
         "tragedia",
         [
-            "morte", "mortes", "morre", "morreu", "morrem", "morto", "mortos", "obito",
-            "faleceu", "falecimento", "falece",
-            "vitima", "vitimas", "acidente", "desastre", "tragedia", "queda de aviao",
-            "atentado", "tiroteio", "massacre", "assassinato", "homicidio",
-            "estupro", "sequestro", "naufragio", "incendio", "terremoto",
+            "muerte", "muertes", "muere", "murio", "mueren", "muerto", "muertos",
+            "fallecido", "fallecimiento", "fallece", "fallece",
+            "victima", "victimas", "accidente", "desastre", "tragedia",
+            "caida de avion", "atentado", "tiroteo", "massacre", "masacre",
+            "asesinato", "homicidio", "violacion", "secuestro", "naufragio",
+            "incendio", "terremoto",
             "died", "dies", "killed", "death", "deaths", "shooting", "crash",
             "victims", "massacre", "earthquake", "wildfire",
         ],
-        "tragedia com vitima real: nao se faz conteudo viral sobre isso",
+        "tragedia con victima real: no se hace contenido viral sobre esto",
     ),
-    _regra(
+    _regla(
         "comercial",
         [
-            # Guia de compra, promocao e produto financeiro. Visto no radar de
-            # 19/09/2026: "Seguro para celular em 2026: quais planos cobrem
-            # furto de dados e Pix?" passou no nicho (celular, dados) e ganhou
-            # nota alta de interesse -- e e recomendacao de seguro.
-            "seguro para", "seguro de celular", "planos de seguro", "quais planos",
-            "melhores planos", "cupom", "cupons", "desconto", "descontos", "promocao",
-            "promocoes", "black friday", "cyber monday", "vale a pena comprar",
-            "onde comprar", "menor preco", "apostas", "bets", "cassino", "emprestimo",
-            "consorcio", "renda extra", "ganhar dinheiro", "coupon", "discount",
-            "deal alert", "best deals", "on sale",
+            # Guia de compra, promocion y producto financiero. Visto en el radar
+            # de 19/09/2026: "Seguro para movil en 2026: que planes cubren el
+            # robo de datos y Bizum?" paso el nicho (movil, datos) y gano nota
+            # alta de interes -- y es recomendacion de seguro.
+            "seguro para", "seguro de movil", "planes de seguro", "que planes",
+            "mejores planes", "cupon", "cupones", "descuento", "descuentos",
+            "promocion", "promociones", "black friday", "cyber monday",
+            "vale la pena comprar", "donde comprar", "mejor precio", "apuestas",
+            "bets", "casino", "prestamo", "credito", "ingreso extra",
+            "ganar dinero", "bizum", "coupon", "discount", "deal alert",
+            "best deals", "on sale",
         ],
-        "conteudo comercial ou conselho financeiro: o canal explica tecnologia, nao "
-        "recomenda compra, promocao nem produto financeiro",
+        "contenido comercial o consejo financiero: el canal explica tecnologia, no "
+        "recomienda compra, promocion ni producto financiero",
     ),
-    _regra(
+    _regla(
         "menores",
-        ["crianca", "criancas", "menor de idade", "adolescente", "infantil",
+        ["nino", "ninos", "menor de edad", "adolescente", "infantil",
          "child", "children", "minor", "teen", "teenager"],
-        "envolve menores: exige cuidado que o pipeline automatico nao oferece",
+        "involucra menores: exige cuidado que el pipeline automatico no ofrece",
     ),
 )
 
@@ -112,17 +119,17 @@ class PolicyVerdict:
 
 
 def check(termo: str) -> PolicyVerdict:
-    """Avalia um termo contra as regras. Primeira regra que casa decide.
+    """Evalua un termino contra las reglas. La primera regla que casa decide.
 
-    A ordem das regras nao e por gravidade e sim por frequencia observada no
-    radar; qualquer casamento bloqueia igual, entao a ordem so afeta qual motivo
-    aparece no registro.
+    El orden de las reglas no es por gravedad sino por frecuencia observada en
+    el radar; cualquier casamiento bloquea igual, asi que el orden solo afecta
+    a que motivo aparece en el registro.
     """
     texto = normalize(termo)
-    for regra in REGRAS:
-        m = regra.padrao.search(texto)
+    for regla in REGLAS:
+        m = regla.patron.search(texto)
         if m:
             return PolicyVerdict(
-                allowed=False, rule=regra.nome, reason=regra.motivo, matched=m.group(0)
+                allowed=False, rule=regla.nombre, reason=regla.motivo, matched=m.group(0)
             )
     return PolicyVerdict(allowed=True)

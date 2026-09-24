@@ -2,7 +2,7 @@
 #
 # Gera material de teste sintetico em fixtures/material/.
 #
-# Serve para exercitar a cadeia de producao (narracao, legenda, montagem) sem
+# Sirve para probar la cadena de producción (narración, subtítulos y montaje) sin
 # chave de API e sem rede. Os arquivos sao gerados em vez de versionados: sao
 # ~9 MB de gradiente que o ffmpeg reproduz em segundos.
 #
@@ -11,7 +11,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$ROOT/fixtures/material"
 
-command -v ffmpeg >/dev/null || { echo "ffmpeg nao encontrado no PATH" >&2; exit 1; }
+command -v ffmpeg >/dev/null || { echo "ffmpeg no está en el PATH" >&2; exit 1; }
 
 # O Fedora distribui ffmpeg sem libx264 (ver README). libopenh264 esta presente
 # nas duas variantes e basta para material de teste.
@@ -48,5 +48,5 @@ pronto. Para renderizar sem nenhuma chave de API:
 
   AGENT_VIDEO_SOURCE=local \
   AGENT_LOCAL_MATERIALS='["fixtures/material/placeholder-1.mp4","fixtures/material/placeholder-2.mp4","fixtures/material/placeholder-3.mp4"]' \
-  uv run agent render --script fixtures/roteiro_manual.json
+  uv run agent render --script fixtures/guion_manual.json
 EOF

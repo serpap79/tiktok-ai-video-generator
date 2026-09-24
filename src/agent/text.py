@@ -1,9 +1,9 @@
-"""Normalizacao de texto compartilhada pelos estagios.
+"""Normalizacion de texto compartida por las etapas.
 
-Fica separada porque quatro lugares precisam do mesmo tratamento: o filtro de
-politica, o portao de nicho, a deduplicacao e a montagem da consulta de busca do
-pesquisador. Se cada um normalizasse a seu modo, "Inteligência" casaria numa
-regra e escaparia da outra.
+Vive aparte porque cuatro sitios necesitan el mismo tratamiento: el filtro de
+politica, la puerta de nicho, la deduplicacion y la composicion de la consulta
+de busqueda del investigador. Si cada uno normalizara a su manera,
+"Inteligencia" casaria en una regla y se escaparia de la otra.
 """
 
 from __future__ import annotations
@@ -11,26 +11,28 @@ from __future__ import annotations
 import re
 import unicodedata
 
-# Palavras sem carga tematica em pt e en. Entram na deduplicacao (dois titulos
-# sobre o mesmo assunto nao devem parecer parecidos so por compartilharem "the")
-# e ficam de fora da contagem de nicho.
+# Palabras sin carga tematica en castellano e ingles. Entran en la deduplicacion
+# (dos titulos sobre el mismo asunto no deben parecerse solo por compartir "the")
+# y quedan fuera del conteo de nicho.
 STOPWORDS = frozenset("""
-a as o os um uma uns umas de do da dos das em no na nos nas por para com sem sob
-e ou mas que se ao aos à às pelo pela pelos pelas seu sua seus suas este esta
-isso isto esse essa aquele aquela mais menos muito muita ja nao sim como quando
-onde qual quais quem cujo entre apos ate desde sobre contra durante
+el la los las un una unos unas de del al en y o u es son era fue ser sido este
+esta esto estos estas ese esa eso esos esas aquel aquella aquellos aquellas
+lo le les su sus mi mis tu tus nos vos mas menos muy mucho muchos mucha ya no
+si como cuando donde cual cuales quien quienes cuyo entre tras hasta desde
+sobre contra durante por para con sin bajo ante segun tal tan tanto tampoco
 the a an of in on at to for with without and or but that which who whom this
 these those is are was were be been being it its as by from into over under
 """.split())
 
-_NAO_ALFANUM = re.compile(r"[^a-z0-9]+")
+_NO_ALFANUM = re.compile(r"[^a-z0-9]+")
 
 
 def strip_accents(texto: str) -> str:
-    """Remove diacriticos: "inteligência" -> "inteligencia".
+    """Quita diacriticos: "inteligencia" -> "inteligencia".
 
-    As fontes misturam pt e en e nem sempre acentuam de forma consistente; casar
-    regra com acento faria o filtro de politica falhar por um til.
+    Las fuentes mezclan castellano e ingles y no siempre acentuan de forma
+    consistente; casar la regla con acento haria fallar el filtro de politica
+    por una tilde.
     """
     return "".join(
         c for c in unicodedata.normalize("NFD", texto) if not unicodedata.combining(c)
@@ -38,22 +40,22 @@ def strip_accents(texto: str) -> str:
 
 
 def normalize(texto: str) -> str:
-    """Minusculas, sem acento, sem pontuacao, espaco unico."""
-    return " ".join(_NAO_ALFANUM.sub(" ", strip_accents(texto).lower()).split())
+    """Minusculas, sin acento, sin puntuacion, espacio unico."""
+    return " ".join(_NO_ALFANUM.sub(" ", strip_accents(texto).lower()).split())
 
 
 def tokens(texto: str, drop_stopwords: bool = True) -> list[str]:
-    palavras = normalize(texto).split()
+    palabras = normalize(texto).split()
     if drop_stopwords:
-        palavras = [p for p in palavras if p not in STOPWORDS]
-    return palavras
+        palabras = [p for p in palabras if p not in STOPWORDS]
+    return palabras
 
 
 def content_tokens(texto: str, min_len: int = 3) -> set[str]:
-    """Tokens que carregam assunto: sem stopword e sem fragmento curto.
+    """Tokens que cargan asunto: sin stopword y sin fragmento corto.
 
-    Numeros escapam do piso de tamanho porque costumam ser o proprio assunto
-    ("27B", "5090", "GPT 6") e sao exatamente o que distingue duas materias
-    parecidas sobre lancamentos diferentes.
+    Los numeros escapan del suelo de tamano porque suelen ser el propio asunto
+    ("27B", "5090", "GPT 6") y son exactamente lo que distingue dos titulos
+    parecidos sobre lanzamientos diferentes.
     """
     return {t for t in tokens(texto) if len(t) >= min_len or t.isdigit()}

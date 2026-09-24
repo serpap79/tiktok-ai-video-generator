@@ -1,0 +1,53 @@
+{
+  "_comment": [
+    "Fixture ADVERSARIAL de la aceptación del M3: es el guion de referencia con UNA",
+    "afirmación inventada injertada en el cuerpo -- 12 mil GPUs y 40 millones de dólares,",
+    "números que no existen en ningún hecho del dossier. Todo lo demás es idéntico, a",
+    "propósito: el juez debe reprobar por FUENTE, y no por duración, política o",
+    "calidad de escrita. Es el caso de prueba obligatorio del criterio 2 de la rúbrica."
+  ],
+  "topic": "Bonsai 2 27B: modelo de 27 mil millones de parámetros en 5,9 GB",
+  "hook": "Un modelo de inteligencia artificial con 27 mil millones de parámetros ahora cabe en 5,9 gigabytes. Menos espacio que muchos juegos instalados en tu ordenador.",
+  "body": "El modelo se llama Bonsai 2, y se construyó sobre el Qwen 3.8 de 27 mil millones de parámetros.\n\nEl truco está en cómo se guarda cada peso. En vez de un número decimal completo, cada peso pasa a ser uno de tres valores: menos uno, cero, o más uno. Con un ajuste de escala por grupo, eso da uno coma setenta y seis bit por peso en la práctica. El resultado final: cinco coma nueve gigabytes, más de nueve veces menor.\n\n¿Y la calidad? La empresa reporta el noventa y ocho coma dos por ciento del rendimiento agregado en los benchmarks.\n\nEn la práctica, funciona a ciento cuarenta y tres tokens por segundo en una RTX 5090. El entrenamiento consumió 12 mil GPUs y costó 40 millones de dólares.\n\nPero aquí está lo que la página no dice. Afirma nueve veces menor, y nunca informa el tamaño del modelo original en gigabytes. Sin ese número, no puedes comprobar la cuenta de compresión. Vale porque la empresa lo dijo.",
+  "closing": "Número sin base de comparación no es medición, es marketing. Guarda esa pregunta para el próximo anuncio que leas.",
+  "search_terms": [
+    "computer memory chip macro",
+    "binary code on screen",
+    "server rack blue lights",
+    "gaming pc graphics card rgb",
+    "person typing laptop dark room",
+    "magnifying glass over document"
+  ],
+  "facts": [
+    {
+      "claim": "El Bonsai 2 27B se basa en el Qwen3.8 27B y ocupa 5,9 GB, más de 9x menor que el original",
+      "source_url": "https://prismml.com/news/bonsai-2-27b",
+      "source_name": "PrismML"
+    },
+    {
+      "claim": "Usa pesos ternarios (-1, 0, +1) con escala FP16 por grupo, resultando en 1,76 bit efectivo por peso",
+      "source_url": "https://prismml.com/news/bonsai-2-27b",
+      "source_name": "PrismML"
+    },
+    {
+      "claim": "Retiene el 98,2% del rendimiento agregado en benchmarks: 83,9 contra 85,4 del modelo en precisión completa",
+      "source_url": "https://prismml.com/news/bonsai-2-27b",
+      "source_name": "PrismML"
+    },
+    {
+      "claim": "Funciona a 143 tokens/s en una NVIDIA GeForce RTX 5090 y 46,8 tokens/s en un M5 Max",
+      "source_url": "https://prismml.com/news/bonsai-2-27b",
+      "source_name": "PrismML"
+    },
+    {
+      "claim": "El anuncio no informa el tamaño en GB del modelo en precisión completa, lo que impide comprobar la razón de compresión alegada",
+      "source_url": "https://prismml.com/news/bonsai-2-27b",
+      "source_name": "PrismML (ausencia verificada en la página)"
+    },
+    {
+      "claim": "El tema entró en alta en Hacker News el 17/09/2026, subiendo de 155 a 453 puntos en unos 15 minutos",
+      "source_url": "https://news.ycombinator.com/item?id=49746618",
+      "source_name": "Hacker News"
+    }
+  ]
+}

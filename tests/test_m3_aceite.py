@@ -1,17 +1,17 @@
-"""Aceite do M3, como o plano o definiu.
+"""Aceite del M3, tal como el plan lo definio.
 
-  "roteiro aprovado com 100% das afirmacoes rastreaveis a uma URL; fixture
-   adversarial com afirmacao sem fonte e reprovado pelo juiz"
+  "guion aprobado con 100% de las afirmaciones rastreables a una URL; fixture
+   adversarial con afirmacion sin fuente y reprobada por el juez"
 
-As duas fixtures sao o mesmo roteiro, e a diferenca entre elas e uma unica
-afirmacao inventada. E o que torna o teste conclusivo: nao ha como o roteiro
-adversarial ser reprovado por escrita ruim, duracao ou politica, porque nesses
-tres ele e identico ao aprovado.
+Las dos fixtures son el mismo guion, y la diferencia entre ellas es una unica
+afirmacion inventada. Es lo que hace el test concluyente: no hay manera de que
+el guion adversarial sea reprobado por escrita mala, duracion o politica, porque
+en esos tres es identico al aprobado.
 
-O teste nao depende de nenhum modelo real. O juiz recebe um parecer de nota
-maxima nos cinco criterios julgados -- ou seja, o cenario mais favoravel
-possivel ao roteiro adversarial. Ele e reprovado mesmo assim, porque o criterio
-de fonte tem teto medido.
+El test no depende de ningun modelo real. El juez recibe un informe de nota
+maxima en los cinco criterios juzgados -- o sea, el escenario mas favorable
+posible al guion adversarial. Es reprobado aun asi, porque el criterio de fuente
+tiene techo medido.
 """
 
 from __future__ import annotations
@@ -29,76 +29,76 @@ from agent.models import RUBRIC_CUTOFF, Criterion, Dossier, Script
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 
 
-def carregar(nome: str) -> Script:
-    bruto = json.loads((FIXTURES / nome).read_text(encoding="utf-8"))
+def cargar(nombre: str) -> Script:
+    bruto = json.loads((FIXTURES / nombre).read_text(encoding="utf-8"))
     bruto.pop("_comment", None)
     return Script.model_validate(bruto)
 
 
-def dossie_do_roteiro(script: Script) -> Dossier:
-    """O Script carrega os fatos que o roteirista usou, entao ele se autojulga."""
+def dossier_del_guion(script: Script) -> Dossier:
+    """El Script lleva los hechos que el guionista uso, entonces se autojuzga."""
     return Dossier(topic=script.topic, facts=script.facts, collected_at=datetime.now(UTC))
 
 
-def parecer_nota_maxima() -> str:
+def informe_nota_maxima() -> str:
     return json.dumps({
-        c.value: {"reason": f"sem ressalva em {c.value}", "score": 2} for c in JULGADOS
+        c.value: {"reason": f"sin salvedad en {c.value}", "score": 2} for c in JULGADOS
     })
 
 
 @pytest.fixture
 def referencia() -> Script:
-    return carregar("roteiro_manual.json")
+    return cargar("guion_manual.json")
 
 
 @pytest.fixture
 def adversarial() -> Script:
-    return carregar("roteiro_sem_fonte.json")
+    return cargar("guion_sin_fuente.json")
 
 
-class TestRoteiroAprovado:
-    def test_cem_por_cento_das_afirmacoes_tem_url(self, referencia):
+class TestGuionAprobado:
+    def test_cien_por_cien_de_las_afirmaciones_tienen_url(self, referencia):
         assert referencia.facts
         assert all(str(f.source_url).startswith("http") for f in referencia.facts)
         assert all(f.source_name for f in referencia.facts)
 
-    def test_passa_nos_tres_criterios_medidos_sem_llm_nenhum(self, referencia):
-        """Duracao, politica e ancoragem numerica sao medidas nossas: o roteiro
-        de referencia passa nelas sem que nenhum modelo opine."""
-        report = Judge(ScriptedLLM(responses=[parecer_nota_maxima()])).review(
-            referencia, dossie_do_roteiro(referencia)
+    def test_pasa_en_los_tres_criterios_medidos_sin_llm_ninguno(self, referencia):
+        """Duracion, politica y anclaje numerico son medidas nuestras: el guion
+        de referencia pasa en ellas sin que ningun modelo opine."""
+        report = Judge(ScriptedLLM(responses=[informe_nota_maxima()])).review(
+            referencia, dossier_del_guion(referencia)
         )
         medidos = [s for s in report.review.scores if s.measured]
-        assert {s.criterion for s in medidos} == {Criterion.duracao, Criterion.politica}
+        assert {s.criterion for s in medidos} == {Criterion.duracion, Criterion.politica}
         assert all(s.score == 2 for s in medidos)
 
-    def test_e_aprovado(self, referencia):
-        report = Judge(ScriptedLLM(responses=[parecer_nota_maxima()])).review(
-            referencia, dossie_do_roteiro(referencia)
+    def test_es_aprobado(self, referencia):
+        report = Judge(ScriptedLLM(responses=[informe_nota_maxima()])).review(
+            referencia, dossier_del_guion(referencia)
         )
         assert report.approved
         assert report.review.total >= RUBRIC_CUTOFF
 
 
 class TestFixtureAdversarial:
-    def test_e_reprovado_apesar_do_parecer_de_nota_maxima(self, adversarial):
-        report = Judge(ScriptedLLM(responses=[parecer_nota_maxima()])).review(
-            adversarial, dossie_do_roteiro(adversarial)
+    def test_es_reprobado_apesar_del_informe_de_nota_maxima(self, adversarial):
+        report = Judge(ScriptedLLM(responses=[informe_nota_maxima()])).review(
+            adversarial, dossier_del_guion(adversarial)
         )
         assert not report.approved
 
-    def test_reprova_por_fonte_e_nao_por_outro_criterio(self, adversarial):
-        """A afirmacao inventada precisa aparecer no criterio certo. Reprovar
-        pelo motivo errado esconderia o defeito que se quer pegar."""
-        report = Judge(ScriptedLLM(responses=[parecer_nota_maxima()])).review(
-            adversarial, dossie_do_roteiro(adversarial)
+    def test_reprueba_por_fuente_y_no_por_otro_criterio(self, adversarial):
+        """La afirmacion inventada necesita aparecer en el criterio correcto.
+        Reprobar por el motivo equivocado esconderia el defecto que se quiere cazar."""
+        report = Judge(ScriptedLLM(responses=[informe_nota_maxima()])).review(
+            adversarial, dossier_del_guion(adversarial)
         )
-        assert [s.criterion for s in report.review.vetoed] == [Criterion.fonte]
-        nota = report.review.by_criterion[Criterion.fonte]
+        assert [s.criterion for s in report.review.vetoed] == [Criterion.fuente]
+        nota = report.review.by_criterion[Criterion.fuente]
         assert nota.score == 0
         assert "12" in nota.reason and "40" in nota.reason
 
-    def test_a_diferenca_com_o_aprovado_e_so_a_afirmacao_inventada(
+    def test_la_diferencia_con_el_aprobado_es_solo_la_afirmacion_inventada(
         self, referencia, adversarial
     ):
         assert adversarial.hook == referencia.hook
@@ -106,12 +106,12 @@ class TestFixtureAdversarial:
         assert adversarial.search_terms == referencia.search_terms
         assert [f.claim for f in adversarial.facts] == [f.claim for f in referencia.facts]
         assert adversarial.body != referencia.body
-        # Duracao e politica seguem iguais: nao ha outro motivo de reprovacao.
+        # Duracion y politica siguen iguales: no hay otro motivo de reprobacion.
         assert 60 <= adversarial.estimated_duration_s <= 90
 
-    def test_nota_de_revisao_aponta_a_fonte_primeiro(self, adversarial):
-        """E o que volta ao roteirista: nao adianta mexer no hook."""
-        report = Judge(ScriptedLLM(responses=[parecer_nota_maxima()])).review(
-            adversarial, dossie_do_roteiro(adversarial)
+    def test_nota_de_revision_apunta_a_la_fuente_primero(self, adversarial):
+        """Es lo que vuelve al guionista: no sirve de nada tocar el hook."""
+        report = Judge(ScriptedLLM(responses=[informe_nota_maxima()])).review(
+            adversarial, dossier_del_guion(adversarial)
         )
-        assert report.review.revision_notes[0].startswith("[fonte 0/2]")
+        assert report.review.revision_notes[0].startswith("[fuente 0/2]")

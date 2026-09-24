@@ -1,4 +1,4 @@
-"""Preflight: a ultima porta confere elos, nao rejulga texto."""
+"""Preflight: la ultima puerta comprueba eslabones, no re-juzga texto."""
 
 from __future__ import annotations
 
@@ -8,16 +8,16 @@ from agent.paths import run_dir, slugify
 from agent.publish.preflight import preflight_carousel, preflight_video
 
 
-def _roteiro(palavras: int = 180) -> dict:
-    return {"topic": "Bonsai 27B", "hook": "h", "body": " ".join(["b"] * palavras),
+def _guion(palabras: int = 180) -> dict:
+    return {"topic": "Bonsai 27B", "hook": "h", "body": " ".join(["b"] * palabras),
             "closing": "c", "facts": [{"claim": "x"}], "format": "long"}
 
 
-def _linha(id: int = 7, topic: str = "Bonsai 27B", words: int = 182) -> dict:
+def _linea(id: int = 7, topic: str = "Bonsai 27B", words: int = 182) -> dict:
     return {"id": id, "topic": topic, "word_count": words}
 
 
-def _parecer(id: int = 9, script_id: int = 7, ok: bool = True) -> dict:
+def _informe(id: int = 9, script_id: int = 7, ok: bool = True) -> dict:
     return {"id": id, "topic": "Bonsai 27B", "script_id": script_id,
             "model": "m", "approved": ok}
 
@@ -29,46 +29,46 @@ def _probe(**kw) -> dict:
 
 
 class TestVideo:
-    def test_pacote_completo_aprova(self):
+    def test_paquete_completo_aprueba(self):
         # hook(1) + body(180) + closing(1) = 182
-        r = preflight_video(_roteiro(), [_linha()], [_parecer()], _probe())
+        r = preflight_video(_guion(), [_linea()], [_informe()], _probe())
         assert r.approved
 
-    def test_sem_parecer_ligado_reprova(self):
-        r = preflight_video(_roteiro(), [_linha()], [_parecer(ok=False)], _probe())
+    def test_sin_informe_enlazado_reprueba(self):
+        r = preflight_video(_guion(), [_linea()], [_informe(ok=False)], _probe())
         assert not r.approved
-        assert any("parecer" in g.label for g in r.gates if not g.passed)
+        assert any("informe" in g.label for g in r.gates if not g.passed)
 
-    def test_roteiro_reescrito_invalida_parecer_velho(self):
-        r = preflight_video(_roteiro(palavras=190), [_linha()], [_parecer()],
+    def test_guion_reescrito_invalida_informe_viejo(self):
+        r = preflight_video(_guion(palabras=190), [_linea()], [_informe()],
                             _probe())
         assert not r.approved
 
-    def test_mp4_mudo_e_dimensao_reprovam(self):
-        r = preflight_video(_roteiro(), [_linha()], [_parecer()],
+    def test_mp4_mudo_y_dimension_reprueban(self):
+        r = preflight_video(_guion(), [_linea()], [_informe()],
                             _probe(has_audio=False, width=720, height=1280,
                                    duration_s=69.4))
         assert not r.approved
         assert sum(1 for g in r.gates if not g.passed) == 2
 
-    def test_sem_mp4_reprova_sem_quebrar(self):
-        r = preflight_video(_roteiro(), [_linha()], [_parecer()], None)
+    def test_sin_mp4_reprueba_sin_romper(self):
+        r = preflight_video(_guion(), [_linea()], [_informe()], None)
         assert not r.approved
 
 
-class TestCarrossel:
-    def test_aprovado_com_slides(self):
+class TestCarrusel:
+    def test_aprobado_con_slides(self):
         raw = {"topic": "T", "facts": [{"claim": "x"}]}
         assert preflight_carousel(raw, True, True).approved
 
-    def test_sem_parecer_ou_slides_reprova(self):
+    def test_sin_informe_o_slides_reprueba(self):
         raw = {"topic": "T", "facts": []}
         r = preflight_carousel(raw, False, False)
         assert not r.approved and len(r.gates) == 3
 
 
 class TestPaths:
-    def test_slug_e_diretorio(self):
+    def test_slug_y_directorio(self):
         assert slugify("Bonsai 2 27B: modelo!") == "bonsai-2-27b-modelo"
-        d = run_dir("short", "Bonsai 2 27B", agora=datetime(2026, 9, 19, 14, 30))
+        d = run_dir("short", "Bonsai 2 27B", ahora=datetime(2026, 9, 19, 14, 30))
         assert str(d) == "output/2026-09-19/1430-bonsai-2-27b-short"

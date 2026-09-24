@@ -151,8 +151,8 @@ class TestWikipedia:
     def test_underscore_vira_espaco(self, payload):
         assert all("_" not in s.term for s in WikipediaPageviews.parse(payload, now=AGORA))
 
-    def test_payload_sem_items_vira_source_unavailable(self):
-        with pytest.raises(SourceUnavailable, match="sem 'items'"):
+    def test_payload_sin_items_se_convierte_en_source_unavailable(self):
+        with pytest.raises(SourceUnavailable, match="sin 'items'"):
             WikipediaPageviews.parse({"items": []}, now=AGORA)
 
 

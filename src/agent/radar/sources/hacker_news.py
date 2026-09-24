@@ -1,9 +1,9 @@
-"""Hacker News via API do Algolia. Sem chave, sem conta.
+"""Hacker News mediante la API de Algolia. Sin clave ni cuenta.
 
-Fonte primaria do nicho: e a unica gratuita que entrega **velocidade nativa**.
-`points` e `created_at_i` juntos dao pontos por hora sem precisar de coleta
-anterior, entao a primeira execucao ja produz sinal util -- as outras fontes
-precisam de pelo menos duas coletas para dizer qualquer coisa sobre movimento.
+Fuente principal del nicho: la única gratuita que ofrece **velocidad nativa**.
+`points` y `created_at_i` dan juntos puntos por hora sin necesitar una recolección
+anterior, así que la primera ejecución ya produce una señal útil. Las demás fuentes
+necesitan al menos dos recolecciones para decir algo sobre el movimiento.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ class HackerNews:
         try:
             payload = r.json()
         except ValueError as exc:
-            raise SourceUnavailable("hacker news devolveu resposta nao-JSON") from exc
+            raise SourceUnavailable("hacker news devolvió una respuesta que no es JSON") from exc
 
         return self.parse(payload, now=datetime.now(UTC))
 

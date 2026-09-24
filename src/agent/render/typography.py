@@ -1,18 +1,19 @@
-"""Fontes da marca com cobertura conferida, compartilhadas por slide e video.
+"""Fuentes de marca con cobertura comprobada, compartidas por diapositiva y vídeo.
 
 Nasceu de um defeito que passou em todos os portoes: o carrossel das 13h56 de
 19/09/2026 saiu com titulo e texto em ~10px, ilegiveis. A cadeia era
-`_cobre()` -> fontTools ausente -> `except: return False` -> nenhuma fonte
-"cobria" -> `ImageFont.load_default()`, a fonte bitmap minuscula do Pillow. O
+`_cobre()` -> sin fontTools -> `except: return False` -> ninguna fuente
+«cubre» -> `ImageFont.load_default()`, la fuente de mapa de bits diminuta de Pillow.
 aceite so conferia 1080x1920, e o PNG passava.
 
 Duas regras saem disso:
 
-1. **"nao sei se cobre" nao vira "nao cobre".** Sem como ler a cmap, a fonte
+1. **«no sé si lo cubre» no se convierte en «no lo cubre».** Sin leer la cmap, la fuente
    da marca e usada; tofu num acento e defeito visivel, texto de 10px e slide
    perdido.
-2. **nunca cair na fonte bitmap.** Sem nenhuma TTF carregavel, falha alto: um
-   slide ilegivel publicado e pior que um carrossel que nao saiu.
+2. **nunca recurrible a una fuente de mapa de bits.** Sin ninguna TTF cargable,
+   falla claramente: una
+   diapositiva ilegible publicada es peor que un carrusel que no salió.
 """
 
 from __future__ import annotations
@@ -25,41 +26,41 @@ from PIL import ImageDraw, ImageFont
 from agent.config import PROJECT_ROOT
 
 FONTS_DIR = PROJECT_ROOT / "brand" / "assets" / "fonts"
-# A unica fonte do MPT que cobre os acentos do pt-BR (459 glifos conferidos).
+# La única fuente de MPT que cubre los acentos del castellano de España (459 glifos comprobados).
 FALLBACK_TTF = PROJECT_ROOT / ".renderer" / "resource" / "fonts" / "BeVietnamPro-Bold.ttf"
 
 DISPLAY = "SpaceGrotesk-Bold.ttf"
 MONO = "IBMPlexMono-SemiBold.ttf"
 MONO_MEDIUM = "IBMPlexMono-Medium.ttf"
 
-# O arquivo "SpaceGrotesk-Bold.ttf" da marca e a fonte VARIAVEL (eixo wght
+# El archivo «SpaceGrotesk-Bold.ttf» de la marca es la fuente VARIABLE (eje wght
 # 300-700) com o Light como padrao -- conferido na tabela fvar em 20/09/2026.
 # Pillow e libass carregam o padrao, e os titulos saiam em Light. A instancia
 # estatica em 700 e gerada uma vez (fontTools) com familia propria, para o
 # libass da legenda achar pelo nome sem ambiguidade.
-DISPLAY_FAMILY = "SeuCanal Display"
+DISPLAY_FAMILY = "CircuitoCero Display"
 STATIC_DIR = PROJECT_ROOT / "data" / "fonts"
 
 
 class FontUnavailable(RuntimeError):
-    """Nenhuma fonte escalavel carregou: texto sairia ilegivel."""
+    """No se cargó ninguna fuente escalable: el texto sería ilegible."""
 
 
 @lru_cache(maxsize=16)
 def _codepoints(path: str) -> frozenset[int] | None:
-    """Glifos da fonte, ou None quando nao da para saber."""
+    """Glifos de la fuente, o None cuando no se puede saber."""
     try:
         from fontTools.ttLib import TTFont
     except ImportError:
         return None
     try:
         return frozenset(TTFont(path, lazy=True).getBestCmap())
-    except Exception:  # noqa: BLE001 -- fonte corrompida conta como "nao sei"
+    except Exception:  # noqa: BLE001 -- una fuente dañada cuenta como «no sé»
         return None
 
 
 def covers(path: str | Path, text: str) -> bool:
-    """True se a fonte tem glifo para todo caractere visivel do texto."""
+    """True si la fuente tiene glifo para todos los caracteres visibles del texto."""
     pontos = _codepoints(str(path))
     if pontos is None:
         return True
@@ -67,8 +68,8 @@ def covers(path: str | Path, text: str) -> bool:
 
 
 def display_bold_path() -> Path:
-    """Space Grotesk Bold (700) estatica, gerada da variavel da marca se faltar."""
-    destino = STATIC_DIR / "SeuCanalDisplay-Bold.ttf"
+    """Space Grotesk Bold (700) estatica, generada de la variable de la marca si falta."""
+    destino = STATIC_DIR / "CircuitoCeroDisplay-Bold.ttf"
     if destino.exists():
         return destino
     origem = FONTS_DIR / DISPLAY
@@ -83,7 +84,7 @@ def display_bold_path() -> Path:
     estatica = instantiateVariableFont(fonte, {"wght": 700})
     nomes = estatica["name"]
     for nid, valor in ((1, DISPLAY_FAMILY), (2, "Bold"), (4, f"{DISPLAY_FAMILY} Bold"),
-                       (6, "SeuCanalDisplay-Bold"), (16, DISPLAY_FAMILY), (17, "Bold")):
+                       (6, "CircuitoCeroDisplay-Bold"), (16, DISPLAY_FAMILY), (17, "Bold")):
         nomes.setName(valor, nid, 3, 1, 0x409)
         nomes.setName(valor, nid, 1, 0, 0)
     estatica["OS/2"].usWeightClass = 700
@@ -99,7 +100,7 @@ def _caminho(name: str) -> Path:
 
 
 def font(name: str, size: int, text: str = "") -> ImageFont.FreeTypeFont:
-    """A fonte da marca pedida; a BeVietnamPro se faltar glifo; nunca bitmap."""
+    """Fuente de marca solicitada; BeVietnamPro si falta un glifo; nunca un mapa de bits."""
     candidatos = [_caminho(name), FALLBACK_TTF]
     carregavel: Path | None = None
     for cand in candidatos:
@@ -113,16 +114,16 @@ def font(name: str, size: int, text: str = "") -> ImageFont.FreeTypeFont:
                 continue
     if carregavel is not None:
         # Nenhuma cobre tudo: a primeira que carrega, com tofu no glifo que
-        # falta, ainda e legivel -- a bitmap nao e.
+        # falta un glifo, aún es legible; la fuente de mapa de bits no.
         return ImageFont.truetype(str(carregavel), size)
     raise FontUnavailable(
-        f"nenhuma fonte TTF em {FONTS_DIR} nem {FALLBACK_TTF}; "
-        "texto sairia na fonte bitmap de 10px")
+        f"no hay ninguna fuente TTF en {FONTS_DIR} ni {FALLBACK_TTF}; "
+        "el texto saldría con la fuente de mapa de bits de 10 px")
 
 
 def wrap(draw: ImageDraw.ImageDraw, text: str, fonte: ImageFont.FreeTypeFont,
          width: int) -> list[str]:
-    """Quebra por palavra no limite de largura medido na propria fonte."""
+    """Parte por palabras en el límite de ancho medido con la propia fuente."""
     linhas: list[str] = []
     atual = ""
     for palavra in text.split():

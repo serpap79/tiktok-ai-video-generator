@@ -1,32 +1,34 @@
-"""Qual formato serve a este tema: video longo, curto ou carrossel.
+"""Que formato sirve a este tema: vídeo largo, corto o carrusel.
 
-A pergunta do autor foi: "o agente deve saber a prioridade de formato de
-acordo com a informacao que recebe". Aqui a resposta e uma nota por formato
-com tres partes, cada uma gravada no motivo:
+La pregunta del autor fue: "el agente debe saber la prioridad de formato según
+la información que recibe". Aquí la respuesta es una nota por formato con tres
+partes, cada una grabada en el motivo:
 
-1. **o que a informacao aguenta** (`fit`, medido no dossie): fato unico com
-   numero forte cabe em 15s; cinco fatos com data e fonte sustentam 60-90s;
-   quatro itens paralelos (numeros, passos) viram cinco slides. Dossie com
-   menos de 3 fatos NAO vira longo nem carrossel -- e regra, nao nota.
-2. **o que o tipo de conteudo pede** (`affinity`): tutorial e comparacao sao
-   salvaveis (carrossel); historia e analise pedem arco (longo); curiosidade
-   e noticia quente cabem no curto.
-3. **o que o horario favorece** (`slot`): hipotese declarada em
+1. **lo que la información aguanta** (`fit`, medido en el dossier): dato único
+   con número fuerte cabe en 15s; cinco datos con fecha y fuente sostienen
+   60-90s; cuatro elementos paralelos (números, pasos) se vuelven cinco
+   diapositivas. Dossier con menos de 3 datos NO se convierte en largo ni
+   carrusel -- es regla, no nota.
+2. **lo que el tipo de contenido pide** (`affinity`): tutorial y comparación
+   se guardan (carrusel); historia y análisis piden arco (largo); curiosidad
+   y noticia caliente caben en el corto.
+3. **lo que la hora favorece** (`slot`): hipótesis declarada en
    `editorial/slots.py`.
 
-Por cima, duas correcoes: formato ja usado hoje perde pontos (variedade para
-o publico E amostra para o eval) e o desempenho MEDIDO do canal entra quando
-existir.
+Por encima, dos correcciones: formato ya usado hoy pierde puntos (variedad
+para la audiencia Y muestra para la eval) y el rendimiento MEDIDO del canal
+entra cuando exista.
 
-Desde 20/09/2026 a grade dos quatro slots **forca** o formato (curto de manha
-e na tarde, longo no almoco e a noite), entao a nota abaixo so desempata
-dentro do que o horario permite -- e a penalidade de repeticao nao muda
-resultado nenhum quando ha um formato so permitido. Ela continua valendo para
-`slot-extra` e para o dia em que a grade voltar a ser livre.
+Desde 20/09/2026 la parrilla de los cuatro slots **fuerza** el formato (corto
+por la mañana y por la tarde, largo a mediodía y de noche), así que la nota de
+abajo solo desempata dentro de lo que la hora permite -- y la penalización de
+repetición no cambia resultado ninguno cuando hay un formato solo permitido.
+Sigue valiendo para `slot-extra` y para el día en que la parrilla vuelva a ser
+libre.
 
-Nada disto diz o que viraliza no TikTok: nao ha API publica para isso. Os
-pesos de 2 e 3 sao priors declarados; o de desempenho e o unico medido, e e
-o que deve crescer com o tempo.
+Nada de esto dice qué se viraliza en TikTok: no hay API pública para eso. Los
+pesos 2 y 3 son priors declarados; el de rendimiento es el único medido, y es
+el que debe crecer con el tiempo.
 """
 
 from __future__ import annotations
@@ -38,45 +40,46 @@ from agent.models import Dossier
 
 FORMATS = ("long", "short", "carousel")
 
-# Ordem forcada por horario (decisao do autor em 20/09/2026, segunda
-# versao): quatro posts por dia, todos VIDEO, alternando curto e longo. O
-# carrossel saiu da grade -- segue implementado e alcancavel por
-# `slot-extra --format carrossel`, mas nao ocupa mais horario.
+# Orden forzada por hora (decisión del autor en 20/09/2026, segunda versión):
+# cuatro posts por día, todos VÍDEO, alternando corto y largo. El carrusel
+# salió de la parrilla -- sigue implementado y alcanzable por
+# `slot-extra --format carrusel`, pero ya no ocupa hora.
 #
-# O segundo elemento e emergencia, nao alternativa: dossie com menos de 3
-# fatos nao sustenta um longo (`MIN_FATOS`), e nesse caso o slot sai curto em
-# vez de falhar -- e o motivo gravado diz que foi emergencia. Os slots curtos
-# nao precisam de reserva: curto exige 1 fato, que e o minimo que o
-# pesquisador entrega.
-FORMATO_FORCADO: dict[str, tuple[str, ...]] = {
-    "0900": ("short",),
-    "1200": ("long", "short"),
-    "1600": ("short",),
-    "1900": ("long", "short"),
+# El segundo elemento es emergencia, no alternativa: dossier con menos de 3
+# datos no sostiene un largo (`MIN_HECHOS`), y en ese caso el slot sale corto
+# en vez de fallar -- y el motivo grabado dice que fue emergencia. Los slots
+# cortos no necesitan reserva: corto exige 1 dato, que es el mínimo que el
+# investigador entrega.
+FORMATO_FORZADO: dict[str, tuple[str, ...]] = {
+    "1000": ("short",),
+    "1300": ("long", "short"),
+    "1700": ("short",),
+    "2000": ("long", "short"),
 }
 
-# Minimo de fatos para cada formato. Abaixo de 3 o roteirista ja recusa longo
-# e carrossel (writer.MIN_FATOS_PARA_ROTEIRO); aqui a regra so fica explicita.
-MIN_FATOS = {"long": 3, "short": 1, "carousel": 3}
+# Mínimo de hechos por formato. Por debajo de 3 el guionista ya rechaza largo
+# y carrusel (writer.MIN_HECHOS_PARA_GUION); aquí la regla solo queda
+# explícita.
+MIN_HECHOS = {"long": 3, "short": 1, "carousel": 3}
 
-# Prior por horario (ver slots.py). Soma 1 em cada linha.
+# Prior por hora (ver slots.py). Suma 1 en cada línea.
 SLOT_PRIOR: dict[str, dict[str, float]] = {
-    "0900": {"short": 0.55, "long": 0.30, "carousel": 0.15},
-    "1200": {"long": 0.60, "short": 0.25, "carousel": 0.15},
-    "1600": {"short": 0.50, "long": 0.30, "carousel": 0.20},
-    "1900": {"long": 0.60, "short": 0.25, "carousel": 0.15},
+    "1000": {"short": 0.55, "long": 0.30, "carousel": 0.15},
+    "1300": {"long": 0.60, "short": 0.25, "carousel": 0.15},
+    "1700": {"short": 0.50, "long": 0.30, "carousel": 0.20},
+    "2000": {"long": 0.60, "short": 0.25, "carousel": 0.15},
 }
-# Prior de quem nao esta na grade (`slot-extra`, ou um slot novo antes de
-# ganhar linha propria). Era `SLOT_PRIOR["1500"]` escrito direto na funcao, e
-# aquele id deixou de existir quando a grade virou 09/12/16/19 -- um
-# `KeyError` esperando o primeiro `slot-extra`.
-PRIOR_PADRAO: dict[str, float] = {"short": 0.40, "long": 0.35, "carousel": 0.25}
+# Prior de quien no está en la parrilla (`slot-extra`, o un slot nuevo antes
+# de ganar línea propia). Era `SLOT_PRIOR["1500"]` escrito a mano, y ese id
+# dejó de existir cuando la parrilla se volvió 09/12/16/19 -- un `KeyError`
+# esperando el primer `slot-extra`.
+PRIOR_POR_DEFECTO: dict[str, float] = {"short": 0.40, "long": 0.35, "carousel": 0.25}
 
-# Afinidade tipo de conteudo x formato. Soma 1 em cada linha.
+# Afinidad tipo de contenido x formato. Suma 1 en cada línea.
 AFFINITY: dict[str, dict[str, float]] = {
     "news": {"short": 0.50, "long": 0.35, "carousel": 0.15},
-    "fato": {"short": 0.55, "carousel": 0.25, "long": 0.20},
-    "analise": {"long": 0.60, "carousel": 0.25, "short": 0.15},
+    "dato": {"short": 0.55, "carousel": 0.25, "long": 0.20},
+    "analisis": {"long": 0.60, "carousel": 0.25, "short": 0.15},
     "tutorial": {"carousel": 0.60, "long": 0.30, "short": 0.10},
     "futuro": {"long": 0.45, "short": 0.35, "carousel": 0.20},
     "vs": {"carousel": 0.50, "short": 0.30, "long": 0.20},
@@ -84,18 +87,18 @@ AFFINITY: dict[str, dict[str, float]] = {
 }
 
 PESO_SLOT = 0.30
-PESO_AFINIDADE = 0.30
-PESO_ENCAIXE = 0.40
-PENALIDADE_REPETIDO = 0.25
-# Desempenho medido so entra com amostra: menos que isso por formato e ruido.
-AMOSTRA_MINIMA = 3
-TETO_DESEMPENHO = 0.15
+PESO_AFINIDAD = 0.30
+PESO_ENCAJE = 0.40
+PENALIZACION_REPETIDO = 0.25
+# Rendimiento medido solo entra con muestra: menos que eso por formato es ruido.
+MUESTRA_MINIMA = 3
+TECHO_RENDIMIENTO = 0.15
 
 _ANO = re.compile(r"\b(1[6-9]\d\d|20\d\d)\b")
 _DIGITO = re.compile(r"\d")
-_PASSO = re.compile(
-    r"\b(passo|etapa|step|primeiro|segundo|terceiro|instal|configur|execut|rode|use |"
-    r"usar|clique|digite|comando|command|ative|habilit)", re.IGNORECASE)
+_PASO = re.compile(
+    r"\b(paso|etapa|step|primer|segundo|tercer|instal|configur|ejecut|lanza|usa |"
+    r"usar|pulsa|escribe|comando|command|activa|habilita)", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -108,7 +111,7 @@ class DossierFeatures:
 
     @property
     def listness(self) -> float:
-        """0-1: quanto os fatos se comportam como itens de lista."""
+        """0-1: cuánto los hechos se comportan como elementos de lista."""
         return min(1.0, (self.with_numbers + self.steps) / 4)
 
 
@@ -120,14 +123,14 @@ def features(dossier: Dossier) -> DossierFeatures:
         facts=len(dossier.facts),
         with_numbers=sum(1 for f in dossier.facts if _DIGITO.search(f.claim)),
         domains=len(dominios),
-        steps=sum(1 for c in claims if _PASSO.search(c)),
+        steps=sum(1 for c in claims if _PASO.search(c)),
         dated=sum(1 for f in dossier.facts if _ANO.search(f.claim)),
     )
 
 
 def fit(feat: DossierFeatures, formato: str) -> float:
-    """O quanto a informacao sustenta o formato, de 0 a 1."""
-    if feat.facts < MIN_FATOS[formato]:
+    """Cuánto la información sostiene el formato, de 0 a 1."""
+    if feat.facts < MIN_HECHOS[formato]:
         return 0.0
     if formato == "long":
         return round(0.5 * min(1.0, feat.facts / 5)
@@ -135,7 +138,7 @@ def fit(feat: DossierFeatures, formato: str) -> float:
                      + 0.25 * (1.0 if feat.dated or feat.facts >= 5 else 0.4), 3)
     if formato == "carousel":
         return round(0.5 * min(1.0, feat.facts / 4) + 0.5 * feat.listness, 3)
-    # short: um fato forte basta; numero e o que prende em 15s.
+    # short: un dato fuerte basta; el número es lo que retiene en 15s.
     return round(0.6 + (0.4 if feat.with_numbers else 0.12), 3)
 
 
@@ -154,114 +157,114 @@ def choose_format(feat: DossierFeatures, pillar: str, slot_id: str,
                   used_today: list[str] | None = None,
                   performance: dict[str, float] | None = None,
                   allowed: tuple[str, ...] = FORMATS,
-                  em_ordem: bool = False) -> FormatDecision:
-    """Formato com a maior nota; o motivo diz de onde veio cada parte.
+                  en_orden: bool = False) -> FormatDecision:
+    """Formato con la nota más alta; el motivo dice de dónde salió cada parte.
 
-    Com `em_ordem=True` a lista `allowed` deixa de ser um conjunto de
-    permitidos e passa a ser **preferencia**: vale o primeiro que o dossie
-    sustenta, e os seguintes so entram como emergencia. A nota continua sendo
-    calculada e gravada no motivo -- ela apenas nao decide.
+    Con `en_orden=True` la lista `allowed` deja de ser un conjunto de
+    permitidos y pasa a ser **preferencia**: vale el primero que el dossier
+    sostiene, y los siguientes solo entran como emergencia. La nota sigue
+    calculándose y grabándose en el motivo -- simplemente no decide.
 
-    Por que existe: `FORMATO_FORCADO` sempre foi descrito como ordem ("o
-    segundo elemento e emergencia, nao alternativa") e nunca foi uma. A funcao
-    escolhia pela nota dentro do permitido, e isso passou despercebido
-    enquanto o unico slot forcado era o carrossel das 20h, que pontuava alto
-    sozinho. Quando a grade de 20/09/2026 forcou `("long", "short")` no
-    almoco e na noite, o curto passou a ganhar do longo em pilar de noticia
-    (afinidade 0,50 contra 0,35) e os dois slots longos do dia sairiam curtos
-    -- exatamente o contrario do que a grade pede. Descoberto conferindo a
-    grade depois de montada, nao por teste.
+    Por qué existe: `FORMATO_FORZADO` siempre se describió como orden ("el
+    segundo elemento es emergencia, no alternativa") y nunca lo fue. La
+    función elegía por nota dentro del permitido, y eso pasó desapercibido
+    mientras el único slot forzado era el carrusel de las 20h, que puntuaba
+    alto solo. Cuando la parrilla de 20/09/2026 forzó `("long", "short")` en
+    el mediodía y la noche, el corto pasaba a ganar al largo en pilar de
+    noticia (afinidad 0,50 contra 0,35) y los dos slots largos del día saldrían
+    cortos -- exactamente lo contrario de lo que la parrilla pide. Descubierto
+    revisando la parrilla después de montarla, no por test.
     """
     usados = list(used_today or [])
-    desempenho = performance or {}
-    prior_slot = SLOT_PRIOR.get(slot_id, PRIOR_PADRAO)
-    afinidade = AFFINITY.get(pillar, AFFINITY["news"])
+    rendimiento = performance or {}
+    prior_slot = SLOT_PRIOR.get(slot_id, PRIOR_POR_DEFECTO)
+    afinidad = AFFINITY.get(pillar, AFFINITY["news"])
 
     notas: dict[str, float] = {}
     partes: dict[str, dict[str, float]] = {}
     for f in allowed:
-        encaixe = fit(feat, f)
-        if encaixe == 0.0:
+        encaje = fit(feat, f)
+        if encaje == 0.0:
             continue
         p = {
             "slot": round(PESO_SLOT * prior_slot.get(f, 0.0), 3),
-            "tipo": round(PESO_AFINIDADE * afinidade.get(f, 0.0), 3),
-            "encaixe": round(PESO_ENCAIXE * encaixe, 3),
-            "repetido": round(-PENALIDADE_REPETIDO * usados.count(f), 3),
-            "medido": round(max(-TETO_DESEMPENHO,
-                                min(TETO_DESEMPENHO, desempenho.get(f, 0.0))), 3),
+            "tipo": round(PESO_AFINIDAD * afinidad.get(f, 0.0), 3),
+            "encaje": round(PESO_ENCAJE * encaje, 3),
+            "repetido": round(-PENALIZACION_REPETIDO * usados.count(f), 3),
+            "medido": round(max(-TECHO_RENDIMIENTO,
+                                min(TECHO_RENDIMIENTO, rendimiento.get(f, 0.0))), 3),
         }
         partes[f] = p
         notas[f] = round(sum(p.values()), 3)
 
     if not notas:
-        # So chega aqui com dossie sem fato (o pesquisador nao entrega isso)
-        # ou `allowed` vazio. Curto e o formato que menos exige.
+        # Solo llega aquí con dossier sin hechos (el investigador no entrega
+        # eso) o `allowed` vacío. Corto es el formato que menos exige.
         return FormatDecision("short", {"short": 0.0}, {},
-                              "nenhum formato sustentado pelo dossie; curto por padrao")
+                              "ningún formato sostenido por el dossier; corto por defecto")
 
-    if em_ordem:
-        escolhido = next((f for f in allowed if f in notas), None)
-        if escolhido is None:
-            escolhido = max(notas, key=lambda f: (notas[f], -FORMATS.index(f)))
+    if en_orden:
+        elegido = next((f for f in allowed if f in notas), None)
+        if elegido is None:
+            elegido = max(notas, key=lambda f: (notas[f], -FORMATS.index(f)))
     else:
-        escolhido = max(notas, key=lambda f: (notas[f], -FORMATS.index(f)))
-    p = partes[escolhido]
-    outros = ", ".join(f"{f} {notas[f]:.2f}" for f in sorted(notas, key=lambda x: -notas[x])
-                       if f != escolhido)
-    medido = ("desempenho medido do canal entrou" if any(desempenho.values())
-              else "sem metrica propria com amostra ainda: pesos sao prior declarado")
+        elegido = max(notas, key=lambda f: (notas[f], -FORMATS.index(f)))
+    p = partes[elegido]
+    otros = ", ".join(f"{f} {notas[f]:.2f}" for f in sorted(notas, key=lambda x: -notas[x])
+                      if f != elegido)
+    medido = ("rendimiento medido del canal entró" if any(rendimiento.values())
+              else "sin métrica propia con muestra aún: los pesos son prior declarado")
     reason = (
-        f"{escolhido} ({notas[escolhido]:.2f}) = horario {p['slot']:+.2f}, "
-        f"tipo {pillar} {p['tipo']:+.2f}, dossie {p['encaixe']:+.2f} "
-        f"({feat.facts} fatos, {feat.with_numbers} com numero, {feat.domains} fonte(s), "
-        f"{feat.steps} passo(s), {feat.dated} com data)"
-        + (f", repetido hoje {p['repetido']:+.2f}" if p["repetido"] else "")
+        f"{elegido} ({notas[elegido]:.2f}) = horario {p['slot']:+.2f}, "
+        f"tipo {pillar} {p['tipo']:+.2f}, dossier {p['encaje']:+.2f} "
+        f"({feat.facts} hechos, {feat.with_numbers} con número, {feat.domains} "
+        f"fuente(s), {feat.steps} paso(s), {feat.dated} con fecha)"
+        + (f", repetido hoy {p['repetido']:+.2f}" if p["repetido"] else "")
         + (f", medido {p['medido']:+.2f}" if p["medido"] else "")
-        + (f"; outros: {outros}" if outros else "")
+        + (f"; otros: {otros}" if otros else "")
         + f"; {medido}"
     )
-    return FormatDecision(escolhido, notas, partes, reason)
+    return FormatDecision(elegido, notas, partes, reason)
 
 
 def performance_from_metrics(rows: list[dict]) -> dict[str, float]:
-    """Bonus por formato a partir das metricas lidas no app, com amostra.
+    """Bonus por formato a partir de las métricas leídas en la app, con muestra.
 
-    `rows`: uma linha por post com `format`, `views` e `completion_rate`
-    (a ultima coleta de cada publish_id). Cada formato recebe a diferenca
-    relativa da sua mediana de conclusao para a mediana geral, limitada a
-    +-TETO_DESEMPENHO. Formato com menos de AMOSTRA_MINIMA posts fica em 0:
-    dois videos bons nao sao tendencia.
+    `rows`: una línea por post con `format`, `views` y `completion_rate`
+    (la última recolección de cada publish_id). Cada formato recibe la
+    diferencia relativa de su mediana de conclusión respecto a la mediana
+    general, limitada a +-TECHO_RENDIMIENTO. Formato con menos de
+    MUESTRA_MINIMA posts queda en 0: dos vídeos buenos no son tendencia.
     """
     por_formato: dict[str, list[float]] = {}
     for r in rows:
-        taxa = r.get("completion_rate")
-        if taxa is None or r.get("format") not in FORMATS:
+        tasa = r.get("completion_rate")
+        if tasa is None or r.get("format") not in FORMATS:
             continue
-        por_formato.setdefault(r["format"], []).append(float(taxa))
-    todas = [v for vs in por_formato.values() for v in vs]
-    if not todas:
+        por_formato.setdefault(r["format"], []).append(float(tasa))
+    todos = [v for vs in por_formato.values() for v in vs]
+    if not todos:
         return {}
-    geral = _mediana(todas)
-    saida: dict[str, float] = {}
+    general = _mediana(todos)
+    salida: dict[str, float] = {}
     for f, valores in por_formato.items():
-        if len(valores) < AMOSTRA_MINIMA or geral <= 0:
+        if len(valores) < MUESTRA_MINIMA or general <= 0:
             continue
         mediana = _mediana(valores)
-        saida[f] = round(max(-TETO_DESEMPENHO, min(TETO_DESEMPENHO,
-                                                   (mediana - geral) / geral)), 3)
-    return saida
+        salida[f] = round(max(-TECHO_RENDIMIENTO, min(TECHO_RENDIMIENTO,
+                                                      (mediana - general) / general)), 3)
+    return salida
 
 
 def _mediana(valores: list[float]) -> float:
     ordenados = sorted(valores)
-    meio = len(ordenados) // 2
+    medio = len(ordenados) // 2
     if len(ordenados) % 2:
-        return ordenados[meio]
-    return (ordenados[meio - 1] + ordenados[meio]) / 2
+        return ordenados[medio]
+    return (ordenados[medio - 1] + ordenados[medio]) / 2
 
 
-__all__ = ["AFFINITY", "FORMATS", "FORMATO_FORCADO", "MIN_FATOS", "PRIOR_PADRAO",
-            "SLOT_PRIOR", "DossierFeatures",
-            "FormatDecision", "choose_format", "features", "fit",
-            "performance_from_metrics"]
+__all__ = ["AFFINITY", "FORMATS", "FORMATO_FORZADO", "MIN_HECHOS", "PRIOR_POR_DEFECTO",
+           "SLOT_PRIOR", "DossierFeatures",
+           "FormatDecision", "choose_format", "features", "fit",
+           "performance_from_metrics"]

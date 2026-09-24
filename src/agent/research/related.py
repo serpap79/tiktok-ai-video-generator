@@ -1,16 +1,16 @@
-"""Mais fontes para o tema, garimpadas na propria coleta do radar -- sem busca paga.
+"""Más fuentes para el tema, halladas en la propia recolección del radar y sin búsqueda de pago.
 
-O primeiro slot real (20/09) montou o dossie do "Gemini went rogue" com UMA
-fonte (The Verge). Na mesma coleta havia outras materias da mesma historia,
-inclusive em veiculo brasileiro, que o agrupamento do RSS nao juntou porque
+El primer slot real (20/09) creó el expediente de «Gemini went rogue» con UNA
+fuente (The Verge). En la misma recolección había otros artículos de la misma historia,
+incluso en un medio extranjero, que la agrupación de RSS no juntó porque
 o titulo estava em outro idioma: "Gemini invade empresas" e "Gemini went
 rogue" dividem pouco vocabulario comum.
 
-O que sobrevive a traducao sao os NOMES: Gemini, Google, GPT-6, RTX 5090.
-Dois nomes proprios em comum (ou um com digito, que e nome de produto)
-bastam para tratar como a mesma historia e oferecer a pagina ao
-pesquisador. O portao de trecho literal continua valendo pagina a pagina,
-entao uma materia errada custa uma chamada e nenhum fato falso.
+Lo que sobrevive a la traducción son los NOMBRES: Gemini, Google, GPT-6, RTX 5090.
+Dos nombres propios en común (o uno con dígito, que es un nombre de producto)
+bastan para tratarlas como la misma historia y ofrecer la página al
+investigador. La comprobación de Fragmento literal sigue vigente página a página,
+así, un artículo incorrecto cuesta una llamada y ningún hecho falso.
 """
 
 from __future__ import annotations
@@ -48,15 +48,15 @@ def names(titulo: str) -> set[str]:
 
 
 def related_items(decision: Decision, signals: list[Signal], limit: int = 3) -> list[NewsItem]:
-    """Materias da mesma coleta que falam da mesma historia, em outro veiculo."""
+    """Artículos de la misma recolección que tratan la misma historia en otro medio."""
     alvo = names(decision.term)
     if not alvo:
         return []
     ja = {str(decision.url or "")} | {str(n.url) for n in decision.news_items}
     achados: list[tuple[int, NewsItem]] = []
     for s in signals:
-        # So fonte cuja URL e a materia: RSS e model card. A URL do HN e a
-        # discussao, e a da Wikipedia mais vista e o verbete, nao a noticia.
+        # Solo fuentes cuya URL es el artículo: RSS y tarjetas de modelo. La URL de HN es la
+        # discusión, y la de Wikipedia más visitada es la entrada, no la noticia.
         if (s.url is None or str(s.url) in ja
                 or not (s.source.startswith("rss") or s.source == "huggingface")):
             continue

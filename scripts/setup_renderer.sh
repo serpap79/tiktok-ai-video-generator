@@ -3,9 +3,9 @@
 # Prepara e sobe o renderizador.
 #
 # O renderizador e o MoneyPrinterTurbo (MIT, github.com/harry0703/MoneyPrinterTurbo)
-# rodando como servico local. Nao versionamos o codigo dele: e dependencia externa,
+# ejecutándose como servicio local. No versionamos su código: es una dependencia externa,
 # clonada em .renderer/ (git-ignored). Nosso agente fala com ele por HTTP, atras da
-# porta Renderer, entao trocar de renderizador depois nao toca em nenhum estagio.
+# y entra por el puerto Renderer. Así, cambiar de renderizador más adelante no toca ninguna etapa.
 #
 #   ./scripts/setup_renderer.sh           instala e configura
 #   ./scripts/setup_renderer.sh --serve   instala, configura e sobe o servidor
@@ -24,7 +24,7 @@ SERVE=0
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31merro:\033[0m %s\n' "$*" >&2; exit 1; }
 
-# Segredos moram no .env (git-ignored), nunca neste arquivo: ele e versionado num
+# Los secretos viven en `.env` (ignorado por Git), nunca en este archivo, que sí se versiona en un
 # repo publico. O `source` sobrescreveria uma variavel ja exportada, entao o valor
 # vindo do ambiente e guardado antes e restaurado depois -- assim
 # `PEXELS_API_KEY=outra ./scripts/setup_renderer.sh` continua valendo como override.
@@ -38,14 +38,14 @@ fi
 [[ -n "$PEXELS_FROM_ENV" ]] && PEXELS_API_KEY="$PEXELS_FROM_ENV"
 PEXELS_API_KEY="${PEXELS_API_KEY:-}"
 
-command -v uv >/dev/null || die "uv nao encontrado. Instale com: sudo dnf install uv"
-command -v ffmpeg >/dev/null || die "ffmpeg nao encontrado no PATH"
+command -v uv >/dev/null || die "uv no está instalado. Instálalo con: sudo dnf install uv"
+command -v ffmpeg >/dev/null || die "ffmpeg no está en el PATH"
 
 # ---------------------------------------------------------------- clone/update
 
 if [[ -d "$RENDERER_DIR/.git" ]]; then
   log "atualizando renderizador em .renderer/"
-  git -C "$RENDERER_DIR" pull --ff-only --quiet || log "pull falhou; seguindo com a copia local"
+  git -C "$RENDERER_DIR" pull --ff-only --quiet || log "la descarga falló; se mantiene la copia local"
 else
   log "clonando MoneyPrinterTurbo em .renderer/"
   git clone --depth 1 --quiet "$REPO_URL" "$RENDERER_DIR"
@@ -61,7 +61,7 @@ log "instalando dependencias do renderizador (Python $PYTHON_VERSION)"
 
 # ------------------------------------------------------------------ ffmpeg
 
-# O Fedora distribui `ffmpeg-free`, compilado sem os codecs sob patente: nao tem
+# Fedora distribuye `ffmpeg-free`, compilado sin los códecs bajo patente: no incluye
 # libx264, que e o encoder padrao do MoviePy e do passo de concatenacao do MPT.
 # Sem isso o render morre no fim, depois de gastar todo o TTS e a montagem.
 #
@@ -84,7 +84,7 @@ if has_libx264 ffmpeg; then
 else
   BUNDLED_FFMPEG="$(find "$RENDERER_DIR/.venv" -path '*imageio_ffmpeg/binaries/ffmpeg*' -type f 2>/dev/null | head -1)"
   [[ -n "$BUNDLED_FFMPEG" ]] \
-    || die "ffmpeg do sistema nao tem libx264 e o binario do imageio-ffmpeg nao foi encontrado"
+    || die "el ffmpeg del sistema no tiene libx264 y no se encontró el binario de imageio-ffmpeg"
   has_libx264 "$BUNDLED_FFMPEG" \
     || die "nem o ffmpeg do sistema nem o do imageio-ffmpeg tem libx264"
   log "ffmpeg do sistema sem libx264; usando o binario do imageio-ffmpeg"
@@ -101,8 +101,8 @@ else
   API_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
   cp "$RENDERER_DIR/config.example.toml" "$CONFIG"
 
-  # 0.0.0.0 expoe o renderizador para a rede local inteira. Ele nao precisa
-  # disso: quem fala com ele e o agente, nesta mesma maquina.
+  # 0.0.0.0 expone el renderizador a toda la red local. No necesita
+  ello: quien se comunica con él es el agente, en esta misma máquina.
   sed -i 's/^listen_host = .*/listen_host = "127.0.0.1"/' "$CONFIG"
 
   # Autenticacao ligada mesmo em localhost: custa nada e evita que qualquer
@@ -114,13 +114,13 @@ else
   sed -i 's/^subtitle_provider = .*/subtitle_provider = "edge"/' "$CONFIG"
 fi
 
-# A chave do Pexels e aplicada sempre, e nao so quando o config.toml nasce: quem ja
+# La clave de Pexels se aplica siempre, no solo cuando nace config.toml: quien ya
 # rodou o setup antes de ter a chave precisa conseguir adiciona-la depois.
 if [[ -n "$PEXELS_API_KEY" ]]; then
   sed -i "s|^pexels_api_keys = .*|pexels_api_keys = [\"$PEXELS_API_KEY\"]|" "$CONFIG"
   log "chave do Pexels gravada em config.toml"
 else
-  printf '\033[1;33maviso:\033[0m PEXELS_API_KEY nao definida.\n'
+  printf '\033[1;33maviso:\033[0m PEXELS_API_KEY no está definida.\n'
   printf '  Cadastre-se de graca em https://www.pexels.com/api/ e rode:\n'
   printf '    PEXELS_API_KEY=xxx ./scripts/setup_renderer.sh\n'
   printf '  A chave fica no .env (git-ignored), nunca neste script.\n'
@@ -142,7 +142,7 @@ if [[ -n "$PEXELS_API_KEY" ]]; then
   else
     printf 'PEXELS_API_KEY=%s\n' "$PEXELS_API_KEY" >> "$ENV_FILE"
   fi
-  log "chave do Pexels persistida no .env; nas proximas vezes nao precisa passar"
+  log "clave de Pexels guardada en .env; no hace falta pasar en las próximas ejecuciones"
 fi
 
 # ---------------------------------------------------------------- servir
@@ -165,4 +165,4 @@ fi
 log "pronto. Para subir o servidor:"
 printf '    ./scripts/setup_renderer.sh --serve\n'
 printf '  Depois, em outro terminal:\n'
-printf '    uv run agent render --script fixtures/roteiro_manual.json\n'
+printf '    uv run agent render --script fixtures/guion_manual.json\n'

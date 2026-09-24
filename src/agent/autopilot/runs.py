@@ -1,18 +1,18 @@
-"""Livro dos slots: o que cada horario produziu, publicou ou por que falhou.
+"""Libro de los slots: qué produjo o publicó cada horario y por qué falló.
 
-Uma linha por (dia, slot), unica. E o que torna o piloto idempotente: o timer
-do systemd pode disparar de novo (maquina religada, `Persistent=true`), e um
-slot ja publicado nao pode virar dois posts. E tambem o que o planejador le
+Una fila única por (día, slot). Esto hace idempotente el piloto: el temporizador
+de systemd puede dispararse de nuevo (máquina encendida, `Persistent=true`) y un
+slot ya publicado no puede convertirse en dos posts. También es lo que lee el planificador
 para variar o dia -- formato, tipo e tema ja usados hoje.
 
 Estados:
-- `started`: em producao (ou morreu no meio: pode ser retomado);
-- `produced`: pacote pronto, esperando a hora de publicar;
-- `published`: na inbox do TikTok (video);
-- `ready_manual`: pacote pronto para postar a mao (carrossel sem hospedagem
-  verificada -- a API de foto so aceita URL de dominio verificado);
-- `failed`: nao saiu, com o motivo;
-- `skipped`: ja estava feito.
+- `started`: en producción (o se interrumpió: se puede retomar);
+- `produced`: paquete listo, pendiente de la hora de publicación;
+- `published`: en la bandeja de entrada de TikTok (vídeo);
+- `ready_manual`: paquete listo para publicar manualmente (carrusel sin alojamiento
+  verificado: la API de fotos solo acepta URL de un dominio verificado);
+- `failed`: no se publicó, con el motivo;
+- `skipped`: ya estaba hecho.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ class SlotRuns:
         return dict(row) if row else None
 
     def begin(self, day: str, slot: str, *, force: bool = False) -> bool:
-        """Abre (ou reabre) o slot. False se ja terminou e nao e para refazer."""
+        """Abre (o reabre) el slot. False si ya terminó y no debe rehacerse."""
         atual = self.get(day, slot)
         if atual and atual["state"] in FINAIS and not force:
             return False
@@ -102,7 +102,7 @@ class SlotRuns:
         return [dict(r) for r in rows]
 
     def used_today(self, day: str, except_slot: str = "") -> dict[str, list[str]]:
-        """Formatos, tipos e temas que o dia ja produziu (para variar)."""
+        """Formatos, tipos y temas que el día ya ha producido (para variar)."""
         feitos = [r for r in self.day(day)
                   if r["slot"] != except_slot and r["state"] in (*FINAIS, "produced")]
         return {

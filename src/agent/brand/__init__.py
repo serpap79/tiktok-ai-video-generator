@@ -1,1 +1,1 @@
-"""Vetor de marca Seu Canal: fonte da verdade para todas as camadas."""
+"""Vector de marca de Circuito Cero: fuente de verdad para todas las capas."""

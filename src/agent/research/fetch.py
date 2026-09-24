@@ -1,15 +1,15 @@
-"""Busca a pagina de uma fonte e devolve o texto que o modelo vai ler.
+"""Descarga la página de una fuente y devuelve el texto que leerá el modelo.
 
-Separado do extrator porque um tem rede e o outro nao: assim a limpeza de HTML
-tem teste puro, e o que sobra aqui e so politica de rede -- limite de bytes,
-tipo de conteudo, redirecionamento.
+Está separado del extractor porque uno accede a la red y el otro no: así la limpieza de HTML
+tiene pruebas puras y aquí solo queda la política de red: límite de bytes,
+tipo de contenido y redireccionamiento.
 
-Duas decisoes que parecem detalhe e nao sao:
+Dos decisiones que parecen detalles pero no lo son:
 
-- **a URL gravada e a final, depois dos redirecionamentos.** O `Fact` precisa
-  apontar para o que foi lido de fato. Link de agregador que redireciona para
-  outro veiculo, gravado como se fosse a fonte, e citacao que nao confere.
-- **o limite de bytes corta o download, nao o texto depois.** Pagina de noticia
+- **la URL guardada es la final, después de las redirecciones.** `Fact` debe
+  apuntar a lo leído realmente. Un enlace de agregador que redirige a
+  otro medio y se guarda como si fuera la fuente produce una cita incorrecta.
+- **el límite de bytes interrumpe la descarga, no recorta después el texto.** Una página de noticias
   com video embutido passa de dezenas de megabytes, e a janela de um tema e de
   horas.
 """
@@ -22,26 +22,26 @@ import httpx
 
 from agent.research.extract import extract
 
-# Compromisso conhecido: veiculo de noticia costuma recusar cliente sem cara de
-# navegador, e sem o prefixo Mozilla a coleta perde metade das fontes. O sufixo
-# identifica o agente para quem le log -- e o maximo de honestidade que da para
-# ter sem inviabilizar a leitura.
+# Compromiso conocido: los medios suelen rechazar clientes sin apariencia de
+# navegador; sin el prefijo Mozilla, la recolección pierde la mitad de las fuentes. El sufijo
+# identifica el agente para quien lea el log, con la máxima honestidad posible sin
+# impedir la lectura.
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; tiktok-viral-generator/0.1; pesquisador)",
     "Accept": "text/html,application/xhtml+xml",
-    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
 }
 
 TIPOS_ACEITOS = ("text/html", "application/xhtml", "text/plain")
 
 
 class PageUnavailable(RuntimeError):
-    """A pagina nao pode ser lida. Esperado: 403, paywall, PDF, timeout."""
+    """No se puede leer la página. Es lo esperado con un 403, paywall, PDF o tiempo agotado."""
 
 
 @dataclass
 class Page:
-    """O que foi lido de uma fonte, com a URL que realmente foi lida."""
+    """Lo leído de una fuente, con la URL realmente utilizada."""
 
     url: str
     title: str
@@ -76,7 +76,7 @@ class PageFetcher:
                     raise PageUnavailable(f"HTTP {r.status_code}")
                 tipo = (r.headers.get("content-type") or "").lower()
                 if tipo and not tipo.startswith(TIPOS_ACEITOS):
-                    raise PageUnavailable(f"conteudo nao textual ({tipo.split(';')[0]})")
+                    raise PageUnavailable(f"contenido no textual ({tipo.split(';')[0]})")
 
                 bruto = bytearray()
                 for pedaco in r.iter_bytes():
@@ -103,6 +103,6 @@ class PageFetcher:
 
 
 def _dominio(url: str) -> str:
-    """Nome de exibicao quando a fonte nao veio nomeada: o dominio, sem www."""
+    """Nombre para mostrar cuando la fuente no tiene nombre: el dominio, sin www."""
     resto = url.split("://", 1)[-1]
     return resto.split("/", 1)[0].removeprefix("www.")

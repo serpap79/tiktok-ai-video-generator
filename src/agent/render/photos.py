@@ -95,12 +95,20 @@ def rank(query: str, photos: list[dict], *, subject: bool,
 
 def fetch(query: str, dest_dir: str | Path, *, subject: bool = False,
           exclude: set[int] | None = None, used: set[int] | None = None) -> Path | None:
-    """Baixa a melhor foto do termo para o cache. None se falhar.
+    """Descarga la mejor foto del termino a la cache. None si falla.
 
-    `used` recebe o id escolhido: o chamador passa o mesmo conjunto para os
-    cinco slides, e a mesma foto nao aparece duas vezes no carrossel.
+    `used` recibe el id elegido: quien llama pasa el mismo conjunto para los
+    cinco slides, y la misma foto no aparece dos veces en el carrusel.
+
+    La cache se consulta ANTES de la red: un `{slug}.jpg` ya presente (sembrado
+    a mano o de una corrida anterior) evita la llamada al API -- sin clave o con
+    el API caido, el slide sale con su foto en vez de con layout desnudo.
     """
     Path(dest_dir).mkdir(parents=True, exist_ok=True)
+    slug = "".join(c if c.isalnum() else "-" for c in query.lower()).strip("-")
+    sembrada = Path(dest_dir) / f"{slug}.jpg"
+    if sembrada.exists():
+        return sembrada
     try:
         fotos = rank(query, search(query, per_page=12), subject=subject,
                      exclude=(exclude or set()) | (used or set()))
@@ -108,7 +116,6 @@ def fetch(query: str, dest_dir: str | Path, *, subject: bool = False,
             return None
         foto = fotos[0]
         pid = int(foto.get("id") or 0)
-        slug = "".join(c if c.isalnum() else "-" for c in query.lower()).strip("-")
         destino = Path(dest_dir) / f"{slug}-{pid}.jpg"
         if used is not None:
             used.add(pid)

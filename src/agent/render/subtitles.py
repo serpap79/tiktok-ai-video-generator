@@ -1,15 +1,15 @@
-"""Legenda karaoke em ASS: grafia original, tempo da voz, palavra ativa em destaque.
+"""Leyenda karaoke en ASS: grafia original, tiempo de la voz, palabra activa destacada.
 
-A voz le "Djemini"; a tela mostra "Gemini". O tempo de cada palavra vem dos
-eventos WordBoundary do TTS, que falam da grafia FALADA -- `align` casa esses
-eventos com as palavras faladas e devolve o tempo as palavras originais pelo
-alinhamento de `voice/pronounce.py`.
+La voz dice "Djemini"; la pantalla muestra "Gemini". El tiempo de cada palabra
+viene de los eventos WordBoundary del TTS, que hablan de la grafia HABLADA --
+`align` casa esos eventos con las palabras habladas y devuelve el tiempo a las
+palabras originales por el alineamiento de `voice/pronounce.py`.
 
-Estilo: bloco de ate 3 palavras (uma so por tela era o MPT: "virgula",
-"ponto" soltos no meio do quadro, sem contexto), palavra que esta sendo dita
-no acento da marca, fonte da marca (Space Grotesk 700), contorno grosso para
-ler sobre qualquer clipe, a 60% da altura -- abaixo do cartao do gancho,
-acima da interface do TikTok.
+Estilo: bloque de hasta 3 palabras (una sola por pantalla era el MPT: "coma",
+"punto" sueltos en medio del cuadro, sin contexto), la palabra que se esta
+diciendo en el acento de la marca, fuente de la marca (Space Grotesk 700),
+contorno grueso para leer sobre cualquier clip, al 60% de la altura -- debajo
+de la tarjeta del gancho, por encima de la interfaz de TikTok.
 """
 
 from __future__ import annotations
@@ -22,10 +22,10 @@ from pathlib import Path
 from agent.voice.edge import WordTiming
 from agent.voice.pronounce import Respelled
 
-MAX_PALAVRAS = 3
+MAX_PALABRAS = 3
 MAX_CARACTERES = 22
-Y_LEGENDA = 1150
-TAMANHO = 84
+Y_LEYENDA = 1150
+TAMANO = 84
 
 
 @dataclass
@@ -36,82 +36,82 @@ class TimedWord:
 
 
 def _norm(texto: str) -> str:
-    sem = unicodedata.normalize("NFD", texto.lower())
-    sem = "".join(c for c in sem if not unicodedata.combining(c))
-    return re.sub(r"[^a-z0-9]", "", sem)
+    sin = unicodedata.normalize("NFD", texto.lower())
+    sin = "".join(c for c in sin if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]", "", sin)
 
 
 def align(respelled: Respelled, timings: list[WordTiming]) -> list[TimedWord]:
-    """Tempo de cada palavra ORIGINAL a partir dos limites da fala."""
-    falado = respelled.spoken
-    dono: list[int] = []
+    """Tiempo de cada palabra ORIGINAL a partir de los limites del habla."""
+    hablado = respelled.spoken
+    dueno: list[int] = []
     for i, n in enumerate(respelled.groups):
-        dono.extend([i] * n)
-    inicio: list[float | None] = [None] * len(falado)
-    fim: list[float | None] = [None] * len(falado)
+        dueno.extend([i] * n)
+    inicio: list[float | None] = [None] * len(hablado)
+    fin: list[float | None] = [None] * len(hablado)
 
     j = 0
     for t in timings:
-        alvo = _norm(t.text)
-        if not alvo:
+        objetivo = _norm(t.text)
+        if not objetivo:
             continue
-        for k in range(j, min(j + 8, len(falado))):
-            fk = _norm(falado[k])
-            if fk and (fk == alvo or fk.startswith(alvo) or alvo.startswith(fk)):
+        for k in range(j, min(j + 8, len(hablado))):
+            fk = _norm(hablado[k])
+            if fk and (fk == objetivo or fk.startswith(objetivo) or objetivo.startswith(fk)):
                 inicio[k] = t.start_s if inicio[k] is None else inicio[k]
-                fim[k] = t.end_s
+                fin[k] = t.end_s
                 j = k + 1
                 break
 
-    _preencher(inicio, fim)
-    palavras: list[TimedWord] = []
+    _rellenar(inicio, fin)
+    palabras: list[TimedWord] = []
     for i, original in enumerate(respelled.original):
-        ks = [k for k, d in enumerate(dono) if d == i]
+        ks = [k for k, d in enumerate(dueno) if d == i]
         if ks:
             s = min(inicio[k] for k in ks if inicio[k] is not None)
-            e = max(fim[k] for k in ks if fim[k] is not None)
-        elif palavras:
-            # Parte de nome composto ("Street" em "Wall Street Journal"): acende
-            # junto com a primeira palavra do nome.
-            s, e = palavras[-1].start, palavras[-1].end
+            e = max(fin[k] for k in ks if fin[k] is not None)
+        elif palabras:
+            # Parte de nombre compuesto ("Street" en "Wall Street Journal"): se
+            # enciende junto con la primera palabra del nombre.
+            s, e = palabras[-1].start, palabras[-1].end
         else:
             s = e = 0.0
-        palavras.append(TimedWord(original, s, e))
-    return palavras
+        palabras.append(TimedWord(original, s, e))
+    return palabras
 
 
-def _preencher(inicio: list[float | None], fim: list[float | None]) -> None:
-    """Palavra falada sem evento de limite ganha o tempo entre as vizinhas."""
+def _rellenar(inicio: list[float | None], fin: list[float | None]) -> None:
+    """Palabra hablada sin evento de limite gana el tiempo entre las vecinas."""
     n = len(inicio)
     for k in range(n):
         if inicio[k] is not None:
             continue
-        ant = next((fim[x] for x in range(k - 1, -1, -1) if fim[x] is not None), 0.0)
+        ant = next((fin[x] for x in range(k - 1, -1, -1) if fin[x] is not None), 0.0)
         prox = next((inicio[x] for x in range(k + 1, n) if inicio[x] is not None), None)
         prox = prox if prox is not None else ant + 0.3
         inicio[k] = ant
-        fim[k] = max(ant, prox)
+        fin[k] = max(ant, prox)
 
 
-def chunks(palavras: list[TimedWord]) -> list[list[TimedWord]]:
-    """Blocos de ate 3 palavras, quebrando em pontuacao."""
-    blocos: list[list[TimedWord]] = []
-    atual: list[TimedWord] = []
-    for p in palavras:
-        texto = " ".join(w.text for w in [*atual, p])
-        if atual and (len(atual) >= MAX_PALAVRAS or len(texto) > MAX_CARACTERES):
-            blocos.append(atual)
-            atual = []
-        atual.append(p)
+def chunks(palabras: list[TimedWord]) -> list[list[TimedWord]]:
+    """Bloques de hasta 3 palabras, cortando en puntuacion."""
+    bloques: list[list[TimedWord]] = []
+    actual: list[TimedWord] = []
+    for p in palabras:
+        texto = " ".join(w.text for w in [*actual, p])
+        if actual and (len(actual) >= MAX_PALABRAS or len(texto) > MAX_CARACTERES):
+            bloques.append(actual)
+            actual = []
+        actual.append(p)
         if re.search(r"[.!?;:,…]$", p.text):
-            blocos.append(atual)
-            atual = []
-    if atual:
-        blocos.append(atual)
-    return blocos
+            bloques.append(actual)
+            actual = []
+    if actual:
+        bloques.append(actual)
+    return bloques
 
 
-def _ass_cor(hex_rgb: str, alpha: int = 0) -> str:
+def _ass_color(hex_rgb: str, alpha: int = 0) -> str:
     h = hex_rgb.lstrip("#")
     return f"&H{alpha:02X}{h[4:6]}{h[2:4]}{h[0:2]}".upper()
 
@@ -128,50 +128,51 @@ def _escapar(texto: str) -> str:
     return texto.replace("\\", "\\\\").replace("{", "(").replace("}", ")")
 
 
-def build_ass(palavras: list[TimedWord], destino: Path, *, accent: str,
-              font_family: str, duration: float, y: int = Y_LEGENDA,
+def build_ass(palabras: list[TimedWord], destino: Path, *, accent: str,
+              font_family: str, duration: float, y: int = Y_LEYENDA,
               start_at: float = 0.0) -> Path:
-    """Um evento por palavra ativa: o bloco inteiro na tela, a atual colorida.
+    """Un evento por palabra activa: el bloque entero en pantalla, la actual en color.
 
-    `y` e `start_at` vem da encenacao do apresentador quando ha um: enquanto ele
-    esta grande na chamada, quem escreve o gancho e o cartao -- a legenda entra
-    depois, mais alta, para passar acima da cabeca dele no canto. Sem isso o
-    mesmo texto apareceria escrito duas vezes, e a segunda em cima do rosto.
+    `y` y `start_at` vienen de la escenificacion del presentador cuando hay uno:
+    mientras el esta grande en la llamada, quien escribe el gancho es la
+    tarjeta -- la leyenda entra despues, mas arriba, para pasar por encima de
+    la cabeza de el en la esquina. Sin esto el mismo texto apareceria escrito
+    dos veces, y la segunda sobre el rostro.
     """
-    branco = _ass_cor("#FFFFFF")
-    destaque = _ass_cor(accent)
-    cabecalho = (
+    blanco = _ass_color("#FFFFFF")
+    destaque = _ass_color(accent)
+    cabecera = (
         "[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n"
         "WrapStyle: 0\nScaledBorderAndShadow: yes\n\n"
         "[V4+ Styles]\n"
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,"
         " BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle,"
         " BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        f"Style: Fala,{font_family},{TAMANHO},{branco},{branco},&H00000000,&H64000000,"
+        f"Style: Fala,{font_family},{TAMANO},{blanco},{blanco},&H00000000,&H64000000,"
         "-1,0,0,0,100,100,0,0,1,6,2,5,60,60,0,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
-    linhas: list[str] = []
-    blocos = chunks(palavras)
-    for b, bloco in enumerate(blocos):
-        fim_bloco = (blocos[b + 1][0].start if b + 1 < len(blocos)
-                     else min(duration, bloco[-1].end + 0.4))
-        if fim_bloco <= start_at:
+    lineas: list[str] = []
+    bloques = chunks(palabras)
+    for b, bloque in enumerate(bloques):
+        fin_bloque = (bloques[b + 1][0].start if b + 1 < len(bloques)
+                      else min(duration, bloque[-1].end + 0.4))
+        if fin_bloque <= start_at:
             continue
-        for i, palavra in enumerate(bloco):
-            ini = max(palavra.start, start_at)
-            fim = bloco[i + 1].start if i + 1 < len(bloco) else fim_bloco
-            if fim <= ini:
-                fim = ini + 0.05
+        for i, palabra in enumerate(bloque):
+            ini = max(palabra.start, start_at)
+            fin = bloque[i + 1].start if i + 1 < len(bloque) else fin_bloque
+            if fin <= ini:
+                fin = ini + 0.05
             partes = []
-            for k, w in enumerate(bloco):
-                cor = destaque if k == i else branco
-                partes.append(f"{{\\c{cor}}}{_escapar(w.text)}")
+            for k, w in enumerate(bloque):
+                color = destaque if k == i else blanco
+                partes.append(f"{{\\c{color}}}{_escapar(w.text)}")
             texto = f"{{\\an5\\pos(540,{y})}}" + " ".join(partes)
-            linhas.append(f"Dialogue: 0,{_t(ini)},{_t(fim)},Fala,,0,0,0,,{texto}")
+            lineas.append(f"Dialogue: 0,{_t(ini)},{_t(fin)},Fala,,0,0,0,,{texto}")
     destino.parent.mkdir(parents=True, exist_ok=True)
-    destino.write_text(cabecalho + "\n".join(linhas) + "\n", encoding="utf-8")
+    destino.write_text(cabecera + "\n".join(lineas) + "\n", encoding="utf-8")
     return destino
 
 

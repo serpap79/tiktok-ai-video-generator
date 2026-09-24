@@ -1,18 +1,18 @@
-"""Historia e curiosidade: "neste dia" da Wikipedia e o arquivo atemporal.
+"""Historia y curiosidad: "un dia como hoy" de Wikipedia y el archivo atemporal.
 
-O radar so enxergava o que esta em alta AGORA -- e o autor pediu
-historia, curiosidade e tutorial alem de noticia. Duas fontes, as duas
-ancoradas em pagina da Wikipedia (que o pesquisador le como qualquer fonte):
+El radar solo veia lo que esta en alta AHORA -- y se pidio historia,
+curiosidad y tutorial ademas de noticia. Dos fuentes, las dos ancladas en
+pagina de Wikipedia (que el investigador lee como cualquier fuente):
 
-1. **Neste dia** (`api.wikimedia.org/feed/v1/wikipedia/pt/onthisday`): os
-   eventos da data de hoje. Aniversario e o gancho de tempo da historia --
-   "ha 55 anos, neste dia" -- e o portao de nicho do curador descarta o que
-   nao e tech/ciencia (a maior parte da lista e politica e tragedia, que o
-   portao de politica ja barra).
-2. **Arquivo** (`ARQUIVO` abaixo): temas atemporais de historia da
-   computacao e curiosidade cientifica, com a pagina de referencia. E a
-   reserva: dia de radar magro ainda tem pauta, e o cooldown do ledger (30
-   dias) impede repetir.
+1. **Un dia como hoy** (`api.wikimedia.org/feed/v1/wikipedia/es/onthisday`): los
+   eventos de la fecha de hoy. El aniversario es el gancho temporal de la
+   historia -- "hace 55 anos, un dia como hoy" -- y la puerta de nicho del
+   curador descarta lo que no es tech/ciencia (la mayor parte de la lista es
+   politica y tragedia, que la puerta de politica ya bloquea).
+2. **Archivo** (`ARCHIVO` abajo): temas atemporales de historia de la
+   computacion y curiosidad cientifica, con la pagina de referencia. Es la
+   reserva: un dia de radar pobre todavia tiene pauta, y el cooldown del ledger
+   (30 dias) impide repetir.
 """
 
 from __future__ import annotations
@@ -25,71 +25,71 @@ import httpx
 from agent.models import Signal
 from agent.ports.radar import SourceUnavailable
 
-ONTHISDAY = "https://api.wikimedia.org/feed/v1/wikipedia/pt/onthisday/events/{mm}/{dd}"
-HEADERS = {"User-Agent": "tiktok-viral-generator/0.1 (github.com/guilhermehrsilva)"}
+ONTHISDAY = "https://api.wikimedia.org/feed/v1/wikipedia/es/onthisday/events/{mm}/{dd}"
+HEADERS = {"User-Agent": "tiktok-viral-generator/0.1"}
 
-# (tema, pagina de referencia). Tema em pt-BR, escrito como pauta.
-ARQUIVO: tuple[tuple[str, str], ...] = (
-    ("ENIAC: o computador de 30 toneladas que calculava trajetorias",
-     "https://pt.wikipedia.org/wiki/ENIAC"),
-    ("Transistor: a invencao de 1947 que esta dentro de todo chip",
-     "https://pt.wikipedia.org/wiki/Transistor"),
-    ("ARPANET: a rede militar que virou a internet",
-     "https://pt.wikipedia.org/wiki/ARPANET"),
-    ("Deep Blue contra Kasparov: quando a maquina venceu o campeao de xadrez",
-     "https://pt.wikipedia.org/wiki/Deep_Blue_versus_Kasparov"),
-    ("AlphaGo: a jogada 37 que surpreendeu os mestres do Go",
-     "https://pt.wikipedia.org/wiki/AlphaGo"),
-    ("Teste de Turing: a pergunta de 1950 que ainda divide a IA",
-     "https://pt.wikipedia.org/wiki/Teste_de_Turing"),
-    ("Ada Lovelace: o primeiro algoritmo escrito antes do computador existir",
-     "https://pt.wikipedia.org/wiki/Ada_Lovelace"),
-    ("Lei de Moore: a previsao de 1965 que ditou o ritmo dos chips",
-     "https://pt.wikipedia.org/wiki/Lei_de_Moore"),
-    ("World Wide Web: o projeto do CERN que virou a web",
-     "https://pt.wikipedia.org/wiki/World_Wide_Web"),
-    ("Linux: o kernel que comecou como hobby de um estudante",
-     "https://pt.wikipedia.org/wiki/Linux"),
-    ("ELIZA: o chatbot de 1966 que ja enganava pessoas",
-     "https://pt.wikipedia.org/wiki/ELIZA"),
-    ("Perceptron: a primeira rede neural, de 1958",
-     "https://pt.wikipedia.org/wiki/Perceptron"),
-    ("Bug do milenio: o erro de dois digitos que custou bilhoes",
-     "https://pt.wikipedia.org/wiki/Problema_do_ano_2000"),
-    ("Voyager 1: a sonda que saiu do sistema solar com 69 KB de memoria",
-     "https://pt.wikipedia.org/wiki/Voyager_1"),
-    ("Sputnik 1: o satelite que comecou a corrida espacial",
-     "https://pt.wikipedia.org/wiki/Sputnik_1"),
-    ("Enigma: a maquina de criptografia quebrada por Turing",
-     "https://pt.wikipedia.org/wiki/Enigma_(m%C3%A1quina)"),
-    ("Colossus: o computador secreto da Segunda Guerra",
-     "https://pt.wikipedia.org/wiki/Colossus"),
-    ("Apollo Guidance Computer: o computador que levou o homem a Lua",
-     "https://pt.wikipedia.org/wiki/Apollo_Guidance_Computer"),
-    ("Unix: o sistema de 1969 por tras do seu celular",
-     "https://pt.wikipedia.org/wiki/Unix"),
-    ("Intel 4004: o primeiro microprocessador comercial, de 1971",
-     "https://pt.wikipedia.org/wiki/Intel_4004"),
-    ("Telescopio James Webb: o espelho dourado a 1,5 milhao de km",
-     "https://pt.wikipedia.org/wiki/Telesc%C3%B3pio_Espacial_James_Webb"),
-    ("Computacao quantica: o qubit explicado sem misterio",
-     "https://pt.wikipedia.org/wiki/Qubit"),
-    ("Blockchain: o registro que ninguem consegue apagar",
-     "https://pt.wikipedia.org/wiki/Blockchain"),
-    ("Algoritmo de busca do Google: o PageRank de dois estudantes",
-     "https://pt.wikipedia.org/wiki/PageRank"),
-    ("Redes neurais convolucionais: como a IA aprendeu a enxergar",
-     "https://pt.wikipedia.org/wiki/Rede_neural_convolucional"),
-    ("Transformer: o artigo de 2017 por tras do ChatGPT",
-     "https://pt.wikipedia.org/wiki/Transformer_(aprendizado_de_m%C3%A1quina)"),
-    ("Hubble: o telescopio que nasceu miope e foi consertado no espaco",
-     "https://pt.wikipedia.org/wiki/Telesc%C3%B3pio_espacial_Hubble"),
-    ("Criptografia RSA: a matematica que protege o seu cartao",
-     "https://pt.wikipedia.org/wiki/RSA_(sistema_criptogr%C3%A1fico)"),
+# (tema, pagina de referencia). Tema en castellano, escrito como pauta.
+ARCHIVO: tuple[tuple[str, str], ...] = (
+    ("ENIAC: el ordenador de 30 toneladas que calculaba trayectorias",
+     "https://es.wikipedia.org/wiki/ENIAC"),
+    ("Transistor: la invencion de 1947 que esta dentro de cada chip",
+     "https://es.wikipedia.org/wiki/Transistor"),
+    ("ARPANET: la red militar que se convirtio en internet",
+     "https://es.wikipedia.org/wiki/ARPANET"),
+    ("Deep Blue contra Kasparov: cuando la maquina vencio al campeon de ajedrez",
+     "https://es.wikipedia.org/wiki/Deep_Blue_versus_Kasparov"),
+    ("AlphaGo: la jugada 37 que sorprendio a los maestros del Go",
+     "https://es.wikipedia.org/wiki/AlphaGo"),
+    ("Test de Turing: la pregunta de 1950 que todavia divide a la IA",
+     "https://es.wikipedia.org/wiki/Test_de_Turing"),
+    ("Ada Lovelace: el primer algoritmo escrito antes de que existiera el ordenador",
+     "https://es.wikipedia.org/wiki/Ada_Lovelace"),
+    ("Ley de Moore: la prediccion de 1965 que marco el ritmo de los chips",
+     "https://es.wikipedia.org/wiki/Ley_de_Moore"),
+    ("World Wide Web: el proyecto del CERN que se convirtio en la web",
+     "https://es.wikipedia.org/wiki/World_Wide_Web"),
+    ("Linux: el nucleo que empezo como hobby de un estudiante",
+     "https://es.wikipedia.org/wiki/Linux"),
+    ("ELIZA: el chatbot de 1966 que ya enganaba a la gente",
+     "https://es.wikipedia.org/wiki/ELIZA"),
+    ("Perceptron: la primera red neuronal, de 1958",
+     "https://es.wikipedia.org/wiki/Perceptr%C3%B3n"),
+    ("El error del milenio: el fallo de dos digitos que costo miles de millones",
+     "https://es.wikipedia.org/wiki/Problema_del_a%C3%B1o_2000"),
+    ("Voyager 1: la sonda que salio del sistema solar con 69 KB de memoria",
+     "https://es.wikipedia.org/wiki/Voyager_1"),
+    ("Sputnik 1: el satelite que inicio la carrera espacial",
+     "https://es.wikipedia.org/wiki/Sputnik_1"),
+    ("Enigma: la maquina de cifrado rota por Turing",
+     "https://es.wikipedia.org/wiki/M%C3%A1quina_Enigma"),
+    ("Colossus: el ordenador secreto de la Segunda Guerra Mundial",
+     "https://es.wikipedia.org/wiki/Colossus"),
+    ("Apolo Guidance Computer: el ordenador que llevo al hombre a la Luna",
+     "https://es.wikipedia.org/wiki/Ordenador_de_guidance_de_Apollo"),
+    ("Unix: el sistema de 1969 detras de tu movil",
+     "https://es.wikipedia.org/wiki/Unix"),
+    ("Intel 4004: el primer microprocesador comercial, de 1971",
+     "https://es.wikipedia.org/wiki/Intel_4004"),
+    ("Telescopio James Webb: el espejo dorado a 1,5 millones de km",
+     "https://es.wikipedia.org/wiki/Telescopio_espacial_James_Webb"),
+    ("Computacion cuantica: el qubit explicado sin misterio",
+     "https://es.wikipedia.org/wiki/Qubit"),
+    ("Blockchain: el registro que nadie consigue borrar",
+     "https://es.wikipedia.org/wiki/Cadena_de_bloques"),
+    ("El algoritmo de busqueda de Google: el PageRank de dos estudiantes",
+     "https://es.wikipedia.org/wiki/PageRank"),
+    ("Redes neuronales convolucionales: como la IA aprendio a ver",
+     "https://es.wikipedia.org/wiki/Red_neuronal_convolucional"),
+    ("Transformer: el articulo de 2017 detras del ChatGPT",
+     "https://es.wikipedia.org/wiki/Transformer"),
+    ("Hubble: el telescopio que nacio miope y fue reparado en el espacio",
+     "https://es.wikipedia.org/wiki/Telescopio_espacial_Hubble"),
+    ("Criptografia RSA: la matematica que protege tu tarjeta",
+     "https://es.wikipedia.org/wiki/RSA"),
 )
 
-# Quantos itens do arquivo entram por coleta. Poucos: sao reserva, e o
-# ledger ja impede repetir por 30 dias.
+# Cuantos items del archivo entran por recolecta. Pocos: son reserva, y el
+# ledger ya impide repetir durante 30 dias.
 POR_COLETA = 3
 
 
@@ -100,23 +100,23 @@ class WikipediaOnThisDay:
         self._client = client or httpx.Client(timeout=httpx.Timeout(20.0), headers=HEADERS)
 
     def collect(self) -> list[Signal]:
-        agora = datetime.now(UTC)
-        url = ONTHISDAY.format(mm=f"{agora:%m}", dd=f"{agora:%d}")
+        ahora = datetime.now(UTC)
+        url = ONTHISDAY.format(mm=f"{ahora:%m}", dd=f"{ahora:%d}")
         try:
             r = self._client.get(url, headers=HEADERS)
         except httpx.HTTPError as exc:
-            raise SourceUnavailable(f"wikipedia onthisday inacessivel: {exc}") from exc
+            raise SourceUnavailable(f"wikipedia onthisday inaccesible: {exc}") from exc
         if r.status_code != 200:
-            raise SourceUnavailable(f"wikipedia onthisday devolveu {r.status_code}")
+            raise SourceUnavailable(f"wikipedia onthisday devolvio {r.status_code}")
         try:
             eventos = (r.json() or {}).get("events") or []
         except ValueError as exc:
-            raise SourceUnavailable("wikipedia onthisday devolveu resposta nao-JSON") from exc
-        return self.parse(eventos, now=agora)
+            raise SourceUnavailable("wikipedia onthisday devolvio respuesta no-JSON") from exc
+        return self.parse(eventos, now=ahora)
 
     @staticmethod
     def parse(eventos: list[dict], now: datetime) -> list[Signal]:
-        sinais: list[Signal] = []
+        senales: list[Signal] = []
         for e in eventos:
             texto = " ".join(str(e.get("text") or "").split())
             ano = e.get("year")
@@ -130,40 +130,40 @@ class WikipediaOnThisDay:
             if anos <= 0:
                 continue
             try:
-                sinais.append(Signal(
-                    term=f"Ha {anos} anos: {texto}"[:280],
+                senales.append(Signal(
+                    term=f"Hace {anos} anos: {texto}"[:280],
                     source=WikipediaOnThisDay.name,
                     volume=float(anos), unit="anos",
                     velocity=None, seen_at=now, url=url,
                 ))
             except ValueError:
                 continue
-        return sinais
+        return senales
 
 
-class Arquivo:
-    """Temas atemporais, uma fatia deterministica por dia."""
+class Archivo:
+    """Temas atemporales, una porcion determinista por dia."""
 
-    name = "arquivo"
+    name = "archivo"
 
     def __init__(self, per_collection: int = POR_COLETA,
-                 items: tuple[tuple[str, str], ...] = ARQUIVO):
+                 items: tuple[tuple[str, str], ...] = ARCHIVO):
         self._n = per_collection
         self._items = items
 
     def collect(self) -> list[Signal]:
-        agora = datetime.now(UTC)
-        return self.pick(agora)
+        ahora = datetime.now(UTC)
+        return self.pick(ahora)
 
     def pick(self, now: datetime) -> list[Signal]:
-        """A mesma data sempre escolhe os mesmos itens (reproduzivel), e datas
-        diferentes giram o arquivo inteiro."""
-        semente = int(hashlib.sha256(f"{now:%Y-%m-%d}".encode()).hexdigest(), 16)
-        inicio = semente % len(self._items)
-        escolhidos = [self._items[(inicio + i * 7) % len(self._items)] for i in range(self._n)]
-        return [Signal(term=tema, source=self.name, volume=1.0, unit="arquivo",
+        """La misma fecha siempre elige los mismos items (reproducible), y
+        fechas distintas rotan el archivo entero."""
+        semilla = int(hashlib.sha256(f"{now:%Y-%m-%d}".encode()).hexdigest(), 16)
+        inicio = semilla % len(self._items)
+        elegidos = [self._items[(inicio + i * 7) % len(self._items)] for i in range(self._n)]
+        return [Signal(term=tema, source=self.name, volume=1.0, unit="archivo",
                        velocity=None, seen_at=now, url=url)
-                for tema, url in dict(escolhidos).items()]
+                for tema, url in dict(elegidos).items()]
 
 
-__all__ = ["ARQUIVO", "Arquivo", "WikipediaOnThisDay"]
+__all__ = ["ARCHIVO", "Archivo", "WikipediaOnThisDay"]

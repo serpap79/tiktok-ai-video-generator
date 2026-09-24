@@ -1,27 +1,30 @@
-"""Pesquisador: de um tema escolhido para um dossie com fonte em cada fato.
+"""Investigador: de un tema elegido a un dossier con fuente en cada hecho.
 
-A decisao de projeto que sustenta todo o resto: **uma chamada de modelo por
-fonte, e a URL e estampada por nos, nao pedida a ele.** O modelo recebe o texto
-de uma pagina e devolve afirmacoes sobre aquela pagina; de onde veio o texto e
-informacao que ja temos. Pedir `source_url` ao modelo convidaria o erro mais
-caro possivel neste projeto -- fato real com fonte trocada, que parece ancorado,
-passa no juiz e so aparece quando alguem clica no link.
+La decision de proyecto que sostiene todo lo demas: **una llamada de modelo por
+fuente, y la URL la estampamos nosotros, no se le pide a el.** El modelo recibe
+el texto de una página y devuelve afirmaciones sobre esa página; de dónde proceden
+el texto es informacion que ya tenemos. Pedir `source_url` al modelo invitaria
+el error mas caro posible en este proyecto -- hecho real con fuente cambiada,
+que parece anclado, pasa al juez y solo aparece cuando alguien pincha el link.
 
-Com isso, "nao existe Fact sem URL verificavel" deixa de depender do modelo ter
-sido honesto e passa a ser estrutural. O que ainda depende dele e a fidelidade
-da afirmacao ao texto, e e ai que entram os dois portoes deterministicos:
+Con esto, "no existe Fact sin URL verificable" deja de depender de que el
+modelo haya sido honesto y pasa a ser estructural. Lo que todavia depende de el
+es la fidelidad de la afirmacion al texto, y es ahi donde entran las dos puertas
+deterministas:
 
-1. **o trecho citado precisa existir na pagina.** O modelo devolve, junto de
-   cada afirmacao, a passagem literal que a sustenta. Conferir passagem e
-   `in` numa string -- barato e impossivel de enganar.
-2. **todo numero da afirmacao precisa estar na fonte** (`grounding.py`).
+1. **el pasaje citado tiene que existir en la página.** El modelo devuelve,
+   junto a cada afirmacion, el pasaje literal que la sostiene. Comprobar el
+   pasaje es `in` sobre una string -- barato e imposible de enganar.
+2. **todo numero de la afirmacion tiene que estar en la fuente**
+   (`grounding.py`).
 
-Os dois derrubam o fato com motivo gravado, nunca em silencio. Dossie curto com
-motivo registrado e calibravel; dossie cheio de fato frouxo nao e.
+Las dos derriban el hecho con motivo grabado, nunca en silencio. Dossier corto
+con motivo registrado es calibrable; dossier lleno de hechos flojos no lo es.
 
-Ha ainda uma terceira regra, e ela veio de execucao real: **um trecho sustenta um
-fato so**. Sem isso, o modelo divide uma frase de changelog em quatro afirmacoes
-e entrega um dossie que parece cheio e nao da assunto para 60 segundos de video.
+Hay una tercera regla, y vino de una ejecucion real: **un pasaje sostiene un
+hecho solo**. Sin eso, el modelo divide una frase de changelog en cuatro
+afirmaciones y entrega un dossier que parece lleno y no da asunto para 60
+segundos de video.
 """
 
 from __future__ import annotations
@@ -42,19 +45,20 @@ from agent.research.sources import Candidate
 from agent.text import tokens
 
 SISTEMA = (
-    "Voce e pesquisador de um canal de tech, IA e ciencia. Sua unica funcao e "
-    "extrair afirmacoes factuais do texto que recebe, sem acrescentar nada que o "
-    "texto nao diga. Voce nao opina, nao contextualiza com conhecimento proprio e "
-    "nao completa lacuna com o que costuma ser verdade. Se o texto nao tratar do "
-    "tema pedido, devolva lista vazia."
+    "Eres investigador de un canal de tech, IA y ciencia. Tu unica funcion es "
+    "extraer afirmaciones factuales del texto que recibes, sin anadir nada que "
+    "el texto no diga. No opinas, no contextualizas con conocimiento propio y "
+    "no rellenas huecos con lo que suele ser verdad. Si el texto no trata del "
+    "tema pedido, devuelve una lista vacia."
 )
 
-# O schema e o mesmo para os dois provedores: o Gemini o recebe como
-# responseSchema nativo e o Groq como texto no system. Pedir `quote` ANTES de
-# `claim` e deliberado -- a ordem das chaves e a ordem em que o modelo escreve, e
-# escolher a passagem primeiro e o que faz a afirmacao sair dela, em vez de a
-# passagem ser procurada depois para justificar o que ele ja tinha escrito.
-SCHEMA_FATOS: dict[str, Any] = {
+# El schema es el mismo para los dos proveedores: Gemini lo recibe como
+# responseSchema nativo y Groq como texto en el system. Pedir `quote` ANTES de
+# `claim` es deliberado -- el orden de las claves es el orden en que el modelo
+# escribe, y elegir el pasaje primero es lo que hace que la afirmacion salga de
+# el, en vez de buscar el pasaje despues para justificar lo que ya habia
+# escrito.
+SCHEMA_HECHOS: dict[str, Any] = {
     "type": "object",
     "properties": {
         "facts": {
@@ -72,21 +76,22 @@ SCHEMA_FATOS: dict[str, Any] = {
     "required": ["facts"],
 }
 
-_ESPACOS = re.compile(r"\s+")
+_ESPACIOS = re.compile(r"\s+")
 
-# Trecho muito curto casa com qualquer coisa e nao prova nada ("5,9 GB" aparece
-# no menu tambem). Muito longo vira a pagina inteira colada.
-MIN_TRECHO = 25
-MAX_TRECHO = 400
+# Pasaje demasiado corto casa con cualquier cosa y no prueba nada ("5,9 GB"
+# aparece también en el menú). Si es demasiado largo, se convierte en la página entera
+# pegada.
+MIN_PASAJE = 25
+MAX_PASAJE = 400
 
-# Caracteres da pagina que vao ao modelo depois do foco no tema (~1,2K
-# tokens). A pagina lida continua com `research_page_chars` para o portao.
+# Caracteres de la pagina que van al modelo despues del foco en el tema (~1,2K
+# tokens). La página completa sigue con `research_page_chars` para la comprobación.
 FOCO_CHARS = 5000
 
 
 @dataclass
 class Discarded:
-    """Fato que o modelo produziu e um portao derrubou, com o motivo."""
+    """Hecho que el modelo produjo y una puerta derribo, con el motivo."""
 
     claim: str
     reason: str
@@ -95,11 +100,11 @@ class Discarded:
 
 @dataclass
 class ResearchReport:
-    """O que a pesquisa produziu, o que descartou e quanto custou.
+    """Lo que la investigacion produjo, lo que descarto y cuanto costo.
 
-    Custo entra no relatorio porque o M3 e o primeiro estagio que gasta cota, e
-    o eval do M5 compara provedores por qualidade **e** por consumo. Numero
-    medido na hora e mais confiavel que reconstruido depois do log.
+    El coste entra en el informe porque el M3 es la primera etapa que gasta
+    cuota, y el eval del M5 compara proveedores por calidad **y** por consumo.
+    Numero medido en el momento es mas fiable que reconstruido despues del log.
     """
 
     topic: str
@@ -110,7 +115,7 @@ class ResearchReport:
     usage: Usage = field(default_factory=Usage)
     latency_s: float = 0.0
     model: str = ""
-    # `provedor:modelo` que respondeu por ultimo quando o LLM e roteado.
+    # `proveedor:modelo` que respondio por ultima vez cuando el LLM va por rutas.
     route: str = ""
 
     @property
@@ -119,7 +124,7 @@ class ResearchReport:
 
     @property
     def source_count(self) -> int:
-        """Fontes distintas que sustentam o dossie, por dominio."""
+        """Fuentes distintas que sostienen el dossier, por dominio."""
         return len({_dominio(str(f.source_url)) for f in self.facts})
 
     @property
@@ -146,248 +151,250 @@ class Researcher:
         self, decision: Decision, candidates: list[Candidate] | None = None,
         target_facts: int | None = None,
     ) -> ResearchReport:
-        """Le as fontes em ordem e extrai fatos, uma chamada por fonte.
+        """Lee las fuentes en orden y extrae hechos, una llamada por fuente.
 
-        `target_facts`: para de ler quando ja ha fatos suficientes de pelo
-        menos duas fontes (ou dois a mais que o alvo de uma fonte so). Cada
-        fonte e uma chamada de modelo; ler a quinta pagina quando as tres
-        primeiras ja deram seis fatos e cota gasta sem ganho de roteiro.
+        `target_facts`: deja de leer cuando ya hay hechos suficientes de al
+        menos dos fuentes (o dos mas que el objetivo de una fuente sola). Cada
+        fuente es una llamada al modelo; leer una quinta página cuando las tres primeras
+        primeras ya dieron seis hechos es cuota gastada sin ganancia de guion.
         """
         report = ResearchReport(topic=decision.term, model=getattr(self._llm, "model", ""))
 
         if candidates is None:
-            descoberta = sources.discover(
+            descubrimiento = sources.discover(
                 decision, client=self._client, limit=self._max_sources
             )
-            candidatos = descoberta.candidates
-            report.failures.update(descoberta.failures)
+            candidatos = descubrimiento.candidates
+            report.failures.update(descubrimiento.failures)
         else:
             candidatos = candidates[: self._max_sources]
 
         if not candidatos:
             report.failures.setdefault(
-                "descoberta", "nenhuma fonte candidata para o tema"
+                "descubrimiento", "ninguna fuente candidata para el tema"
             )
             return report
 
-        fatos: list[Fact] = []
+        hechos: list[Fact] = []
         for candidato in candidatos:
             try:
-                pagina = self._fetcher.fetch(candidato.url, candidato.source_name)
+                página = self._fetcher.fetch(candidato.url, candidato.source_name)
             except PageUnavailable as exc:
                 report.failures[candidato.url] = str(exc)
                 continue
 
-            if not pagina.usable:
+            if not página.usable:
                 report.failures[candidato.url] = (
-                    f"texto curto demais ({len(pagina.text)} caracteres) para extrair fato"
+                    f"texto demasiado corto ({len(página.text)} caracteres) para extraer un hecho"
                 )
                 continue
 
-            report.pages.append(pagina)
+            report.pages.append(página)
             try:
-                novos, descartados, uso, latencia = self._extract(pagina, decision.term)
+                nuevos, descartados, uso, latencia = self._extract(página, decision.term)
             except LLMError as exc:
-                # Cota estourada ou filtro de conteudo do provedor. Uma fonte
-                # perdida nao invalida as outras, do mesmo jeito que no radar.
+                # Cuota rebasada o filtro de contenido del proveedor. Una fuente
+                # perdida no invalida las otras, igual que en el radar.
                 report.failures[candidato.url] = f"{type(exc).__name__}: {exc}"
                 continue
 
-            fatos.extend(novos)
+            hechos.extend(nuevos)
             report.discarded.extend(descartados)
             report.usage = report.usage + uso
             report.latency_s = round(report.latency_s + latencia, 3)
 
-            if target_facts and _suficiente(fatos, target_facts):
+            if target_facts and _suficiente(hechos, target_facts):
                 break
 
-        if fatos:
+        if hechos:
             report.dossier = Dossier(
-                topic=decision.term, facts=fatos, collected_at=datetime.now(UTC)
+                topic=decision.term, facts=hechos, collected_at=datetime.now(UTC)
             )
         return report
 
-    # ------------------------------------------------------------------ extracao
+    # ------------------------------------------------------------------ extraccion
 
     def _extract(
         self, page: Page, topic: str
     ) -> tuple[list[Fact], list[Discarded], Usage, float]:
-        resposta = self._llm.complete(
+        respuesta = self._llm.complete(
             build_prompt(page, topic, self._max_facts),
             system=SISTEMA,
-            schema=SCHEMA_FATOS,
+            schema=SCHEMA_HECHOS,
             temperature=0.1,
             max_output_tokens=1536,
         )
-        corpo = parse_json_object(resposta.text)
-        crus = corpo.get("facts")
-        if not isinstance(crus, list):
-            raise LLMError("resposta sem a lista 'facts'")
+        cuerpo = parse_json_object(respuesta.text)
+        crudos = cuerpo.get("facts")
+        if not isinstance(crudos, list):
+            raise LLMError("respuesta sin la lista 'facts'")
 
-        # A pagina inteira e o palheiro dos portoes: o titulo costuma carregar o
-        # numero da manchete, que o corpo repete em outra forma.
-        palheiro = _normalizar(f"{page.title}\n{page.text}")
-        fatos: list[Fact] = []
+        # La página completa es el pajar de las comprobaciones: el título suele contener el
+        # numero del titular, que el cuerpo repite en otra forma.
+        pajar = _normalizar(f"{page.title}\n{page.text}")
+        hechos: list[Fact] = []
         descartados: list[Discarded] = []
         vistos: set[str] = set()
-        trechos: set[str] = set()
+        pasajes: set[str] = set()
 
-        for cru in crus[: self._max_facts]:
-            if not isinstance(cru, dict):
+        for crudo in crudos[: self._max_facts]:
+            if not isinstance(crudo, dict):
                 continue
-            claim = _limpar(cru.get("claim"))
-            quote = _limpar(cru.get("quote"))
+            claim = _limpiar(crudo.get("claim"))
+            quote = _limpiar(crudo.get("quote"))
             if not claim:
                 continue
 
-            chave = claim.casefold()
-            if chave in vistos:
+            clave = claim.casefold()
+            if clave in vistos:
                 continue
-            vistos.add(chave)
+            vistos.add(clave)
 
-            motivo = _reprovar(claim, quote, palheiro)
+            motivo = _reprobar(claim, quote, pajar)
             if motivo:
                 descartados.append(Discarded(claim=claim, reason=motivo, source_url=page.url))
                 continue
 
-            chave_trecho = _normalizar(quote)
-            if chave_trecho in trechos:
-                # Medido na primeira execucao real (18/09/2026): de uma unica
-                # frase de changelog sairam quatro "fatos", tres deles apoiados no
-                # MESMO trecho. Um dossie assim parece cheio e nao sustenta 60
-                # segundos de narracao -- o roteirista bateu na parede tres vezes.
+            clave_pasaje = _normalizar(quote)
+            if clave_pasaje in pasajes:
+                # Medido en la primera ejecucion real (18/09/2026): de una unica
+                # frase de changelog salieron cuatro "hechos", tres apoyados en
+                # el MISMO pasaje. Un dossier asi parece lleno y no sostiene 60
+                # segundos de narracion -- el guionista dio tres veces con la
+                # pared.
                 descartados.append(Discarded(
                     claim=claim,
-                    reason="mesmo trecho ja sustenta outro fato desta fonte; "
-                           "uma frase nao vira varios fatos",
+                    reason="el mismo pasaje ya sostiene otro hecho de esta fuente; "
+                           "una frase no se convierte en varios hechos",
                     source_url=page.url,
                 ))
                 continue
-            trechos.add(chave_trecho)
+            pasajes.add(clave_pasaje)
 
             try:
-                fatos.append(Fact(
+                hechos.append(Fact(
                     claim=claim,
                     source_url=page.url,
                     source_name=page.source_name or _dominio(page.url),
-                    quote=quote[:MAX_TRECHO],
+                    quote=quote[:MAX_PASAJE],
                 ))
             except ValidationError as exc:
-                # Afirmacao curta demais para o contrato, ou URL que o Pydantic
-                # recusa. E descarte de dominio, nao bug: entra no relatorio.
+                # Afirmacion demasiado corta para el contrato, o URL que el
+                # Pydantic rechaza. Es descarte de dominio, no bug: entra en el
+                # informe.
                 descartados.append(Discarded(
-                    claim=claim, reason=f"contrato Fact recusou: {_primeiro_erro(exc)}",
+                    claim=claim, reason=f"el contrato Fact rechazo: {_primer_error(exc)}",
                     source_url=page.url,
                 ))
 
-        return fatos, descartados, resposta.usage, resposta.latency_s
+        return hechos, descartados, respuesta.usage, respuesta.latency_s
 
 
-def _suficiente(fatos: list[Fact], alvo: int) -> bool:
-    dominios = {_dominio(str(f.source_url)) for f in fatos}
-    return (len(fatos) >= alvo and len(dominios) >= 2) or len(fatos) >= alvo + 2
+def _suficiente(hechos: list[Fact], objetivo: int) -> bool:
+    dominios = {_dominio(str(f.source_url)) for f in hechos}
+    return (len(hechos) >= objetivo and len(dominios) >= 2) or len(hechos) >= objetivo + 2
 
 
 def focus(texto: str, topic: str, limite: int) -> str:
-    """Os paragrafos que falam do tema, em ordem, ate `limite` caracteres.
+    """Los parrafos que hablan del tema, en orden, hasta `limite` caracteres.
 
-    A pagina ja chega cortada em `research_page_chars`, mas o corte era
-    cego: os primeiros 8 mil caracteres de uma materia incluem legenda de
-    foto, "leia tambem" e o paragrafo sobre outro produto. Manter o lide e
-    os paragrafos com termos do tema (e os com numero, que e o que vira
-    fato) corta token de entrada sem cortar o fato. O portao de trecho
-    continua conferindo contra a pagina INTEIRA.
+    La pagina ya llega cortada en `research_page_chars`, pero el corte era
+    ciego: los primeros 8 mil caracteres de una noticia incluyen leyenda de
+    foto, "lee tambien" y el parrafo sobre otro producto. Mantener la entrada y
+    los parrafos con terminos del tema (y los con numero, que es lo que se
+    convierte en hecho) corta token de entrada sin cortar el hecho. La puerta
+    de pasaje sigue comprobando contra la pagina ENTERA.
     """
     if len(texto) <= limite:
         return texto
-    termos = {t for t in tokens(topic) if len(t) >= 3 or any(c.isdigit() for c in t)}
-    paragrafos = [p.strip() for p in re.split(r"\n{2,}|\n", texto) if p.strip()]
-    if not paragrafos:
+    terminos = {t for t in tokens(topic) if len(t) >= 3 or any(c.isdigit() for c in t)}
+    parrafos = [p.strip() for p in re.split(r"\n{2,}|\n", texto) if p.strip()]
+    if not parrafos:
         return texto[:limite]
     notas = []
-    for i, par in enumerate(paragrafos):
+    for i, par in enumerate(parrafos):
         normal = " " + " ".join(tokens(par, drop_stopwords=False)) + " "
-        nota = sum(1 for t in termos if f" {t} " in normal)
+        nota = sum(1 for t in terminos if f" {t} " in normal)
         nota += 0.5 if re.search(r"\d", par) else 0.0
         notas.append((i, nota))
-    escolhidos = {0}
-    total = len(paragrafos[0])
+    elegidos = {0}
+    total = len(parrafos[0])
     for i, nota in sorted(notas, key=lambda x: (-x[1], x[0])):
-        if nota <= 0 or i in escolhidos:
+        if nota <= 0 or i in elegidos:
             continue
-        if total + len(paragrafos[i]) > limite:
+        if total + len(parrafos[i]) > limite:
             continue
-        escolhidos.add(i)
-        total += len(paragrafos[i])
-    # Pouco texto casou (pagina que fala do tema com outras palavras): completa
-    # na ordem da pagina, que e melhor que mandar so o lide.
-    for i in range(len(paragrafos)):
+        elegidos.add(i)
+        total += len(parrafos[i])
+    # Poco texto caso (pagina que habla del tema con otras palabras): completa
+    # en el orden de la página, mejor que enviar solo la entrada.
+    for i in range(len(parrafos)):
         if total >= limite * 0.6:
             break
-        if i not in escolhidos and total + len(paragrafos[i]) <= limite:
-            escolhidos.add(i)
-            total += len(paragrafos[i])
-    return "\n\n".join(paragrafos[i] for i in sorted(escolhidos))
+        if i not in elegidos and total + len(parrafos[i]) <= limite:
+            elegidos.add(i)
+            total += len(parrafos[i])
+    return "\n\n".join(parrafos[i] for i in sorted(elegidos))
 
 
-def _reprovar(claim: str, quote: str, palheiro: str) -> str:
-    """Motivo pelo qual o fato nao entra, ou string vazia se ele passa."""
-    if len(quote) < MIN_TRECHO:
-        return f"trecho de apoio ausente ou curto demais ({len(quote)} caracteres)"
+def _reprobar(claim: str, quote: str, pajar: str) -> str:
+    """Motivo por el que el hecho no entra, o cadena vacia si pasa."""
+    if len(quote) < MIN_PASAJE:
+        return f"pasaje de apoyo ausente o demasiado corto ({len(quote)} caracteres)"
 
-    if _normalizar(quote) not in palheiro:
-        # O modelo parafraseou onde devia copiar. Nao da para saber se a
-        # afirmacao e verdadeira, e "nao da para saber" reprova.
-        return f"trecho citado nao existe na pagina: '{quote[:80]}'"
+    if _normalizar(quote) not in pajar:
+        # El modelo parafraseo donde debia copiar. No se puede saber si la
+        # afirmacion es verdadera, y "no se puede saber" reprueba.
+        return f"el pasaje citado no existe en la página: '{quote[:80]}'"
 
-    ausentes = grounding.missing_numbers(claim, f"{quote}\n{palheiro}")
+    ausentes = grounding.missing_numbers(claim, f"{quote}\n{pajar}")
     if ausentes:
-        return f"numero sem respaldo na fonte: {', '.join(ausentes[:4])}"
+        return f"numero sin respaldo en la fuente: {', '.join(ausentes[:4])}"
     return ""
 
 
 def build_prompt(page: Page, topic: str, max_facts: int) -> str:
-    """Monta o prompt de extracao. Funcao livre para o teste inspecionar o texto."""
+    """Compone el prompt de extraccion. Funcion libre para que el test inspeccione el texto."""
     return (
-        f"TEMA EM APURACAO: {topic}\n\n"
-        f"FONTE: {page.source_name} — {page.title or 'sem titulo'}\n"
-        "TEXTO DA FONTE (delimitado por <<< >>>):\n"
+        f"TEMA EN INVESTIGACION: {topic}\n\n"
+        f"FUENTE: {page.source_name} — {page.title or 'sin titulo'}\n"
+        "TEXTO DE LA FUENTE (delimitado por <<< >>>):\n"
         f"<<<\n{focus(page.text, topic, FOCO_CHARS)}\n>>>\n\n"
-        "TAREFA\n"
-        f"Extraia no maximo {max_facts} afirmacoes factuais deste texto sobre o tema.\n"
-        "Para cada afirmacao, devolva dois campos:\n"
-        "- quote: a passagem LITERAL do texto acima que sustenta a afirmacao, "
-        "copiada caractere por caractere, no idioma original, entre 25 e 400 "
-        "caracteres. Nao reescreva, nao traduza, nao resuma.\n"
-        "- claim: a afirmacao em portugues do Brasil, completa e compreensivel "
-        "sozinha, preservando todo numero exatamente como aparece na passagem.\n\n"
-        "REGRAS\n"
-        "- Cada afirmacao precisa vir de uma passagem DIFERENTE do texto. Nao "
-        "divida a mesma frase em varias afirmacoes: se o texto só sustenta uma, "
-        "devolva uma.\n"
-        "- Prefira afirmacoes com numero, data, medida ou nome proprio.\n"
-        "- Quando o texto disser quem criou, lancou ou mantem o assunto "
-        "(empresa, projeto, pessoa), inclua isso na afirmacao: o roteiro "
-        "precisa nomear o sujeito, e so ancora o que esta no dossie.\n"
-        "- Nao invente numero, nao converta unidade e nao arredonde.\n"
-        "- Nao afirme nada que o texto nao diga, mesmo que voce saiba ser verdade.\n"
-        "- Se o texto nao tratar do tema em apuracao, devolva facts como lista vazia."
+        "TAREA\n"
+        f"Extrae como maximo {max_facts} afirmaciones factuales de este texto sobre el tema.\n"
+        "Para cada afirmacion, devuelve dos campos:\n"
+        "- quote: el pasaje LITERAL del texto de arriba que sostiene la afirmacion, "
+        "copiado caracter a caracter, en el idioma original, entre 25 y 400 "
+        "caracteres. No reescribas, no traduzcas, no resumas.\n"
+        "- claim: la afirmacion en castellano, completa y comprensible sola, "
+        "preservando todo numero exactamente como aparece en el pasaje.\n\n"
+        "REGLAS\n"
+        "- Cada afirmacion tiene que venir de un pasaje DIFERENTE del texto. No "
+        "dividas la misma frase en varias afirmaciones: si el texto solo sostiene "
+        "una, devuelve una.\n"
+        "- Prefiere afirmaciones con numero, fecha, medida o nombre propio.\n"
+        "- Cuando el texto diga quien creo, lanzo o mantiene el asunto (empresa, "
+        "proyecto, persona), incluye eso en la afirmacion: el guion necesita "
+        "nombrar al sujeto, y solo se ancla lo que esta en el dossier.\n"
+        "- No inventes numero, no conviertas unidad y no redondees.\n"
+        "- No afirmes nada que el texto no diga, aunque sepas que es verdad.\n"
+        "- Si el texto no trata del tema en investigacion, devuelve facts como lista vacia."
     )
 
 
-def _limpar(valor: object) -> str:
+def _limpiar(valor: object) -> str:
     return " ".join(str(valor).split()) if isinstance(valor, str) else ""
 
 
 def _normalizar(texto: str) -> str:
-    """Espaco colapsado e minusculas, para o trecho casar apesar de formatacao."""
-    return _ESPACOS.sub(" ", texto).casefold()
+    """Espacio colapsado y minusculas, para que el pasaje case pese a formato."""
+    return _ESPACIOS.sub(" ", texto).casefold()
 
 
 def _dominio(url: str) -> str:
     return url.split("://", 1)[-1].split("/", 1)[0].removeprefix("www.")
 
 
-def _primeiro_erro(exc: ValidationError) -> str:
-    erro = exc.errors()[0]
-    return f"{'.'.join(str(p) for p in erro['loc'])}: {erro['msg']}"
+def _primer_error(exc: ValidationError) -> str:
+    error = exc.errors()[0]
+    return f"{'.'.join(str(p) for p in error['loc'])}: {error['msg']}"

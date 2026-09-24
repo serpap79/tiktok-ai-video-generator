@@ -1,7 +1,7 @@
-"""Contratos entre estagios do pipeline.
+"""Modelos: contratos entre etapas del pipeline.
 
-Cada estagio recebe e devolve um destes modelos. Sao a fronteira que permite
-testar um estagio sem levantar os outros, e sao o que fica gravado na memoria.
+Cada etapa recibe y devuelve uno de estos modelos. Son la frontera que permite
+probar una etapa sin levantar las otras, y son lo que queda grabado en memoria.
 """
 
 from __future__ import annotations
@@ -11,45 +11,48 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
-# Ritmo de fala da narracao pt-BR. Usado apenas para estimativa antes do TTS;
-# a duracao real vem do renderizador. Medido em 20/09/2026 nas vozes do
-# renderizador proprio (Francisca -4%, Antonio +4%): 2,57 palavras/s nas duas.
+# Ritmo de habla de la narracion es-ES. Usado solo para estimacion antes del
+# TTS; la duracion real viene del renderizador. Referencia: las voces de
+# edge-tts es-ES rondan 2,5-2,7 palabras/s; se recalibra con la primera medida
+# real del renderizador propio.
 WORDS_PER_SECOND = 2.57
 
-# Faixa exigida pelo Creator Rewards: video abaixo de 60s nao e elegivel a
-# monetizacao, e acima de ~90s a retencao cai sem ganho de receita.
+# Franja exigida por el Creator Rewards: un video por debajo de 60s no es
+# elegible a monetizacion, y por encima de ~90s la retencion cae sin ganancia
+# de ingreso.
 MIN_DURATION_S = 60
 MAX_DURATION_S = 90
 
-# Faixa do curto. Mora aqui, junto com a do longo, porque estava escrita em
-# DOIS lugares -- a faixa de palavras no `writer` e a de segundos no `judge`
-# (`(10, 20)`, cravado). Quando a grade de 20/09/2026 pediu curto de 25s, so
-# uma das duas foi atualizada e o juiz passou a reprovar todo curto que o
-# roteirista aprovava, com a mensagem generica "nenhum formato aprovado pelo
-# juiz". Duas constantes para o mesmo fato sempre divergem; agora e uma.
+# Franja del corto. Vive aqui, junto con la del largo, porque estaba escrita en
+# DOS sitios -- la franja de palabras en el `writer` y la de segundos en el
+# `judge` (`(10, 20)`, clavada). Cuando la parrilla de 20/09/2026 pidio un
+# corto de 25s, solo una de las dos se actualizo y el juez paso a reprobar todo
+# corto que el guionista aprobaba, con el mensaje generico "ningun formato
+# aprobado por el juez". Dos constantes para el mismo hecho siempre divergen;
+# ahora es una.
 SHORT_MIN_DURATION_S = 22
 SHORT_MAX_DURATION_S = 28
 
 
 class Fact(BaseModel):
-    """Uma afirmacao factual e a fonte que a sustenta.
+    """Una afirmacion factual y la fuente que la sostiene.
 
-    Nao existe Fact sem URL: e o que separa conteudo original de alucinacao, e
-    e o que o juiz verifica no criterio 2 da rubrica.
+    No existe Fact sin URL: es lo que separa contenido original de alucinacion,
+    y es lo que el juez verifica en el criterio 2 de la rubrica.
     """
 
     claim: str = Field(min_length=10)
     source_url: HttpUrl
     source_name: str = Field(min_length=2)
-    # Passagem literal da fonte que sustenta a afirmacao. Opcional porque o
-    # roteiro de referencia do M0 foi escrito a mao, sem ela; o pesquisador (M3)
-    # sempre preenche, e o portao que confere se a passagem existe de fato na
-    # pagina e o que torna a citacao verificavel sem nova requisicao.
+    # Pasaje literal de la fuente que sostiene la afirmacion. Opcional porque el
+    # guion de referencia del M0 se escribio a mano, sin el; el investigador
+    # (M3) siempre lo rellena, y la puerta que comprueba si el pasaje existe de
+    # verdad en la pagina es lo que hace la cita verificable sin nueva peticion.
     quote: str = ""
 
 
 class Dossier(BaseModel):
-    """Resultado do estagio de pesquisa: o que sabemos e de onde."""
+    """Resultado de la etapa de investigacion: lo que sabemos y de donde."""
 
     topic: str
     facts: list[Fact]
@@ -57,9 +60,9 @@ class Dossier(BaseModel):
 
     @field_validator("facts")
     @classmethod
-    def _pelo_menos_um_fato(cls, v: list[Fact]) -> list[Fact]:
+    def _al_menos_un_hecho(cls, v: list[Fact]) -> list[Fact]:
         if not v:
-            raise ValueError("dossie sem fato nao autoriza roteiro")
+            raise ValueError("dossier sin hecho no autoriza guion")
         return v
 
     @property
@@ -68,60 +71,61 @@ class Dossier(BaseModel):
 
 
 class Script(BaseModel):
-    """Roteiro pronto para producao.
+    """Guion listo para produccion.
 
-    `search_terms` vai direto para o parametro `query` do Pexels, sem passar por
-    traducao: precisa estar **em ingles** e em **ordem cronologica** casando com
-    a narracao, porque o material do primeiro termo abre o video.
+    `search_terms` va directo al parametro `query` de Pexels, sin pasar por
+    traduccion: tiene que estar **en ingles** y en **orden cronologico**
+    casando con la narracion, porque el material del primer termino abre el
+    video.
     """
 
     topic: str = Field(min_length=3)
-    hook: str = Field(min_length=10, description="primeiros ~1,5s; abre lacuna de informacao")
+    hook: str = Field(min_length=10, description="primeros ~1,5s; abre hueco de informacion")
     body: str = Field(min_length=50)
     closing: str = Field(min_length=10)
     search_terms: list[str] = Field(min_length=2, max_length=12)
     facts: list[Fact] = Field(default_factory=list)
-    # long = 60-90s (monetiza), short = ~15s (alcance, nao monetiza).
+    # long = 60-90s (monetiza), short = ~15s (alcance, no monetiza).
     format: str = "long"
-    # B-roll do ASSUNTO (objeto/lugar filmavel, em ingles): o que correlaciona
-    # a imagem com a fala. `search_terms` e a assinatura do canal; `broll` e
-    # a coisa de que o video fala. Vazio em roteiro antigo -- continua valido.
+    # B-roll del ASUNTO (objeto/lugar filmable, en ingles): lo que correlaciona
+    # la imagen con el habla. `search_terms` es la firma del canal; `broll` es
+    # la cosa de la que el video habla. Vacio en guion antiguo -- sigue valido.
     broll: list[str] = Field(default_factory=list, max_length=3)
-    # Tipo de conteudo (pilar da marca) com que foi escrito: news, fato,
-    # analise, tutorial, futuro, vs, historia. Vazio em roteiro antigo.
+    # Tipo de contenido (pilar de la marca) con el que se escribio: news, dato,
+    # analisis, tutorial, futuro, vs, historia. Vacio en guion antiguo.
     pillar: str = ""
-    # Legenda do post (guia da marca: gancho escrito SEM repetir o audio + uma
-    # frase de contexto). Vazio em roteiro antigo: a legenda cai no hook.
+    # Leyenda del post (guia de marca: gancho escrito SIN repetir el audio +
+    # una frase de contexto). Vacio en guion antiguo: la leyenda cae en el hook.
     caption: str = ""
 
     @field_validator("broll")
     @classmethod
-    def _broll_em_ascii(cls, v: list[str]) -> list[str]:
-        limpos = [" ".join(t.split()) for t in v if t and t.strip()]
-        for termo in limpos:
-            if not termo.isascii():
-                raise ValueError(f"broll {termo!r} nao e ASCII; o Pexels espera ingles")
-        return limpos
+    def _broll_en_ascii(cls, v: list[str]) -> list[str]:
+        limpios = [" ".join(t.split()) for t in v if t and t.strip()]
+        for termino in limpios:
+            if not termino.isascii():
+                raise ValueError(f"broll {termino!r} no es ASCII; Pexels espera ingles")
+        return limpios
 
     @field_validator("search_terms")
     @classmethod
-    def _termos_em_ascii(cls, v: list[str]) -> list[str]:
-        # Heuristica deliberadamente simples: acento em termo de busca quase
-        # sempre significa que o modelo respondeu em pt-BR, e o Pexels devolve
-        # resultado ruim ou vazio. Falhar aqui e mais barato que renderizar
-        # um video com material errado.
-        for termo in v:
-            if not termo.isascii():
+    def _terminos_en_ascii(cls, v: list[str]) -> list[str]:
+        # Heuristica deliberadamente simple: un acento en un termino de busqueda
+        # casi siempre significa que el modelo respondio en castellano, y Pexels
+        # devuelve resultado malo o vacio. Fallar aqui es mas barato que
+        # renderizar un video con material equivocado.
+        for termino in v:
+            if not termino.isascii():
                 raise ValueError(
-                    f"termo de busca {termo!r} nao e ASCII; o Pexels espera ingles"
+                    f"termino de busqueda {termino!r} no es ASCII; Pexels espera ingles"
                 )
-            if not termo.strip():
-                raise ValueError("termo de busca vazio")
+            if not termino.strip():
+                raise ValueError("termino de busqueda vacio")
         return v
 
     @property
     def narration(self) -> str:
-        """Texto que o TTS vai falar, na ordem em que sera falado."""
+        """Texto que el TTS va a hablar, en el orden en que se hablara."""
         return "\n\n".join(p.strip() for p in (self.hook, self.body, self.closing))
 
     @property
@@ -130,79 +134,79 @@ class Script(BaseModel):
 
     @property
     def estimated_duration_s(self) -> float:
-        """Estimativa pre-TTS. A duracao que vale e a do MP4 renderizado."""
+        """Estimacion pre-TTS. La duracion que vale es la del MP4 renderizado."""
         return self.word_count / WORDS_PER_SECOND
 
     @property
     def unsourced(self) -> list[str]:
-        """Nao implementado aqui de proposito.
+        """No implementado aqui a proposito.
 
-        Casar afirmacao com fonte exige julgamento semantico, nao string match:
-        e trabalho do juiz (M3), com o dossie em maos. Este modelo so carrega
-        os fatos para que o juiz possa fazer isso.
+        Casar afirmacion con fuente exige juicio semantico, no string match:
+        es trabajo del juez (M3), con el dossier en mano. Este modelo solo
+        lleva los hechos para que el juez pueda hacerlo.
         """
-        raise NotImplementedError("verificacao de fonte e responsabilidade do juiz (M3)")
+        raise NotImplementedError("verificar fuente es responsabilidad del juez (M3)")
 
 
 class Criterion(StrEnum):
-    """Os critérios das rubricas do juiz.
+    """Los criterios de las rubricas del juez.
 
-    Sao StrEnum e nao string livre porque a rubrica e um contrato: o eval do M5
-    compara provedores criterio a criterio, e nota gravada com o nome do
-    criterio escrito de duas formas nao se agrega.
+    Son StrEnum y no cadena libre porque la rubrica es un contrato: el eval del
+    M5 compara proveedores criterio a criterio, y una nota grabada con el nombre
+    del criterio escrito de dos formas no se agrega.
 
-    `fluxo` e so do carrossel (fio narrativo entre slides); o video usa os
-    outros sete.
+    `flujo` es solo del carrusel (hilo narrativo entre slides); el video usa
+    los otros siete.
     """
 
     hook = "hook"
-    fonte = "fonte"
-    duracao = "duracao"
-    ponto_de_vista = "ponto_de_vista"
+    fuente = "fuente"
+    duracion = "duracion"
+    punto_de_vista = "punto_de_vista"
     politica = "politica"
-    pt_br = "pt_br"
+    idioma = "idioma"
     cta = "cta"
-    fluxo = "fluxo"
+    flujo = "flujo"
 
 
-# Corte da rubrica do video: 7 critérios, 0 a 2 cada. Literal, nao derivado
-# do tamanho do enum: `fluxo` e criterio de carrossel e nao entra aqui.
+# Corte de la rubrica del video: 7 criterios, 0 a 2 cada uno. Literal, no
+# derivado del tamano del enum: `flujo` es criterio de carrusel y no entra aqui.
 RUBRIC_CUTOFF = 11
 RUBRIC_MAX = 14
 
-# Critérios que reprovam por exigência, e não por qualidade -- nota alta nos
-# outros nao compra aprovacao aqui. Fonte e duracao sao requisito do Creator
-# Rewards; politica e risco para o canal inteiro.
+# Criterios que reprueban por exigencia, y no por calidad -- nota alta en los
+# otros no compra aprobacion aqui. Fuente y duracion son requisito del Creator
+# Rewards; politica es riesgo para el canal entero.
 VETO_MINIMO: dict[Criterion, int] = {
-    Criterion.fonte: 2,
-    Criterion.duracao: 2,
+    Criterion.fuente: 2,
+    Criterion.duracion: 2,
     Criterion.politica: 2,
 }
 
 
 class CriterionScore(BaseModel):
-    """A nota de um critério e a razão dela.
+    """La nota de un criterio y el motivo de ella.
 
-    `reason` e obrigatorio inclusive no 2. Nota sem justificativa nao da para
-    auditar nem para devolver ao roteirista como correcao, e a revisao vira
-    "tente de novo".
+    `reason` es obligatorio incluso en el 2. Nota sin justificacion no se puede
+    auditar ni devolver al guionista como correccion, y la revision se vuelve
+    "intentalo de nuevo".
     """
 
     criterion: Criterion
     score: int = Field(ge=0, le=2)
     reason: str = Field(min_length=3)
-    # True quando a nota saiu de medicao nossa, nao do julgamento do modelo.
+    # True cuando la nota salio de medicion nuestra, no del juicio del modelo.
     measured: bool = False
-    # False quando o parecer foi interrompido antes deste criterio: o roteiro ja
-    # havia reprovado num criterio medido, e pagar o parecer do modelo seria cota
-    # gasta para confirmar uma reprovacao ja decidida. Zero aqui significa "nao
-    # sei", nao "ruim" -- e a distincao importa: nota nao avaliada nao volta ao
-    # roteirista como correcao.
+    # False cuando el informe se interrumpio antes de este criterio: el guion ya
+    # habia reprobado en un criterio medido, y pagar el informe del modelo seria
+    # cuota gastada para confirmar un reprobo ya decidido. Cero aqui significa
+    # "no se", no "malo" -- y la distincion importa: nota no evaluada no vuelve
+    # al guionista como correccion.
     evaluated: bool = True
 
 
 class Review(BaseModel):
-    """O parecer do juiz sobre um roteiro."""
+    """El informe del juez sobre un guion."""
 
     topic: str
     scores: list[CriterionScore]
@@ -214,13 +218,13 @@ class Review(BaseModel):
     def _rubrica_completa(self) -> Review:
         vistos = [s.criterion for s in self.scores]
         if len(vistos) != len(set(vistos)):
-            raise ValueError("rubrica com criterio repetido")
-        # A rubrica do video tem 7 criterios; `fluxo` e so do carrossel
-        # (nao importar JULGADOS do juiz aqui: models nao depende de judge).
-        faltando = set(Criterion) - {Criterion.fluxo} - set(vistos)
+            raise ValueError("rubrica con criterio repetido")
+        # La rubrica del video tiene 7 criterios; `flujo` es solo del carrusel
+        # (no importar JULGADOS del juez aqui: models no depende de judge).
+        faltando = set(Criterion) - {Criterion.flujo} - set(vistos)
         if faltando:
             raise ValueError(
-                "parecer incompleto, falta: "
+                "informe incompleto, falta: "
                 + ", ".join(sorted(c.value for c in faltando))
             )
         return self
@@ -235,11 +239,12 @@ class Review(BaseModel):
 
     @property
     def vetoed(self) -> list[CriterionScore]:
-        """Critérios de exigência que ficaram abaixo do mínimo.
+        """Criterios de exigencia que quedaron por debajo del minimo.
 
-        So os que estao em VETO_MINIMO. Criterio de qualidade zerado tambem
-        reprova, mas por outra regra (`zeroed`) -- chamar os dois de veto faria a
-        mensagem dizer que hook e requisito de monetizacao, o que e falso.
+        Solo los que estan en VETO_MINIMO. Criterio de calidad a cero tambien
+        reprueba, pero por otra regla (`zeroed`) -- llamar a los dos veto haria
+        que el mensaje dijera que hook es requisito de monetizacion, lo cual es
+        falso.
         """
         return [
             s for s in self.scores
@@ -252,21 +257,22 @@ class Review(BaseModel):
 
     @property
     def short_circuited(self) -> bool:
-        """True quando a medida reprovou antes de o modelo ser consultado.
+        """True cuando la medicion reprobo antes de consultar al modelo.
 
-        `total` de um parecer interrompido nao e comparavel com o de um parecer
-        completo -- o eval do M5 precisa filtrar por isto antes de agregar nota.
+        `total` de un informe interrumpido no es comparable con el de un informe
+        completo -- el eval del M5 necesita filtrar por esto antes de agregar
+        nota.
         """
         return any(not s.evaluated for s in self.scores)
 
     @property
     def approved(self) -> bool:
-        """Corte em 11/14, nenhum critério zerado, e nenhum veto violado.
+        """Corte en 11/14, ningun criterio a cero y ningun veto violado.
 
-        As tres condicoes existem porque soma sozinha permite compensacao
-        errada: um roteiro que e resumo de noticia (0 em ponto de vista) chegaria
-        a 12 de 14 com o resto perfeito e passaria -- sendo exatamente o "AI
-        slop" que desmonetiza o canal.
+        Las tres condiciones existen porque la suma sola permite compensacion
+        equivocada: un guion que es resumen de noticia (0 en punto de vista)
+        llegaria a 12 de 14 con el resto perfecto y pasaria -- siendo
+        exactamente el "AI slop" que desmonetiza el canal.
         """
         return (
             self.total >= RUBRIC_CUTOFF
@@ -276,10 +282,10 @@ class Review(BaseModel):
 
     @property
     def revision_notes(self) -> list[str]:
-        """O que devolver ao roteirista, na ordem em que custa mais caro.
+        """Lo que se devuelve al guionista, en el orden en que cuesta mas caro.
 
-        Veto primeiro: nao adianta melhorar o hook de um roteiro que cita
-        numero sem fonte.
+        Veto primero: no sirve de nada mejorar el hook de un guion que cita
+        numero sin fuente.
         """
         veto = {s.criterion for s in self.vetoed}
         ordenados = sorted(
@@ -296,18 +302,19 @@ class RenderState(StrEnum):
 
 
 CAROUSEL_SLIDES = 5
-# Teto da marca ("frase curta"): 12 palavras na tela. A pesquisa tolera 15,
-# mas a identidade manda -- o prompt mira 10 para caber com folga.
+# Techo de la marca ("frase corta"): 12 palabras en pantalla. La investigacion
+# tolera 15, pero la identidad manda -- el prompt apunta a 10 para caber con
+# margen.
 CAROUSEL_MAX_WORDS_PER_SLIDE = 12
 
 
 class Slide(BaseModel):
-    """Um slide do carrossel: promessa curta + visual do pilar."""
+    """Un slide del carrusel: promesa corta + visual del pilar."""
 
     n: int = Field(ge=1, le=CAROUSEL_SLIDES)
     headline: str = Field(min_length=3)
     text: str = Field(min_length=3)
-    # Tag verbatim do vocabulario visual (writer/visuals.py), um pilar so.
+    # Tag verbatim del vocabulario visual (writer/visuals.py), un pilar solo.
     visual: str = Field(min_length=3)
 
     @property
@@ -316,7 +323,7 @@ class Slide(BaseModel):
 
 
 class Carousel(BaseModel):
-    """Roteiro de carrossel: 5 slides 1080x1920 + legenda que puxa comentario."""
+    """Guion de carrusel: 5 slides 1080x1920 + leyenda que tira de comentario."""
 
     topic: str = Field(min_length=3)
     slides: list[Slide] = Field(min_length=CAROUSEL_SLIDES,
@@ -324,14 +331,14 @@ class Carousel(BaseModel):
     caption: str = Field(min_length=10)
     facts: list[Fact] = Field(default_factory=list)
     format: str = "carousel"
-    # Foto do assunto para a capa (slide 1) e o miolo (slide 3), em ingles.
+    # Foto del asunto para la portada (slide 1) y el centro (slide 3), en ingles.
     broll: list[str] = Field(default_factory=list, max_length=3)
     pillar: str = ""
 
     @model_validator(mode="after")
-    def _ordem(self) -> Carousel:
+    def _orden(self) -> Carousel:
         if [s.n for s in self.slides] != [1, 2, 3, 4, 5]:
-            raise ValueError("slides fora de ordem 1-5")
+            raise ValueError("slides fuera de orden 1-5")
         return self
 
 
@@ -340,12 +347,12 @@ CAROUSEL_MAX = 10
 
 
 class CarouselReview(BaseModel):
-    """Parecer do carrossel: politica medido, 4 critérios lidos.
+    """Informe del carrusel: politica medido, 4 criterios leidos.
 
-    Corte em 8/10 (folga de 2 pontos, como no 6/8 anterior), nenhum critério
-    zerado, politica sem veto. O resto do mecanico (5 slides, 15 palavras,
-    save no 5, numero no 1) ja passou no roteirista -- mandar isso ao juiz
-    gastaria cota para conferir `len().
+    Corte en 8/10 (margen de 2 puntos, como en el 6/8 anterior), ningun
+    criterio a cero, politica sin veto. El resto del mecanico (5 slides, 15
+    palabras, save en el 5, numero en el 1) ya paso en el guionista -- mandar
+    eso al juez gastaria cuota para comprobar un `len()`.
     """
 
     topic: str
@@ -381,32 +388,32 @@ class CarouselReview(BaseModel):
 
     @property
     def revision_notes(self) -> list[str]:
-        """O que devolver ao roteirista de carrossel, mais barato primeiro."""
+        """Lo que se devuelve al guionista de carrusel, mas barato primero."""
         return [f"[{s.criterion.value} {s.score}/2] {s.reason}"
                 for s in sorted(self.scores, key=lambda s: s.score)
                 if s.score < 2 and s.evaluated]
 
 
 class RenderResult(BaseModel):
-    """O que o renderizador devolve. `duration_s` e medida, nao estimada."""
+    """Lo que devuelve el renderizador. `duration_s` es medida, no estimada."""
 
     state: RenderState
     video_path: str | None = None
     duration_s: float | None = None
     width: int | None = None
     height: int | None = None
-    # Medido com ffprobe. Um MP4 sem trilha de narracao passa em qualquer
-    # checagem de dimensao e duracao, e nao serve para nada.
+    # Medido con ffprobe. Un MP4 sin pista de narracion pasa cualquier
+    # comprobacion de dimension y duracion, y no sirve para nada.
     has_audio: bool = False
     task_id: str | None = None
     error: str | None = None
 
     @model_validator(mode="after")
-    def _coerencia(self) -> RenderResult:
+    def _coherencia(self) -> RenderResult:
         if self.state is RenderState.complete and not self.video_path:
-            raise ValueError("render completo sem video_path")
+            raise ValueError("render completo sin video_path")
         if self.state is RenderState.failed and not self.error:
-            raise ValueError("render falhou sem mensagem de erro")
+            raise ValueError("render fallo sin mensaje de error")
         return self
 
     @property
@@ -421,10 +428,10 @@ class RenderResult(BaseModel):
 
 
 class NewsItem(BaseModel):
-    """Materia ja associada a um termo pela propria fonte.
+    """Noticia ya asociada a un termino por la propia fuente.
 
-    O Google Trends RSS entrega isso de graca junto de cada tema, o que adianta
-    parte do trabalho do pesquisador (M3) sem custar uma requisicao a mais.
+    El RSS de Google Trends lo entrega gratis junto a cada tema, lo que adelanta
+    parte del trabajo del investigador (M3) sin costar una peticion mas.
     """
 
     title: str = Field(min_length=3)
@@ -433,17 +440,17 @@ class NewsItem(BaseModel):
 
 
 class Signal(BaseModel):
-    """Um termo em alta, como uma fonte o reporta.
+    """Un termino en tendencia, tal como lo reporta una fuente.
 
-    `volume` esta sempre na unidade nativa da fonte -- pontos do HN, buscas
-    estimadas do Trends, pageviews da Wikipedia. Nao sao comparaveis entre si e
-    o radar nao tenta normalizar: converter escalas diferentes numa nota unica e
-    julgamento, e julgamento e trabalho do curador (M2). O radar so coleta e
-    mede.
+    `volume` esta siempre en la unidad nativa de la fuente -- puntos del HN,
+    busquedas estimadas de Trends, pageviews de Wikipedia. No son comparables
+    entre si y el radar no intenta normalizar: convertir escalas diferentes en
+    una nota unica es juicio, y el juicio es trabajo del curador (M2). El radar
+    solo recolecta y mide.
 
-    `velocity` e a unica grandeza comparavel em forma, porque e sempre a mesma
-    derivada: unidade por hora. Fica `None` quando a fonte nao permite calcula-la
-    -- e `None` significa "desconhecido", nunca zero.
+    `velocity` es la unica magnitud comparable en forma, porque es siempre la
+    misma derivada: unidad por hora. Queda `None` cuando la fuente no permite
+    calcularla -- y `None` significa "desconocido", nunca cero.
     """
 
     term: str = Field(min_length=2)
@@ -457,12 +464,12 @@ class Signal(BaseModel):
 
     @field_validator("term")
     @classmethod
-    def _termo_normalizado(cls, v: str) -> str:
+    def _termino_normalizado(cls, v: str) -> str:
         return " ".join(v.split()).strip()
 
     @property
     def key(self) -> str:
-        """Chave estavel para casar a mesma historia entre coletas."""
+        """Clave estable para casar la misma historia entre recolectas."""
         return f"{self.source}:{self.term.casefold()}"
 
     @property
@@ -471,11 +478,11 @@ class Signal(BaseModel):
 
 
 class Verdict(StrEnum):
-    """Desfecho de um candidato no curador.
+    """Desenlace de un candidato en el curador.
 
-    Rejeicao tem tipo, nao so um booleano: "reprovou na politica" e "perdeu o
-    ranking" pedem acoes opostas. O primeiro nunca deve voltar; o segundo pode
-    ser o escolhido amanha.
+    El rechazo tiene tipo, no solo un booleano: "reprobo en politica" y "perdio
+    el ranking" piden acciones opuestas. El primero nunca debe volver; el
+    segundo puede ser el elegido manana.
     """
 
     selected = "selected"
@@ -486,11 +493,11 @@ class Verdict(StrEnum):
 
 
 class Decision(BaseModel):
-    """O que o curador decidiu sobre um sinal, e por que.
+    """Que decidio el curador sobre una senal, y por que.
 
-    `reason` e obrigatorio inclusive na aprovacao. Decisao sem justificativa
-    gravada nao da para auditar depois, e a auditoria e o que permite corrigir o
-    score em vez de chutar.
+    `reason` es obligatorio incluso en la aprobacion. Decision sin justificacion
+    grabada no se puede auditar despues, y la auditoria es lo que permite
+    corregir el score en vez de dar palos de ciego.
     """
 
     term: str = Field(min_length=2)
@@ -507,9 +514,9 @@ class Decision(BaseModel):
     news_items: list[NewsItem] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _duplicata_aponta_o_original(self) -> Decision:
+    def _duplicado_apunta_al_original(self) -> Decision:
         if self.verdict is Verdict.rejected_duplicate and not self.duplicate_of:
-            raise ValueError("rejeicao por duplicata precisa apontar o tema original")
+            raise ValueError("el rechazo por duplicado debe apuntar al tema original")
         return self
 
     @property
@@ -518,11 +525,12 @@ class Decision(BaseModel):
 
 
 class PublishState(StrEnum):
-    """Desfecho da subida para a inbox.
+    """Desenlace de la subida a la inbox.
 
-    `uploaded` nao significa "postado": significa que o video chegou a inbox e
-    a conclusao (legenda, rotulo AIGC, publicar) acontece no app, pela pessoa
-    criadora. Automatizar alem disso seria Direct Post, que exige auditoria.
+    `uploaded` no significa "publicado": significa que el video llego a la inbox
+    y la conclusion (leyenda, etiqueta AIGC, publicar) ocurre en la app, por la
+    persona creadora. Automatizar mas alla seria Direct Post, que exige
+    auditoria.
     """
 
     uploaded = "uploaded"
@@ -530,7 +538,7 @@ class PublishState(StrEnum):
 
 
 class PublishResult(BaseModel):
-    """O que o publicador devolve. `publish_id` rastreia o post na API."""
+    """Lo que devuelve el publicador. `publish_id` rastrea el post en la API."""
 
     state: PublishState
     publish_id: str | None = None
@@ -538,9 +546,9 @@ class PublishResult(BaseModel):
     error: str | None = None
 
     @model_validator(mode="after")
-    def _coerencia(self) -> PublishResult:
+    def _coherencia(self) -> PublishResult:
         if self.state is PublishState.uploaded and not self.publish_id:
-            raise ValueError("upload para a inbox sem publish_id")
+            raise ValueError("subida a la inbox sin publish_id")
         if self.state is PublishState.failed and not self.error:
-            raise ValueError("publicacao falhou sem mensagem de erro")
+            raise ValueError("publicacion fallo sin mensaje de error")
         return self

@@ -1,16 +1,16 @@
-"""Porta LLM: o primeiro modelo do projeto entra por aqui.
+"""Puerto LLM: el primer modelo del proyecto entra por aquí.
 
 E porta por dois motivos distintos.
 
 O primeiro e a restricao de $0: o caminho padrao precisa ser free tier (Gemini
 Flash, Groq), e free tier cai, muda id de modelo e devolve 429. Trocar de
-provedor no meio de uma execucao nao pode exigir tocar em nenhum estagio.
+cambiar de proveedor en mitad de una ejecución no puede exigir tocar ninguna etapa.
 
 O segundo e o eval do M5, que e o artefato de portfolio: comparar free tier
 contra modelo pago na mesma rubrica so tem valor se a troca for de uma linha e
-se o **custo for medido**, nao estimado. Por isso `Completion` carrega tokens e
+si el **coste se mide**, no se estima. Por eso `Completion` incluye tokens y
 latencia: sem isso a comparacao viraria "achei o roteiro do Claude melhor", que
-nao e evidencia de nada.
+no es prueba de nada.
 """
 
 from __future__ import annotations
@@ -29,8 +29,8 @@ class LLMError(RuntimeError):
 class LLMUnavailable(LLMError):
     """Provedor fora do ar, sem cota ou com rate limit estourado.
 
-    Esperado, nao excepcional: free tier tem limite por minuto e por dia. Quem
-    chama registra e segue com o que tem, como o radar faz com uma fonte fora.
+    Esperado, no excepcional: el nivel gratuito tiene límites por minuto y por día. Quien
+    llama registra el error y continúa con lo disponible, como hace el radar con una fuente caída.
     """
 
 
@@ -44,8 +44,8 @@ class LLMQuotaExhausted(LLMUnavailable):
 
     - ``minute``: esperar ``retry_after_s`` e tentar o MESMO modelo;
     - ``day``: esse modelo acabou ate o reset -- tentar o proximo da rota;
-    - ``request``: o pedido nao cabe no teto por minuto desse modelo (413 do
-      Groq); esperar nao resolve, so outro modelo.
+    - ``request``: la petición no cabe en el límite por minuto de ese modelo (413 de
+      Groq); esperar no resuelve, solo otro modelo.
     """
 
     def __init__(self, message: str, *, scope: str = "unknown",
@@ -57,11 +57,11 @@ class LLMQuotaExhausted(LLMUnavailable):
 
 
 class LLMBlocked(LLMError):
-    """O provedor recusou por filtro de conteudo.
+    """El proveedor rechazó la respuesta por un filtro de contenido.
 
     Tem tipo proprio porque pede acao oposta a de LLMUnavailable: repetir a
-    mesma chamada nao resolve, e o tema pode simplesmente nao ser publicavel.
-    O curador ja barra a maior parte disso, mas o filtro do provedor e mais
+    la misma llamada no resuelve y puede que el tema no sea publicable.
+    El curador ya bloquea la mayor parte, pero el filtro del proveedor es más
     amplo que o nosso e dispara em noticia de tech com vitima ou arma.
     """
 
@@ -69,8 +69,8 @@ class LLMBlocked(LLMError):
 class Usage(BaseModel):
     """Tokens cobrados pela chamada, como o provedor os reportou.
 
-    Zero significa "o provedor nao informou", que e diferente de "nao gastou" --
-    mas aqui os dois levam a mesma acao (nao da para comparar custo), e inflar
+    Cero significa «el proveedor no informó», distinto de «no gastó», aunque
+    aquí ambos conducen a la misma acción (no se puede comparar el coste) e inflar
     com estimativa propria seria pior que admitir a lacuna.
     """
 
@@ -89,7 +89,7 @@ class Usage(BaseModel):
 
 
 class Completion(BaseModel):
-    """O que o modelo devolveu, e quanto custou medir isso."""
+    """Lo que devolvió el modelo y cuánto costó medirlo."""
 
     text: str
     model: str
@@ -127,8 +127,8 @@ class LLM(Protocol):
         ou instrucao no prompt) -- e nenhum deles garante aderencia, entao quem
         chama valida com Pydantic de todo jeito.
 
-        Levanta LLMUnavailable quando o provedor nao responde ou nega cota,
-        LLMBlocked quando recusa por conteudo, LLMError no resto.
+        Levanta LLMUnavailable cuando el proveedor no responde o deniega la cuota,
+        LLMBlocked cuando rechaza por contenido y LLMError en el resto de casos.
         """
         ...
 
@@ -139,12 +139,12 @@ _CERCA = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.IGNORECASE)
 def parse_json_object(texto: str) -> dict:
     """Le o objeto JSON de uma resposta de modelo, tolerando o embrulho comum.
 
-    Vive na porta, e nao em cada adaptador, porque o defeito e do genero e nao
+    Vive en el puerto y no en cada adaptador porque el defecto es genérico y no
     do provedor: mesmo em modo JSON, modelo de free tier as vezes devolve o
     objeto dentro de cerca de codigo ou com um "Aqui esta:" na frente. Tratar
     isso em tres lugares garantiria tres comportamentos diferentes.
 
-    Nao tenta consertar JSON truncado: resposta cortada no meio e erro de
+    No intenta reparar JSON truncado: una respuesta cortada a mitad es un error de
     orcamento de tokens, e mascarar isso com regex produziria um dossie com
     metade dos fatos e nenhuma pista do motivo.
     """
@@ -160,8 +160,8 @@ def parse_json_object(texto: str) -> dict:
         raise LLMError(f"resposta sem objeto JSON: {texto[:200]!r}")
     if fim <= inicio:
         raise LLMError(
-            "resposta truncada: abriu objeto e nao fechou "
-            "(orcamento de tokens curto para o que foi pedido)"
+            "respuesta truncada: abrió un objeto y no lo cerró "
+            "(presupuesto de tokens insuficiente para lo solicitado)"
         )
     try:
         valor = json.loads(limpo[inicio : fim + 1])

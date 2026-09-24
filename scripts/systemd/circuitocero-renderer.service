@@ -1,5 +1,5 @@
 [Unit]
-Description=Seu Canal - renderizador de video (MoneyPrinterTurbo, local)
+Description=Circuito Cero - renderizador de video (MoneyPrinterTurbo, local)
 After=network-online.target
 Wants=network-online.target
 

@@ -1,6 +1,6 @@
 """Porta Deduplicator: "ja falamos disso?".
 
-E porta porque a escolha da tecnica e uma troca mensuravel, nao uma verdade. A
+Es una puerta porque elegir la técnica es un intercambio medible, no una verdad. La
 implementacao inicial e lexica; uma baseada em embedding pode substitui-la e ser
 comparada na mesma base de temas, que e o tipo de evidencia que o M5 produz.
 """
@@ -15,7 +15,7 @@ class Deduplicator(Protocol):
     def find_duplicate(self, termo: str, anteriores: list[str]) -> tuple[str, float] | None:
         """Devolve (tema_original, similaridade) se `termo` repete algo anterior.
 
-        None significa "e assunto novo". A implementacao decide o limiar: quem
-        chama nao deve precisar saber a escala de similaridade da tecnica usada.
+        None significa «es un tema nuevo». La implementación decide el umbral: quien
+        llama no debería necesitar conocer la escala de similitud de la técnica usada.
         """
         ...

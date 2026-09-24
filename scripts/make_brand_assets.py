@@ -63,9 +63,9 @@ def avatar_png(cor_hex: str, destino: Path, tamanho: int = 1080) -> None:
 def main() -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
     for nome, cor in CORES.items():
-        (ASSETS / f"seucanal-simbolo-{nome}.svg").write_text(
+        (ASSETS / f"circuitocero-simbolo-{nome}.svg").write_text(
             simbolo_svg(cor), encoding="utf-8")
-    avatar_png(CORES["verde"], ASSETS / "seucanal-perfil-1080.png")
+    avatar_png(CORES["verde"], ASSETS / "circuitocero-perfil-1080.png")
     print("assets em", ASSETS)
 
 

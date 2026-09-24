@@ -1,0 +1,12 @@
+[Unit]
+Description=Circuito Cero - post de las 13h (largo; dispara 35 min antes para producir)
+
+[Timer]
+OnCalendar=*-*-* 12:25:00 Europe/Madrid
+# Máquina apagada a la hora: corre al arrancar (el slot atrasado más de 2h se salta).
+Persistent=true
+AccuracySec=1min
+Unit=circuitocero-slot@1300.service
+
+[Install]
+WantedBy=timers.target

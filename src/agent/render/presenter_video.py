@@ -1,43 +1,49 @@
-"""Apresentador de video: o clipe humano da a pessoa, nos damos a boca.
+"""Presentador de video: el clip humano da la persona, nosotros ponemos la boca.
 
-`render/presenter.py` sintetiza tudo a partir de um retrato parado -- piscada,
-balanco de cabeca, respiracao. Funciona e o limite esta declarado la: e uma
-silhueta convincente, nao uma pessoa. Desde 20/09/2026 existe um clipe
-fotorrealista do THEO (Hailuo, identidade travada do `brand.json`) em que a
-piscada e o balanco **ja sao humanos**, porque foram gerados como video. O que
-falta nele e a unica coisa que nao pode vir pronta: a boca, que depende da
-narracao daquele video especifico.
+`render/presenter.py` sintetiza todo a partir de un retrato quieto -- parpadeo,
+balanceo de cabeza, respiracion. Funciona y su limite esta declarado ahi: es una
+silueta convincente, no una persona. Desde el 20/09/2026 existe un clip
+fotorrealista de THEO (Hailuo, identidad fija del `brand.json`) en el que el
+parpadeo y el balanceo **ya son humanos**, porque se generaron como video. Lo
+unico que no puede venir hecho es la boca, que depende de la narracion de ese
+video concreto.
 
-Entao a divisao de trabalho aqui e o oposto da do modulo antigo:
+Asi que la division de trabajo aqui es la opuesta a la del modulo antiguo:
 
-| o que                       | de onde vem                                  |
-|-----------------------------|----------------------------------------------|
-| piscada, cabeca, respiracao | do clipe base, quadro a quadro (humano)      |
-| boca                        | sintetizada aqui, no tempo da narracao       |
-| tamanho e lugar na tela     | da encenacao do roteiro (`presenter.plan`)   |
+| lo que                      | de donde viene                                |
+|-----------------------------|-----------------------------------------------|
+| parpadeo, cabeza, respiracion | del clip base, cuadro a cuadro (humano)     |
+| boca                        | sintetizada aqui, al ritmo de la narracion    |
+| tamano y lugar en pantalla  | de la escenificacion del guion (`presenter.plan`) |
 
-Nada de piscada sorteada nem giro por seno: seria movimento nosso brigando com
-o movimento que ja esta no quadro.
+Nada de parpadeo sorteado ni giro por seno: seria movimiento nuestro peleando
+con el movimiento que ya esta en el cuadro.
 
-**A boca segue o rosto.** `scripts/make_presenter_video.py` gravou os pontos da
-malha em *cada* quadro do clipe; a cabeca se mexe, e uma boca desenhada em
-coordenada fixa desgruda do rosto no primeiro balanco. Aqui cada quadro le os
-pontos do seu proprio quadro.
+**La boca sigue al rostro.** `scripts/make_presenter_video.py` grabo los puntos
+de la malla en *cada* cuadro del clip; la cabeza se mueve, y una boca dibujada
+en coordenadas fijas se despega del rostro en el primer balanceo. Aqui cada
+cuadro lee los puntos de su propio cuadro.
 
-**A boca tem forma, nao so tamanho.** A abertura sai de `render/visemes.py`
-(fonema de pt-BR sobre o tempo de palavra do TTS) modulada pela envoltoria de
-energia da narracao: a letra diz que forma, o audio diz com quanta forca. Num
-rosto fotorrealista isso deixou de ser refinamento -- boca aberta no /m/ e
-gatilho de vale da estranheza, e num close ninguem perdoa.
+**La boca tiene forma, no solo tamano.** La abertura sale de
+`render/visemes.py` (visema sobre el tiempo de palabra del TTS) modulada por la
+envolvente de energia de la narracion: la letra dice que forma, el audio dice
+con cuanta fuerza. En un rostro fotorrealista esto dejo de ser refinamiento --
+boca abierta en la /m/ es gatillo de valle inquietante, y en primer plano nadie
+lo perdona.
 
-O clipe base e curto e a narracao nao: a leitura e em **vai-e-vem** (para
-frente ate o fim, para tras ate o comeco). Emenda por corte foi medida e
-descartada -- o melhor par de quadros nao vizinhos do clipe do THEO difere
-6,74/255, contra 1,13 entre vizinhos, ou seja, seis vezes o movimento normal:
-daria um solavanco visivel a cada volta. No vai-e-vem a virada usa quadros
-vizinhos e e invisivel. O preco, declarado: a piscada toca ao contrario uma vez
-por ciclo (fecha devagar, abre rapido -- o inverso do humano). Com um clipe
-base mais longo que a narracao o vai-e-vem nunca chega a virar.
+El clip base es corto y la narracion no: la lectura es en **vaiven** (hacia
+adelante hasta el final, hacia atras hasta el principio). La union por corte se
+midio y se descarto -- el mejor par de cuadros no vecinos del clip de THEO
+difiere 6,74/255, contra 1,13 entre vecinos: seis veces el movimiento normal,
+daria un golpe visible en cada vuelta. En vaiven el giro usa cuadros vecinos y
+es invisible. El precio, declarado: el parpadeo se oye al reves una vez por
+ciclo (cierra despacio, abre rapido -- lo inverso del humano). Con un clip base
+mas largo que la narracion el vaiven nunca llega a girar.
+
+Nota sobre claves de datos: los nombres de los puntos (`labio_sup`, `queixo`,
+`mand_esq`...) y los arcos `labio_in_baixo_NN` / `labio_in_cima_NN` son el
+contrato del JSON generado por `scripts/make_presenter_video.py` y no se
+renombran en codigo.
 """
 
 from __future__ import annotations
@@ -53,60 +59,70 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from agent.render.presenter import (
     AREA,
+    CLAVES_PT,
     FPS,
-    Batidas,
-    Camada,
-    Marca,
-    _afim,
-    _colar,
+    Capa,
+    Pose,
+    Tiempos,
+    _afin,
     _ease_cubico,
+    _pegar,
+    chip,
     encode_command,
-    envoltoria,
+    envolvente,
     plan,
-    plaquinha,
     pose,
 )
-from agent.render.visemes import trilha
+from agent.render.visemes import pista
 
-# Queda maxima do queixo como fracao da altura do rosto -- a mesma medida do
-# apresentador parado, que saiu de olhar quadro a quadro: acima de ~10% o rosto
-# visivelmente alonga nas silabas abertas.
+
+def _clave(nombre: str) -> str:
+    """Normaliza las claves pt de los JSON horneados al contrato castellano."""
+    return CLAVES_PT.get(nombre, nombre)
+
+# Caida maxima del menton como fraccion de la altura del rostro -- la misma
+# medida del presentador quieto, que salio de mirar cuadro a cuadro: por encima
+# de ~10% el rostro visiblemente se alarga en las silabas abiertas.
 MAXILAR = 0.105
-# Comprimento da rampa do maxilar no centro da boca. Tem de ser um degrau: e
-# ali que a boca abre. Com os 18 px da primeira versao o labio de baixo quase
-# nao descia e a boca saia achatada, um risco horizontal em vez de um vao.
-DEGRAU_PX = 3.0
-# Acima desta abertura aparece dente. Mais baixo que no apresentador parado
-# (0,52): num rosto real o dente e parte da boca aberta, e a falta dele le como
-# buraco preto. Abaixo disso a boca esta apenas entreaberta e dente nao aparece.
-DENTE_MIN = 0.30
-# Super-amostragem das mascaras. O `ImageDraw` do Pillow nao tem anti-aliasing
-# nenhum (medido em 20/09/2026: zero pixel de borda parcial); desenhar 4x maior
-# e reduzir por media de area (`Image.BOX`) e o que da a borda suave.
+# Longitud de la rampa de la mandibula en el centro de la boca. Tiene que ser
+# un escalon: es ahi donde la boca abre. Con los 18 px de la primera version el
+# labio de abajo casi no bajaba y la boca salia aplastada, una raya horizontal
+# en vez de un hueco.
+ESCALON_PX = 3.0
+# Por encima de esta abertura aparece diente. Mas bajo que en el presentador
+# quieto (0,52): en un rostro real el diente es parte de la boca abierta, y la
+# falta se lee como agujero negro. Por debajo la boca esta solo entreabierta y
+# no aparece diente.
+DIENTE_MIN = 0.30
+# Supermuestreo de las mascaras. El `ImageDraw` de Pillow no tiene antialiasing
+# ninguno (medido el 20/09/2026: cero pixel de borde parcial); dibujar 4x mayor
+# y reducir por media de area (`Image.BOX`) es lo que da el borde suave.
 SS = 4
-# Abaixo desta altura em pixel a boca entra por degrade em vez de surgir.
+# Por debajo de esta altura en pixel la boca entra en degradado en vez de surgir.
 BOCA_MIN_PX = 3.0
-# Folga em volta do poligono do vao, para o borrao ter onde cair.
-PAD_VAO = 14
-# Quanto a largura do visema estica ou recolhe a boca. 0,12 saiu de olhar: em
-# 0,20 o /u/ vira bico de desenho animado, em 0,06 o /i/ nao se distingue.
-LARGURA_MAX = 0.12
-# Pena lateral do campo do maxilar: sem ela a deformacao morre de uma linha
-# para a outra na borda da caixa e aparece uma costura vertical na bochecha.
-PENA_X = 46.0
-# Piso da modulacao pela energia. A forma do visema nunca e zerada pelo audio:
-# a envoltoria pode estar baixa num fonema surdo que a boca faz do mesmo jeito.
+# Margen en torno al poligono del hueco, para que el borron tenga donde caer.
+MARGEN_HUECO = 14
+# Cuanto la anchura del visema estira o recoge la boca. 0,12 salio de mirar: a
+# 0,20 la /u/ se vuelve pico de dibujo animado, a 0,06 la /i/ no se distingue.
+ANCHURA_MAX = 0.12
+# Pluma lateral del campo de la mandibula: sin ella la deformacion muere de una
+# linea a la siguiente en el borde de la caja y aparece una costura vertical en
+# la mejilla.
+PLUMA_X = 46.0
+# Suelo de la modulacion por la energia. La forma del visema nunca se anula por
+# el audio: la envolvente puede estar baja en una consonante sorda que la boca
+# hace igualmente.
 ENERGIA_PISO = 0.55
 
 
 # ===========================================================================
-# o clipe base assado
+# el clip base horneado
 # ===========================================================================
 
 
 @dataclass(frozen=True)
 class Base:
-    """O clipe do apresentador com os pontos do rosto ja medidos por quadro."""
+    """El clip del presentador con los puntos del rostro ya medidos por cuadro."""
 
     id: str
     video: Path
@@ -116,42 +132,44 @@ class Base:
     head_top: int
     neck_y: int
     face_height: float
-    pivot: tuple[float, float]
-    tracks: dict[str, np.ndarray] = field(default_factory=dict)
-    n_baixo: int = 0
-    n_cima: int = 0
+    pivote: tuple[float, float]
+    pistas: dict[str, np.ndarray] = field(default_factory=dict)
+    n_inferior: int = 0
+    n_superior: int = 0
 
-    def pontos(self, k: int) -> dict[str, tuple[float, float]]:
+    def puntos(self, k: int) -> dict[str, tuple[float, float]]:
         k = min(max(k, 0), self.frames - 1)
-        return {nome: (float(v[k, 0]), float(v[k, 1])) for nome, v in self.tracks.items()}
+        return {nombre: (float(v[k, 0]), float(v[k, 1]))
+                for nombre, v in self.pistas.items()}
 
     def contorno(self, k: int) -> tuple[np.ndarray, np.ndarray]:
-        """Os dois arcos do labio interno neste quadro: (baixo, cima).
+        """Los dos arcos del labio interno en este cuadro: (inferior, superior).
 
-        E o que substituiu a elipse desenhada a mao. Boca tem canto em bico e
-        elipse tem tangente vertical no canto: a elipse cobria a borda do labio
-        de cima e deixava um contorno fantasma por baixo dela -- visto na
-        ampliacao 2x do artefato de 20/09/2026.
+        Es lo que sustituyo a la elipse dibujada a mano. La boca tiene esquina
+        en punta y la elipse tiene tangente vertical en la esquina: la elipse
+        cubria el borde del labio de arriba y dejaba un contorno fantasma por
+        debajo -- visto en la ampliacion 2x del artefacto del 20/09/2026.
         """
         k = min(max(k, 0), self.frames - 1)
-        baixo = np.array([self.tracks[f"labio_in_baixo_{j:02d}"][k]
-                          for j in range(self.n_baixo)], dtype=np.float32)
-        cima = np.array([self.tracks[f"labio_in_cima_{j:02d}"][k]
-                         for j in range(self.n_cima)], dtype=np.float32)
-        return baixo, cima
+        inferior = np.array([self.pistas[f"labio_in_baixo_{j:02d}"][k]
+                             for j in range(self.n_inferior)], dtype=np.float32)
+        superior = np.array([self.pistas[f"labio_in_cima_{j:02d}"][k]
+                             for j in range(self.n_superior)], dtype=np.float32)
+        return inferior, superior
 
 
-def carregar_base(meta_json: Path) -> Base:
-    """Le `<id>_base.json` e confere que o mp4 irmao existe."""
+def cargar_base(meta_json: Path) -> Base:
+    """Lee `<id>_base.json` y comprueba que el mp4 hermano existe."""
     meta = json.loads(meta_json.read_text(encoding="utf-8"))
     video = meta_json.with_name(meta_json.stem + ".mp4")
     if not video.exists():
         raise FileNotFoundError(
-            f"{video} nao existe -- rode scripts/make_presenter_video.py")
+            f"{video} no existe -- corre scripts/make_presenter_video.py")
     if not meta.get("contorno"):
         raise ValueError(
-            f"{meta_json.name} foi assado sem o contorno do labio -- "
-            "rode scripts/make_presenter_video.py de novo")
+            f"{meta_json.name} se horneo sin el contorno del labio -- "
+            "corre scripts/make_presenter_video.py otra vez")
+    contorno = meta.get("contorno", {})
     return Base(
         id=meta.get("id", meta_json.stem),
         video=video,
@@ -161,19 +179,19 @@ def carregar_base(meta_json: Path) -> Base:
         head_top=int(meta["head_top"]),
         neck_y=int(meta["neck_y"]),
         face_height=float(meta["face_height"]),
-        pivot=(float(meta["pivot"][0]), float(meta["pivot"][1])),
-        tracks={nome: np.asarray(v, dtype=np.float32)
-                for nome, v in meta["tracks"].items()},
-        n_baixo=int(meta.get("contorno", {}).get("baixo", 0)),
-        n_cima=int(meta.get("contorno", {}).get("cima", 0)),
+        pivote=(float(meta["pivot"][0]), float(meta["pivot"][1])),
+        pistas={_clave(nombre): np.asarray(v, dtype=np.float32)
+                for nombre, v in meta["tracks"].items()},
+        n_inferior=int(contorno.get("inferior", contorno.get("baixo", 0))),
+        n_superior=int(contorno.get("superior", contorno.get("cima", 0))),
     )
 
 
-def indice_vaivem(t: float, base: Base) -> int:
-    """Qual quadro do clipe toca no instante `t`, indo e voltando.
+def indice_vaiven(t: float, base: Base) -> int:
+    """Que cuadro del clip toca en el instante `t`, yendo y volviendo.
 
-    Fora do vai-e-vem nao ha emenda invisivel: medido no clipe do THEO, o
-    melhor corte entre quadros nao vizinhos custa 6x o movimento normal.
+    Fuera del vaiven no hay union invisible: medido en el clip de THEO, el
+    mejor corte entre cuadros no vecinos cuesta 6x el movimiento normal.
     """
     if base.frames <= 1:
         return 0
@@ -185,519 +203,529 @@ def indice_vaivem(t: float, base: Base) -> int:
     return int(round(r))
 
 
-class Quadros:
-    """Acesso aleatorio aos quadros do clipe assado.
+class Cuadros:
+    """Acceso aleatorio a los cuadros del clip horneado.
 
-    O mp4 vem em duas trilhas (cor pre-multiplicada + mascara). Decodificar o
-    clipe inteiro uma vez para um arquivo mapeado em memoria custa segundos e
-    troca CPU por disco; decodificar sob demanda custaria um processo de ffmpeg
-    por quadro de saida, que sao milhares.
+    El mp4 viene en dos pistas (color premultiplicado + mascara). Decodificar el
+    clip entero una vez a un archivo mapeado en memoria cuesta segundos y
+    cambia CPU por disco; decodificar bajo demanda costaria un proceso de ffmpeg
+    por cuadro de salida, que son miles.
     """
 
-    def __init__(self, base: Base, trabalho: Path, *, ffmpeg: str = "ffmpeg") -> None:
+    def __init__(self, base: Base, trabajo: Path, *, ffmpeg: str = "ffmpeg") -> None:
         w, h = base.size
         self.base = base
-        trabalho.mkdir(parents=True, exist_ok=True)
-        destino = trabalho / f"{base.id}_base_rgba.raw"
-        cru = subprocess.run(
+        trabajo.mkdir(parents=True, exist_ok=True)
+        destino = trabajo / f"{base.id}_base_rgba.raw"
+        crudo = subprocess.run(
             [ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(base.video),
              "-filter_complex",
              "[0:v:0][0:v:1]alphamerge,unpremultiply=inplace=1,format=rgba[o]",
              "-map", "[o]", "-f", "rawvideo", "-pix_fmt", "rgba", "-"],
             capture_output=True, check=True, timeout=600).stdout
         esperado = base.frames * h * w * 4
-        if len(cru) < esperado:
+        if len(crudo) < esperado:
             raise RuntimeError(
-                f"clipe base incompleto: {len(cru)} bytes, esperava {esperado}")
-        destino.write_bytes(cru[:esperado])
-        self._dados = np.memmap(destino, dtype=np.uint8, mode="r",
+                f"clip base incompleto: {len(crudo)} bytes, esperaba {esperado}")
+        destino.write_bytes(crudo[:esperado])
+        self._datos = np.memmap(destino, dtype=np.uint8, mode="r",
                                 shape=(base.frames, h, w, 4))
 
     def __getitem__(self, k: int) -> np.ndarray:
-        return np.asarray(self._dados[min(max(k, 0), self.base.frames - 1)])
+        return np.asarray(self._datos[min(max(k, 0), self.base.frames - 1)])
 
 
 # ===========================================================================
-# a boca
+# la boca
 # ===========================================================================
 
 
 @dataclass(frozen=True)
-class Tons:
-    """Cores da boca, amostradas uma vez no clipe.
+class Tonos:
+    """Colores de la boca, muestreados una vez en el clip.
 
-    Uma vez, e nao por quadro, de proposito: a luz do clipe e travada, e cor
-    reamostrada a cada quadro tremeria com o ruido do grao -- boca piscando de
-    tom e pior que boca de tom levemente errado.
+    Una vez, y no por cuadro, a proposito: la luz del clip esta fija, y un color
+    re-muestreado en cada cuadro temblaria con el ruido del grano -- boca
+    parpadeando de tono es peor que boca de tono levemente equivocado.
     """
 
     interior: tuple[float, float, float]
-    dente: tuple[float, float, float]
-    lingua: tuple[float, float, float]
+    diente: tuple[float, float, float]
+    lengua: tuple[float, float, float]
 
 
-def medir_tons(quadro: np.ndarray, pts: dict[str, tuple[float, float]]) -> Tons:
-    px = quadro[:, :, :3].astype(np.float32)
+def medir_tonos(cuadro: np.ndarray, pts: dict[str, tuple[float, float]]) -> Tonos:
+    px = cuadro[:, :, :3].astype(np.float32)
     cx, cy = pts["labio_sup"]
-    amostra = px[int(cy) - 4:int(cy) + 5, int(cx) - 14:int(cx) + 15].reshape(-1, 3)
-    labio = amostra.mean(axis=0) if amostra.size else np.array([120.0, 80.0, 80.0])
-    rosto = px[int(pts["olho_esq_baixo"][1]):int(pts["queixo"][1]),
-               int(pts["mand_esq"][0]):int(pts["mand_dir"][0])].reshape(-1, 3)
-    # p97 e nao p88: o recorte do rosto pega barba e sombra do queixo, e a
-    # media alta demais puxava o "claro" para abaixo do tom do labio -- o
-    # dente saia mais escuro que a boca, que e o oposto de um dente.
-    claro = (np.percentile(rosto, 97, axis=0) if rosto.size
+    muestra = px[int(cy) - 4:int(cy) + 5, int(cx) - 14:int(cx) + 15].reshape(-1, 3)
+    labio = muestra.mean(axis=0) if muestra.size else np.array([120.0, 80.0, 80.0])
+    rostro = px[int(pts["ojo_izq_abajo"][1]):int(pts["menton"][1]),
+                int(pts["mandibula_izq"][0]):int(pts["mandibula_der"][0])].reshape(-1, 3)
+    # p97 y no p88: el recorte del rostro toma barba y sombra del menton, y la
+    # media demasiado alta tiraba del "claro" por debajo del tono del labio --
+    # el diente salia mas oscuro que la boca, que es lo contrario de un diente.
+    claro = (np.percentile(rostro, 97, axis=0) if rostro.size
              else np.array([200.0, 190.0, 185.0]))
-    # O dente nao e branco nem e pele: e quase neutro, puxado do brilho do
-    # proprio rosto (cada apresentador tem sua exposicao) e rebaixado porque
-    # esta dentro da boca, na sombra. Tomar a cor da pele direto deixava o
-    # dente rosado -- lia como plastico, nao como dente.
+    # El diente no es blanco ni es piel: es casi neutro, sacado del brillo del
+    # propio rostro (cada presentador tiene su exposicion) y rebajado porque
+    # esta dentro de la boca, en sombra. Tomar el color de la piel directo
+    # dejaba el diente rosado -- se leia como plastico, no como diente.
     luz = float(np.mean(claro))
-    dente = np.clip(luz * 1.18 * np.array([1.0, 0.985, 0.95]), 60, 242)
-    # Boca por dentro e escura, nao preta: em 0,20 o vao virava um buraco
-    # chapado e o dente nao tinha contra o que contrastar.
-    # A lingua existe para o vao deixar de ser um buraco preto. Ela nao
-    # precisa de forma -- basta um volume fosco e avermelhado no fundo, que e
-    # o que se ve de relance numa boca falando.
-    return Tons(interior=tuple(np.clip(labio * 0.38, 20, 78)),
-                dente=tuple(dente),
-                lingua=tuple(np.clip(labio * 0.62, 40, 150)))
+    diente = np.clip(luz * 1.18 * np.array([1.0, 0.985, 0.95]), 60, 242)
+    # La boca por dentro es oscura, no negra: a 0,20 el hueco se volvia un
+    # agujero plano y el diente no tenia contra que contrastar.
+    # La lengua existe para que el hueco deje de ser un agujero negro. No
+    # necesita forma: basta un volumen mate y rojizo al fondo, que es lo que se
+    # ve de reojo en una boca hablando.
+    return Tonos(interior=tuple(np.clip(labio * 0.38, 20, 78)),
+                 diente=tuple(diente),
+                 lengua=tuple(np.clip(labio * 0.62, 40, 150)))
 
 
-def _reamostra_y2(bloco: np.ndarray, desloc: np.ndarray) -> np.ndarray:
-    """`saida[y,x] = bloco[y - desloc[y,x], x]`, linear entre linhas.
+def _reinterp_y2(bloque: np.ndarray, desplaz: np.ndarray) -> np.ndarray:
+    """`salida[y,x] = bloque[y - desplaz[y,x], x]`, lineal entre filas.
 
-    Deslocamento por PIXEL, nao por linha: a mandibula nao desce em bloco (ver
-    `abrir_maxilar`), entao cada coluna tem o seu proprio perfil.
+    Desplazamiento por PIXEL, no por fila: la mandibula no baja en bloque (ver
+    `abrir_maxilar`), asi que cada columna tiene su propio perfil.
     """
-    h = bloco.shape[0]
-    ys = np.clip(np.arange(h, dtype=np.float32)[:, None] - desloc, 0, h - 1.001)
+    h = bloque.shape[0]
+    ys = np.clip(np.arange(h, dtype=np.float32)[:, None] - desplaz, 0, h - 1.001)
     lo = ys.astype(np.int32)
     fr = (ys - lo)[:, :, None].astype(np.float32)
-    colunas = np.arange(bloco.shape[1])[None, :]
-    return bloco[lo, colunas] * (1 - fr) + bloco[lo + 1, colunas] * fr
+    columnas = np.arange(bloque.shape[1])[None, :]
+    return bloque[lo, columnas] * (1 - fr) + bloque[lo + 1, columnas] * fr
 
 
 def campo_maxilar(pts: dict[str, tuple[float, float]], face_h: float,
                   abertura: float, shape: tuple[int, int],
                   ) -> tuple[tuple[int, int, int, int], np.ndarray, float] | None:
-    """O deslocamento vertical, em pixel, de cada ponto da metade de baixo.
+    """El desplazamiento vertical, en pixel, de cada punto de la mitad de abajo.
 
-    Sai como funcao propria porque **o campo e o artefato**: olhar a imagem
-    deformada e achar que esta boa foi como o risco horizontal na bochecha
-    passou despercebido. Com o campo na mao da para medir o salto entre linhas
-    vizinhas e travar isso em teste.
+    Sale como funcion propia porque **el campo es el artefacto**: mirar la
+    imagen deformada y creer que esta bien fue como la raya horizontal en la
+    mejilla paso inadvertida. Con el campo en la mano se puede medir el salto
+    entre lineas vecinas y bloquearlo en test.
 
-    O modelo tem tres fatores, e cada um veio de um defeito visto na ampliacao:
+    El modelo tiene tres factores, y cada uno viene de un defecto visto en la
+    ampliacion:
 
-    - `S(y)` -- a mandibula e osso: da linha dos labios ao queixo ela desce
-      inteira (degrau curto), e so o pescoco absorve a diferenca. Rampa longa
-      aqui espremia o labio de baixo e a boca virava um risco.
-    - `amp(x)` -- o osso GIRA em torno da articulacao perto da orelha, entao o
-      queixo desce tudo e o canto do maxilar quase nada. Sem isso sobrava um
-      degrau de 61 px atravessando a bochecha.
-    - `abre(x, y)` -- **so a boca abre na linha dos labios.** Na altura do
-      labio o deslocamento vale o perfil de abertura (zero nas comissuras);
-      descendo para o queixo ele vira 1 em toda a largura. E o que faz o canto
-      da boca ficar colado enquanto o meio abre, e ao mesmo tempo nao deixa
-      nenhum degrau na bochecha, porque ali o campo comeca em zero e cresce.
+    - `S(y)` -- la mandibula es hueso: de la linea de los labios al menton baja
+      entera (escalon corto), y solo el cuello absorbe la diferencia. Una rampa
+      larga aqui apretaba el labio de abajo y la boca se volvia una raya.
+    - `amp(x)` -- el hueso GIRA en torno a la articulacion cerca de la oreja, asi
+      que el menton baja todo y la esquina de la mandibula casi nada. Sin eso
+      sobraba un escalon de 61 px cruzando la mejilla.
+    - `abre(x, y)` -- **solo la boca abre en la linea de los labios.** A la
+      altura del labio el desplazamiento vale el perfil de abertura (cero en las
+      comisuras); bajando hacia el menton se vuelve 1 en toda la anchura. Es lo
+      que hace la esquina de la boca quedar pegada mientras el centro abre, y a
+      la vez no deja ningun escalon en la mejilla, porque ahi el campo empieza
+      en cero y crece.
     """
     h, w = shape
     labio_y = (pts["labio_sup"][1] + pts["labio_inf"][1]) / 2
-    queixo_y = pts["queixo"][1]
-    fim = queixo_y + 0.5 * face_h
+    menton_y = pts["menton"][1]
+    fin = menton_y + 0.5 * face_h
     y0 = int(max(0, labio_y - 6))
-    y1 = int(min(h, fim + 8))
-    x0 = int(max(0, pts["face_esq"][0] - PENA_X))
-    x1 = int(min(w, pts["face_dir"][0] + PENA_X))
+    y1 = int(min(h, fin + 8))
+    x0 = int(max(0, pts["rostro_izq"][0] - PLUMA_X))
+    x1 = int(min(w, pts["rostro_der"][0] + PLUMA_X))
     if y1 - y0 < 4 or x1 - x0 < 4:
         return None
 
-    queda = MAXILAR * face_h * abertura
-    colunas = np.arange(x0, x1, dtype=np.float32)
-    linhas = np.arange(y0, y1, dtype=np.float32)[:, None]
+    caida = MAXILAR * face_h * abertura
+    columnas = np.arange(x0, x1, dtype=np.float32)
+    filas = np.arange(y0, y1, dtype=np.float32)[:, None]
 
-    sobe = np.clip((linhas - labio_y) / DEGRAU_PX, 0, 1)
-    sobe = sobe * sobe * (3 - 2 * sobe)
-    volta = np.clip(1 - (linhas - queixo_y) / max(fim - queixo_y, 1e-6), 0, 1)
-    volta = volta * volta * (3 - 2 * volta)
-    campo = queda * np.minimum(sobe, volta) * _amplitude_x(pts, colunas)[None, :]
+    sube = np.clip((filas - labio_y) / ESCALON_PX, 0, 1)
+    sube = sube * sube * (3 - 2 * sube)
+    vuelta = np.clip(1 - (filas - menton_y) / max(fin - menton_y, 1e-6), 0, 1)
+    vuelta = vuelta * vuelta * (3 - 2 * vuelta)
+    campo = caida * np.minimum(sube, vuelta) * _amplitud_x(pts, columnas)[None, :]
 
-    # Profundidade: 0 na linha dos labios, 1 no queixo. Na linha do labio quem
-    # manda e o perfil de abertura; no queixo, a mandibula inteira.
-    prof = np.clip((linhas - labio_y) / max(queixo_y - labio_y, 1e-6), 0, 1)
+    # Profundidad: 0 en la linea de los labios, 1 en el menton. En la linea del
+    # labio quien manda es el perfil de abertura; en el menton, la mandibula
+    # entera.
+    prof = np.clip((filas - labio_y) / max(menton_y - labio_y, 1e-6), 0, 1)
     prof = prof * prof * (3 - 2 * prof)
-    abre = _abre_x(pts, colunas)[None, :]
+    abre = _abre_x(pts, columnas)[None, :]
     campo *= abre + (1.0 - abre) * prof
 
-    # Pena lateral: o campo ja morre no rosto, mas a caixa e mais larga que ele
-    # e uma costura vertical na borda da caixa foi defeito pago no apresentador
-    # parado -- aqui ela nao volta.
+    # Pluma lateral: el campo ya muere en el rostro, pero la caja es mas ancha
+    # que el y una costura vertical en el borde de la caja fue defecto pagado en
+    # el presentador quieto -- aqui no vuelve.
     peso = np.minimum(
-        np.clip((colunas - (pts["mand_esq"][0] - PENA_X)) / PENA_X, 0, 1),
-        np.clip(((pts["mand_dir"][0] + PENA_X) - colunas) / PENA_X, 0, 1))
+        np.clip((columnas - (pts["mandibula_izq"][0] - PLUMA_X)) / PLUMA_X, 0, 1),
+        np.clip(((pts["mandibula_der"][0] + PLUMA_X) - columnas) / PLUMA_X, 0, 1))
     campo *= (peso * peso * (3 - 2 * peso))[None, :]
-    return (x0, y0, x1, y1), campo, float(queda)
+    return (x0, y0, x1, y1), campo, float(caida)
 
 
-def abrir_maxilar(quadro: np.ndarray, pts: dict[str, tuple[float, float]],
+def abrir_maxilar(cuadro: np.ndarray, pts: dict[str, tuple[float, float]],
                   face_h: float, abertura: float) -> float:
-    """Desce a mandibula no lugar. Devolve a queda em pixel no queixo."""
+    """Baja la mandibula en el sitio. Devuelve la caida en pixel en el menton."""
     if abertura <= 0.01:
         return 0.0
-    feito = campo_maxilar(pts, face_h, abertura, quadro.shape[:2])
-    if feito is None:
+    hecho = campo_maxilar(pts, face_h, abertura, cuadro.shape[:2])
+    if hecho is None:
         return 0.0
-    (x0, y0, x1, y1), campo, queda = feito
-    bloco = quadro[y0:y1, x0:x1].astype(np.float32)
-    quadro[y0:y1, x0:x1] = _reamostra_y2(bloco, campo).astype(np.uint8)
-    return queda
+    (x0, y0, x1, y1), campo, caida = hecho
+    bloque = cuadro[y0:y1, x0:x1].astype(np.float32)
+    cuadro[y0:y1, x0:x1] = _reinterp_y2(bloque, campo).astype(np.uint8)
+    return caida
 
 
-def espalhar_labios(quadro: np.ndarray, pts: dict[str, tuple[float, float]],
-                    largura: float) -> None:
-    """Estica (/i/) ou recolhe (/u/) a boca na horizontal, no lugar.
+def extender_labios(cuadro: np.ndarray, pts: dict[str, tuple[float, float]],
+                    anchura: float) -> None:
+    """Estira (/i/) o recoge (/u/) la boca en horizontal, en el sitio.
 
-    O campo morre nas bordas da caixa de proposito: sem isso a bochecha inteira
-    andaria junto e o rosto mudaria de largura a cada silaba.
+    El campo muere en los bordes de la caja a proposito: sin eso la mejilla
+    entera se moveria junto y el rostro cambiaria de anchura en cada silaba.
     """
-    if abs(largura) < 0.02:
+    if abs(anchura) < 0.02:
         return
-    h, w = quadro.shape[:2]
-    cx = (pts["boca_esq"][0] + pts["boca_dir"][0]) / 2
+    h, w = cuadro.shape[:2]
+    cx = (pts["boca_izq"][0] + pts["boca_der"][0]) / 2
     cy = (pts["labio_sup"][1] + pts["labio_inf"][1]) / 2
-    boca_w = max(pts["boca_dir"][0] - pts["boca_esq"][0], 8.0)
-    # A caixa vai ate onde o LABIO vai, e nao um tanto arbitrario da largura da
-    # boca. Com `boca_w * 0,62` ela media 121 px de altura -- do nariz ao
-    # queixo -- e o esticar ondulava a barba e a bochecha a cada silaba, bem
-    # visivel na ampliacao 2x. Lábio e o que estica; pele em volta, nao.
-    labio_h = abs(pts["labio_inf_out"][1] - pts["labio_sup_out"][1])
+    boca_w = max(pts["boca_der"][0] - pts["boca_izq"][0], 8.0)
+    # La caja llega hasta donde llega el LABIO, y no un tanto arbitrario de la
+    # anchura de la boca. Con `boca_w * 0,62` media 121 px de alto -- de la
+    # nariz al menton -- y el estiramiento ondulaba la barba y la mejilla en
+    # cada silaba, bien visible en la ampliacion 2x. El labio es lo que se
+    # estira; la piel en torno, no.
+    labio_h = abs(pts["labio_inf_ext"][1] - pts["labio_sup_ext"][1])
     rx, ry = boca_w * 0.85, max(labio_h * 0.65, 20.0)
     x0, x1 = int(max(0, cx - rx)), int(min(w, cx + rx))
     y0, y1 = int(max(0, cy - ry)), int(min(h, cy + ry))
     if x1 - x0 < 6 or y1 - y0 < 6:
         return
 
-    escala = 1.0 + LARGURA_MAX * largura
+    escala = 1.0 + ANCHURA_MAX * anchura
     xs = np.arange(x0, x1, dtype=np.float32)
     ys = np.arange(y0, y1, dtype=np.float32)
-    # Deslocamento que levaria a escala exata, apagado nas bordas da caixa.
-    desloc = (xs - cx) * (1.0 / max(escala, 1e-6) - 1.0)
+    # Desplazamiento que llevaria a la escala exacta, apagado en los bordes.
+    desplaz = (xs - cx) * (1.0 / max(escala, 1e-6) - 1.0)
     tx = np.clip(1 - np.abs(xs - cx) / max(rx, 1e-6), 0, 1)
     ty = np.clip(1 - np.abs(ys - cy) / max(ry, 1e-6), 0, 1)
     tx = tx * tx * (3 - 2 * tx)
     ty = ty * ty * (3 - 2 * ty)
-    campo = desloc[None, :] * tx[None, :] * ty[:, None]
+    campo = desplaz[None, :] * tx[None, :] * ty[:, None]
 
-    bloco = quadro[y0:y1, x0:x1].astype(np.float32)
+    bloque = cuadro[y0:y1, x0:x1].astype(np.float32)
     src = np.clip(np.arange(x1 - x0, dtype=np.float32)[None, :] + campo,
                   0, (x1 - x0) - 1.001)
     lo = src.astype(np.int32)
     fr = (src - lo)[:, :, None].astype(np.float32)
-    linhas = np.arange(y1 - y0)[:, None]
-    quadro[y0:y1, x0:x1] = (bloco[linhas, lo] * (1 - fr)
-                            + bloco[linhas, lo + 1] * fr).astype(np.uint8)
+    filas = np.arange(y1 - y0)[:, None]
+    cuadro[y0:y1, x0:x1] = (bloque[filas, lo] * (1 - fr)
+                            + bloque[filas, lo + 1] * fr).astype(np.uint8)
 
 
 def _abre_x(pts: dict[str, tuple[float, float]], xs: np.ndarray) -> np.ndarray:
-    """Quanto a boca ABRE em cada coluna: cheio no meio, zero nas comissuras.
+    """Cuanto abre la boca en cada columna: lleno en el centro, cero en las comisuras.
 
-    Canto de boca nao abre -- e onde o labio de cima encontra o de baixo. Sem
-    este perfil o vao saia como uma **barra retangular** de canto em esquadro,
-    porque o labio de baixo descia o mesmo tanto no meio e na ponta. Com ele o
-    vao vira lente: cheio no meio, fechando em bico nos dois cantos.
+    La esquina de la boca no abre -- es donde el labio de arriba encuentra al de
+    abajo. Sin este perfil el hueco salia como una **barra rectangular** de
+    esquina en escuadra, porque el labio de abajo bajaba lo mismo en el centro
+    y en la punta. Con el, el hueco se vuelve lente: lleno en el centro,
+    cerrando en punta en las dos esquinas.
 
-    O expoente abaixo de 1 alarga o meio: boca aberta e quase igual ao longo do
-    centro e so fecha perto da ponta, que e diferente de um seno puro.
+    El exponente por debajo de 1 ensancha el centro: la boca abierta es casi
+    igual a lo largo del centro y solo cierra cerca de la punta, que es
+    distinto de un seno puro.
     """
-    esq, dir_ = pts["boca_esq"][0], pts["boca_dir"][0]
-    u = np.clip((xs - esq) / max(dir_ - esq, 1e-6), 0.0, 1.0)
-    # O clip no seno nao e paranoia: `sin(pi)` devolve -8,7e-17 em ponto
-    # flutuante, e base negativa com expoente fracionario vira NaN -- que
-    # desce inteiro ate o indice da reamostragem e derruba o quadro.
+    izq, der = pts["boca_izq"][0], pts["boca_der"][0]
+    u = np.clip((xs - izq) / max(der - izq, 1e-6), 0.0, 1.0)
+    # El clip del seno no es paranoia: `sin(pi)` devuelve -8,7e-17 en coma
+    # flotante, y base negativa con exponente fraccionario es NaN -- que baja
+    # entero hasta el indice de la reinterpolacion y tira el cuadro.
     return np.clip(np.sin(np.pi * u), 0.0, 1.0) ** 0.65
 
 
-def _amplitude_x(pts: dict[str, tuple[float, float]], xs: np.ndarray) -> np.ndarray:
-    """Quanto do giro do maxilar chega a cada coluna (o mesmo perfil do campo).
+def _amplitud_x(pts: dict[str, tuple[float, float]], xs: np.ndarray) -> np.ndarray:
+    """Cuanto del giro de la mandibula llega a cada columna (el mismo perfil del campo).
 
-    O labio de baixo e osso: ele desce com a mandibula. Para o vao pintado
-    casar com o pixel que a deformacao moveu, os dois tem de usar este mesmo
-    perfil -- se divergirem, sobra fresta de um lado e cobre labio do outro.
+    El labio de abajo es hueso: baja con la mandibula. Para que el hueco pintado
+    case con el pixel que la deformacion movio, los dos tienen que usar este
+    mismo perfil -- si divergen, sobra rendija de un lado y el hueco cubre labio
+    del otro.
     """
-    cx = (pts["boca_esq"][0] + pts["boca_dir"][0]) / 2
-    boca_meia = max((pts["boca_dir"][0] - pts["boca_esq"][0]) / 2 * 0.84, 6.0)
-    face_meia = max((pts["face_dir"][0] - pts["face_esq"][0]) / 2, boca_meia + 8.0)
-    fora = np.clip((np.abs(xs - cx) - boca_meia) / (face_meia - boca_meia), 0, 1)
-    fora = fora * fora * (3 - 2 * fora)
-    return 1.0 - 0.68 * fora
+    cx = (pts["boca_izq"][0] + pts["boca_der"][0]) / 2
+    boca_media = max((pts["boca_der"][0] - pts["boca_izq"][0]) / 2 * 0.84, 6.0)
+    rostro_medio = max((pts["rostro_der"][0] - pts["rostro_izq"][0]) / 2, boca_media + 8.0)
+    fuera = np.clip((np.abs(xs - cx) - boca_media) / (rostro_medio - boca_media), 0, 1)
+    fuera = fuera * fuera * (3 - 2 * fuera)
+    return 1.0 - 0.68 * fuera
 
 
-def vao_boca(pts: dict[str, tuple[float, float]],
-             contorno: tuple[np.ndarray, np.ndarray], queda: float,
-             abertura: float, largura: float, tons: Tons
-             ) -> tuple[Image.Image, tuple[int, int]] | None:
-    """O vao entre os labios, recortado pelo contorno REAL da boca.
+def hueco_boca(pts: dict[str, tuple[float, float]],
+               contorno: tuple[np.ndarray, np.ndarray], caida: float,
+               abertura: float, anchura: float, tonos: Tonos
+               ) -> tuple[Image.Image, tuple[int, int]] | None:
+    """El hueco entre los labios, recortado por el contorno REAL de la boca.
 
-    A versao anterior desenhava uma elipse entre os labios. Na ampliacao 2x do
-    artefato de 20/09/2026 dava para ver os tres defeitos que isso custa:
+    La version anterior dibujaba una elipse entre los labios. En la ampliacion
+    2x del artefacto del 20/09/2026 se veian los tres defectos que eso cuesta:
 
-    1. a elipse tem tangente vertical no canto e boca tem canto em bico, entao
-       ela avancava por cima da borda do labio de cima;
-    2. onde ela nao alcancava sobrava o labio de cima **duplicado** pela
-       deformacao, um contorno fantasma logo abaixo do verdadeiro;
-    3. a boca ficava com a mesma forma em toda silaba, porque a elipse so
-       mudava de tamanho.
+    1. la elipse tiene tangente vertical en la esquina y la boca tiene esquina
+       en punta, asi que avanzaba por encima del borde del labio de arriba;
+    2. donde no llegaba quedaba el labio de arriba **duplicado** por la
+       deformacion, un contorno fantasma justo debajo del verdadero;
+    3. la boca tenia la misma forma en toda silaba, porque la elipse solo
+       cambiaba de tamano.
 
-    Aqui o vao e o poligono entre o arco interno de CIMA (que fica parado, e do
-    cranio) e o arco interno de BAIXO deslocado pela queda do maxilar (que e
-    osso e desce). Ou seja: o vao e exatamente a area que o labio de baixo
-    desocupou, e a forma vem da boca do THEO, nao de uma elipse nossa.
+    Aqui el hueco es el poligono entre el arco interno de ARRIBA (que queda
+    quieto, es del craneo) y el arco interno de ABAJO desplazado por la caida de
+    la mandibula (que es hueso y baja). Es decir: el hueco es exactamente el
+    area que el labio de abajo despejo, y la forma viene de la boca de THEO, no
+    de una elipse nuestra.
 
-    O dente pende do topo do poligono coluna a coluna, entao ele nasce com a
-    curva do labio de cima de graca.
+    El diente cuelga del techo del poligono columna a columna, asi que nace con
+    la curva del labio de arriba gratis.
     """
-    baixo, cima = contorno
-    if baixo.size < 3 or cima.size < 3 or queda <= 0:
+    inferior, superior = contorno
+    if inferior.size < 3 or superior.size < 3 or caida <= 0:
         return None
-    cx = (pts["boca_esq"][0] + pts["boca_dir"][0]) / 2
-    # Boca aberta recolhe nos cantos, e o visema ainda estica ou arredonda.
-    escala_x = (1.0 - 0.10 * abertura) * (1.0 + LARGURA_MAX * largura)
-    # Os dois arcos correm em sentidos opostos; alinhados, a media deles e a
-    # **linha de costura** dos labios -- onde a boca de fato se abre.
+    cx = (pts["boca_izq"][0] + pts["boca_der"][0]) / 2
+    # Boca abierta recoge en las esquinas, y el visema aun estira o redondea.
+    escala_x = (1.0 - 0.10 * abertura) * (1.0 + ANCHURA_MAX * anchura)
+    # Los dos arcos corren en sentidos opuestos; alineados, su media es la
+    # **linea de costura** de los labios -- donde la boca de hecho se abre.
     #
-    # O vao nasce dessa costura, e nao do arco de baixo cru, porque na malha os
-    # dois arcos ficam 1 a 3 px separados mesmo com a boca fechada (espessura
-    # do labio e ruido de medida). Usando o arco cru, uma boca fechada ja
-    # comecava com area e o resultado era um risco escuro permanente entre os
-    # labios. Da costura, area zero em repouso, por construcao.
-    cima_a = cima[::-1]
-    costura = np.column_stack([cx + ((cima_a[:, 0] + baixo[:, 0]) / 2 - cx) * escala_x,
-                               (cima_a[:, 1] + baixo[:, 1]) / 2])
-    # O labio de baixo desce com o osso, pelo MESMO perfil que o campo usa na
-    # linha dos labios -- se os dois divergirem, sobra fresta de um lado e o
-    # vao cobre labio do outro. Afina um pouco ao abrir, porque labio estica:
-    # sem isso ele desliza como uma laje rigida.
-    desloc = (queda * _abre_x(pts, costura[:, 0])
-              * _amplitude_x(pts, costura[:, 0]) * (1.0 - 0.12 * abertura))
-    if float(desloc.max()) < 0.6:
-        # Menos de meio pixel de vao: nao ha boca aberta, e desenhar aqui so
-        # gastaria um ladrilho invisivel em todo quadro de consoante fechada.
+    # El hueco nace de esa costura, y no del arco inferior crudo, porque en la
+    # malla los dos arcos quedan 1 a 3 px separados incluso con la boca cerrada
+    # (grosor del labio y ruido de medida). Con el arco crudo, una boca cerrada
+    # empezaba ya con area y el resultado era una raya oscura permanente entre
+    # los labios. Desde la costura, area cero en reposo, por construccion.
+    superior_a = superior[::-1]
+    costura = np.column_stack([cx + ((superior_a[:, 0] + inferior[:, 0]) / 2 - cx) * escala_x,
+                               (superior_a[:, 1] + inferior[:, 1]) / 2])
+    # El labio de abajo baja con el hueso, por el MISMO perfil que el campo usa
+    # en la linea de los labios -- si divergen, sobra rendija de un lado y el
+    # hueco cubre labio del otro. Se afina un poco al abrir, porque el labio se
+    # estira: sin eso se desliza como una losa rigida.
+    desplaz = (caida * _abre_x(pts, costura[:, 0])
+               * _amplitud_x(pts, costura[:, 0]) * (1.0 - 0.12 * abertura))
+    if float(desplaz.max()) < 0.6:
+        # Menos de medio pixel de hueco: no hay boca abierta, y dibujar aqui
+        # gastaria un mosaico invisible en todo cuadro de consonante cerrada.
         return None
-    cima_e = costura
-    baixo_e = np.column_stack([costura[:, 0], costura[:, 1] + desloc])
+    superior_e = costura
+    inferior_e = np.column_stack([costura[:, 0], costura[:, 1] + desplaz])
 
-    # A borda de baixo da esquerda para a direita e a de cima na volta: e o
-    # laco fechado. Empilhar os dois no mesmo sentido faz o poligono se cruzar
-    # no meio e a boca sai com um X dentro -- aconteceu, da para ver.
-    poli = np.vstack([baixo_e, cima_e[::-1]])
-    x0 = math.floor(poli[:, 0].min()) - PAD_VAO
-    y0 = math.floor(poli[:, 1].min()) - PAD_VAO
-    w = int(math.ceil(poli[:, 0].max()) - x0) + PAD_VAO
-    h = int(math.ceil(poli[:, 1].max()) - y0) + PAD_VAO
+    # El borde de abajo de izquierda a derecha y el de arriba a la vuelta: es
+    # el bucle cerrado. Apilar los dos en el mismo sentido hace que el poligono
+    # se cruce en el medio y la boca salga con una X dentro -- ocurrio, se ve.
+    poli = np.vstack([inferior_e, superior_e[::-1]])
+    x0 = math.floor(poli[:, 0].min()) - MARGEN_HUECO
+    y0 = math.floor(poli[:, 1].min()) - MARGEN_HUECO
+    w = int(math.ceil(poli[:, 0].max()) - x0) + MARGEN_HUECO
+    h = int(math.ceil(poli[:, 1].max()) - y0) + MARGEN_HUECO
     if w < 4 or h < 4 or w > 4000 or h > 4000:
         return None
 
-    # Mascara em SS vezes o tamanho: o `ImageDraw` do Pillow nao tem
-    # anti-aliasing nenhum (medido: zero pixel de borda parcial). A parte
-    # fracionaria da posicao entra nas coordenadas do desenho grande, entao o
-    # vao cresce em passos menores que um pixel em vez de saltar.
+    # Mascara a SS veces el tamano: el `ImageDraw` de Pillow no tiene
+    # antialiasing ninguno (medido: cero pixel de borde parcial). La parte
+    # fraccionaria de la posicion entra en las coordenadas del dibujo grande,
+    # asi que el hueco crece en pasos menores que un pixel en vez de saltar.
     grande = Image.new("L", (w * SS, h * SS), 0)
     ImageDraw.Draw(grande).polygon(
         [((px - x0) * SS, (py - y0) * SS) for px, py in poli], fill=255)
     alfa = np.asarray(grande.resize((w, h), Image.BOX), dtype=np.float32) / 255.0
     if alfa.max() <= 0.02:
         return None
-    # Entrada suave: o vao nasce de zero em vez de aparecer com 2 px de uma vez.
+    # Entrada suave: el hueco nace de cero en vez de aparecer con 2 px de golpe.
     altura = float((alfa > 0.5).sum(axis=0).max())
     alfa *= _ease_cubico(min(1.0, max(altura, 0.1) / BOCA_MIN_PX))
 
-    # --- profundidade: onde o vao comeca e acaba, coluna a coluna
+    # --- profundidad: donde empieza y acaba el hueco, columna a columna
     dentro = alfa > 0.35
-    tem = dentro.any(axis=0)
-    topo = np.where(tem, dentro.argmax(axis=0), 0).astype(np.float32)
-    fundo = np.where(tem, h - 1 - dentro[::-1].argmax(axis=0), 0).astype(np.float32)
-    vao_h = np.maximum(fundo - topo, 1.0)
-    linhas = np.arange(h, dtype=np.float32)[:, None]
-    prof = np.clip((linhas - topo[None, :]) / vao_h[None, :], 0, 1)
+    hay = dentro.any(axis=0)
+    techo = np.where(hay, dentro.argmax(axis=0), 0).astype(np.float32)
+    fondo = np.where(hay, h - 1 - dentro[::-1].argmax(axis=0), 0).astype(np.float32)
+    hueco_h = np.maximum(fondo - techo, 1.0)
+    filas = np.arange(h, dtype=np.float32)[:, None]
+    prof = np.clip((filas - techo[None, :]) / hueco_h[None, :], 0, 1)
 
-    cor = np.empty((h, w, 3), dtype=np.float32)
-    cor[:] = tons.interior
-    # Fundo da boca mais escuro que a frente, e canto mais fundo que o meio.
-    cor *= (1.0 - 0.34 * prof)[:, :, None]
-    borda = np.clip(np.abs(np.arange(w, dtype=np.float32) - (cx - x0))
+    color = np.empty((h, w, 3), dtype=np.float32)
+    color[:] = tonos.interior
+    # Fondo de la boca mas oscuro que el frente, y esquina mas honda que el centro.
+    color *= (1.0 - 0.34 * prof)[:, :, None]
+    borde = np.clip(np.abs(np.arange(w, dtype=np.float32) - (cx - x0))
                     / max(w * 0.5, 1e-6), 0, 1)
-    cor *= (1.0 - 0.30 * borda * borda)[None, :, None]
+    color *= (1.0 - 0.30 * borde * borde)[None, :, None]
 
-    # --- lingua: o fundo do vao nao e preto
-    lingua = np.clip((prof - 0.46) / 0.22, 0, 1)
-    lingua *= np.clip(1 - borda[None, :] / 0.82, 0, 1)
-    lingua = lingua * lingua * (3 - 2 * lingua) * 0.75
-    cor += (np.asarray(tons.lingua, dtype=np.float32) - cor) * lingua[:, :, None]
+    # --- lengua: el fondo del hueco no es negro
+    lengua = np.clip((prof - 0.46) / 0.22, 0, 1)
+    lengua *= np.clip(1 - borde[None, :] / 0.82, 0, 1)
+    lengua = lengua * lengua * (3 - 2 * lengua) * 0.75
+    color += (np.asarray(tonos.lengua, dtype=np.float32) - color) * lengua[:, :, None]
 
-    if abertura > DENTE_MIN:
-        forca = min(1.0, (abertura - DENTE_MIN) / (1 - DENTE_MIN))
-        # O dente pende do labio de CIMA (ele e do cranio, nao desce com o
-        # osso): nasce colado no topo do vao, com uma linha de sombra antes, e
-        # termina numa ARESTA. Com a descida suave que estava aqui antes ele
-        # lia como uma barra de metal polido dentro de um buraco -- o que
-        # identifica dente e a borda de corte reta embaixo, nao o brilho.
-        sobe = np.clip((prof - 0.03) / 0.09, 0, 1)
-        desce = 1.0 - np.clip((prof - (0.30 + 0.10 * forca)) / 0.07, 0, 1)
-        vy = np.clip(sobe, 0, 1) * np.clip(desce, 0, 1)
+    if abertura > DIENTE_MIN:
+        fuerza = min(1.0, (abertura - DIENTE_MIN) / (1 - DIENTE_MIN))
+        # El diente cuelga del labio de ARRIBA (es del craneo, no baja con el
+        # hueso): nace pegado al techo del hueco, con una linea de sombra
+        # antes, y termina en una ARISTA. Con la bajada suave que estaba aqui
+        # antes se leia como una barra de metal pulido dentro de un agujero --
+        # lo que identifica un diente es el borde de corte recto abajo, no el
+        # brillo.
+        sube = np.clip((prof - 0.03) / 0.09, 0, 1)
+        baja = 1.0 - np.clip((prof - (0.30 + 0.10 * fuerza)) / 0.07, 0, 1)
+        vy = np.clip(sube, 0, 1) * np.clip(baja, 0, 1)
         vy = vy * vy * (3 - 2 * vy)
-        vx = np.clip(1 - borda / 0.90, 0, 1)
+        vx = np.clip(1 - borde / 0.90, 0, 1)
         vx = vx * vx * (3 - 2 * vx)
-        # Separacao entre os dentes: pouca, so para quebrar o gradiente liso.
-        # Um dente do THEO tem ~14 px na tela, entao o periodo sai dai.
+        # Separacion entre dientes: poca, solo para romper el gradiente liso.
+        # Un diente de THEO mide ~14 px en pantalla, de ahi sale el periodo.
         fase = (np.arange(w, dtype=np.float32) - (cx - x0)) / 14.0
-        sulco = 1.0 - 0.10 * (0.5 + 0.5 * np.cos(2 * np.pi * fase))
-        peso = (alfa * vy * (vx * sulco)[None, :] * (0.55 + 0.45 * forca))[:, :, None]
-        cor += (np.asarray(tons.dente, dtype=np.float32) - cor) * peso
+        surco = 1.0 - 0.10 * (0.5 + 0.5 * np.cos(2 * np.pi * fase))
+        peso = (alfa * vy * (vx * surco)[None, :] * (0.55 + 0.45 * fuerza))[:, :, None]
+        color += (np.asarray(tonos.diente, dtype=np.float32) - color) * peso
 
     buf = np.empty((h, w, 4), dtype=np.uint8)
-    buf[:, :, :3] = np.clip(cor, 0, 255).astype(np.uint8)
+    buf[:, :, :3] = np.clip(color, 0, 255).astype(np.uint8)
     buf[:, :, 3] = np.clip(alfa * 255.0, 0, 255).astype(np.uint8)
-    tile = Image.fromarray(buf).filter(
+    losa = Image.fromarray(buf).filter(
         ImageFilter.GaussianBlur(max(0.6, altura * 0.045)))
-    return tile, (x0, y0)
+    return losa, (x0, y0)
 
 
-def falar(quadro: np.ndarray, pts: dict[str, tuple[float, float]],
-          contorno: tuple[np.ndarray, np.ndarray], face_h: float,
-          abertura: float, largura: float, tons: Tons) -> None:
-    """Uma silaba no rosto: largura do labio, maxilar e o vao por cima.
+def hablar(cuadro: np.ndarray, pts: dict[str, tuple[float, float]],
+           contorno: tuple[np.ndarray, np.ndarray], face_h: float,
+           abertura: float, anchura: float, tonos: Tonos) -> None:
+    """Una silaba en el rostro: anchura del labio, mandibula y el hueco encima.
 
-    Nesta ordem de proposito: o esticar mexe no labio fechado, o maxilar desce
-    o que esta abaixo dele, e o vao e pintado por ultimo, no buraco que os dois
-    deixaram.
+    En este orden a proposito: el estiramiento mueve el labio cerrado, la
+    mandibula baja lo que esta debajo de el, y el hueco se pinta al final, en el
+    agujero que los dos dejaron.
     """
-    espalhar_labios(quadro, pts, largura)
-    queda = abrir_maxilar(quadro, pts, face_h, abertura)
-    if queda <= 0:
+    extender_labios(cuadro, pts, anchura)
+    caida = abrir_maxilar(cuadro, pts, face_h, abertura)
+    if caida <= 0:
         return
-    feito = vao_boca(pts, contorno, queda, abertura, largura, tons)
-    if feito is None:
+    hecho = hueco_boca(pts, contorno, caida, abertura, anchura, tonos)
+    if hecho is None:
         return
-    tile, canto = feito
-    _compor(quadro, tile, canto[0], canto[1])
+    losa, canto = hecho
+    _componer(cuadro, losa, canto[0], canto[1])
 
 
-def _compor(quadro: np.ndarray, peca: Image.Image, x: int, y: int) -> None:
-    """Sobrepoe o ladrilho na cor do quadro, preservando o alfa da silhueta.
+def _componer(cuadro: np.ndarray, pieza: Image.Image, x: int, y: int) -> None:
+    """Superpone el mosaico en el color del cuadro, preservando el alfa de la silueta.
 
-    O alfa do quadro e o recorte do apresentador e nao pode ser tocado: a boca
-    esta *dentro* da silhueta, e mexer no alfa ali abriria um buraco por onde o
-    video de fundo apareceria no meio do rosto.
+    El alfa del cuadro es el recorte del presentador y no se toca: la boca esta
+    *dentro* de la silueta, y tocar el alfa ahi abriria un agujero por el que el
+    video de fondo apareceria en mitad del rostro.
     """
-    h, w = quadro.shape[:2]
-    px = np.asarray(peca, dtype=np.float32)
+    h, w = cuadro.shape[:2]
+    px = np.asarray(pieza, dtype=np.float32)
     x0, y0 = max(0, x), max(0, y)
-    x1, y1 = min(w, x + peca.width), min(h, y + peca.height)
+    x1, y1 = min(w, x + pieza.width), min(h, y + pieza.height)
     if x1 <= x0 or y1 <= y0:
         return
     sub = px[y0 - y:y1 - y, x0 - x:x1 - x]
     a = (sub[:, :, 3:4] / 255.0)
-    alvo = quadro[y0:y1, x0:x1, :3].astype(np.float32)
-    quadro[y0:y1, x0:x1, :3] = (alvo + (sub[:, :, :3] - alvo) * a).astype(np.uint8)
+    objetivo = cuadro[y0:y1, x0:x1, :3].astype(np.float32)
+    cuadro[y0:y1, x0:x1, :3] = (objetivo + (sub[:, :, :3] - objetivo) * a).astype(np.uint8)
 
 
 # ===========================================================================
-# o animador
+# el animador
 # ===========================================================================
 
 
 class AnimadorVideo:
-    """Monta cada quadro: o clipe base com boca, posto na encenacao."""
+    """Monta cada cuadro: el clip base con boca, puesto en la escenificacion."""
 
-    def __init__(self, base: Base, quadros: Quadros, accent: str, nome: str = "",
+    def __init__(self, base: Base, cuadros: Cuadros, accent: str, nombre: str = "",
                  area: tuple[int, int, int, int] = AREA) -> None:
         self.base = base
-        self.quadros = quadros
+        self.cuadros = cuadros
         self.area = area
-        self.tons = medir_tons(quadros[base.frames // 2],
-                               base.pontos(base.frames // 2))
-        self._chip = plaquinha(nome, accent) if nome else None
+        self.tonos = medir_tonos(cuadros[base.frames // 2],
+                                 base.puntos(base.frames // 2))
+        self._chip = chip(nombre, accent) if nombre else None
 
-    def quadro(self, t: float, abertura: float, largura: float,
-               marcas: list[Marca]) -> Image.Image:
+    def cuadro(self, t: float, abertura: float, anchura: float,
+               poses: list[Pose]) -> Image.Image:
         ax, ay, aw, ah = self.area
-        tela = Image.new("RGBA", (aw, ah), (0, 0, 0, 0))
-        p = pose(marcas, t)
+        lienzo = Image.new("RGBA", (aw, ah), (0, 0, 0, 0))
+        p = pose(poses, t)
         if p.alfa <= 0.004 or p.altura <= 1:
-            return tela
+            return lienzo
 
-        k = indice_vaivem(t, self.base)
-        quadro = self.quadros[k].copy()
-        falar(quadro, self.base.pontos(k), self.base.contorno(k),
-              self.base.face_height, abertura, largura, self.tons)
+        k = indice_vaiven(t, self.base)
+        cuadro = self.cuadros[k].copy()
+        hablar(cuadro, self.base.puntos(k), self.base.contorno(k),
+               self.base.face_height, abertura, anchura, self.tonos)
 
         bw, bh = self.base.size
         escala = p.altura / bh
-        entrada = (1 - p.alfa) * 90        # desliza de fora enquanto aparece
-        # A base do recorte encosta em p.base e o centro horizontal em p.cx.
-        alvo_x = p.cx - ax - entrada
-        alvo_y = p.base - ay
-        ox = int(math.floor(alvo_x - bw * escala / 2)) - 2
-        oy = int(math.floor(alvo_y - bh * escala)) - 2
+        entrada = (1 - p.alfa) * 90        # desliza desde fuera mientras aparece
+        # La base del recorte toca p.base y el centro horizontal en p.cx.
+        objetivo_x = p.cx - ax - entrada
+        objetivo_y = p.base - ay
+        ox = int(math.floor(objetivo_x - bw * escala / 2)) - 2
+        oy = int(math.floor(objetivo_y - bh * escala)) - 2
         ow = int(math.ceil(bw * escala)) + 5
         oh = int(math.ceil(bh * escala)) + 5
 
-        img = Image.fromarray(quadro)
-        girada = _afim(img, (ow, oh), escala=escala, graus=0.0,
-                       pivo=(bw / 2, bh), alvo=(alvo_x - ox, alvo_y - oy))
+        img = Image.fromarray(cuadro)
+        girada = _afin(img, (ow, oh), escala=escala, grados=0.0,
+                       pivote=(bw / 2, bh), objetivo=(objetivo_x - ox, objetivo_y - oy))
         if p.alfa < 0.999:
             girada.putalpha(girada.getchannel("A").point(
                 lambda v, a=p.alfa: int(v * a)))
-        _colar(tela, girada, ox, oy)
-        self._plaquinha(tela, p, alvo_x, alvo_y)
-        return tela
+        _pegar(lienzo, girada, ox, oy)
+        self._chip_en(lienzo, p, objetivo_x, objetivo_y)
+        return lienzo
 
-    def _plaquinha(self, tela: Image.Image, p: Marca, base_x: float,
-                   base_y: float) -> None:
-        """So enquanto ele esta grande, onde ele se apresenta."""
-        from agent.render.presenter import ALTURA_CHAMADA, ALTURA_FECHAMENTO
+    def _chip_en(self, lienzo: Image.Image, p: Pose, base_x: float,
+                 base_y: float) -> None:
+        """Solo mientras esta grande, donde se presenta."""
+        from agent.render.presenter import ALTURA_CIERRE, ALTURA_LLAMADA
 
         if self._chip is None:
             return
-        faixa = max(ALTURA_CHAMADA - ALTURA_FECHAMENTO, 1.0)
-        visivel = min(1.0, max(0.0, (p.altura - ALTURA_FECHAMENTO - 60) / faixa)) * p.alfa
-        if visivel <= 0.02:
+        franja = max(ALTURA_LLAMADA - ALTURA_CIERRE, 1.0)
+        visible = min(1.0, max(0.0, (p.altura - ALTURA_CIERRE - 60) / franja)) * p.alfa
+        if visible <= 0.02:
             return
-        chip = self._chip
-        if visivel < 0.999:
-            chip = chip.copy()
-            chip.putalpha(chip.getchannel("A").point(lambda v, a=visivel: int(v * a)))
-        _colar(tela, chip, int(base_x - chip.width / 2),
+        chip_img = self._chip
+        if visible < 0.999:
+            chip_img = chip_img.copy()
+            chip_img.putalpha(chip_img.getchannel("A").point(
+                lambda v, a=visible: int(v * a)))
+        _pegar(lienzo, chip_img, int(base_x - chip_img.width / 2),
                int(base_y - p.altura * 0.115))
 
 
 def modular(abertura_visema: np.ndarray, energia: np.ndarray) -> np.ndarray:
-    """Forma do fonema x forca do audio.
+    """Forma del fonema x fuerza del audio.
 
-    A letra sabe *que* boca fazer, o audio sabe *com quanta forca*. Sozinha, a
-    trilha de visema declama a frase inteira na mesma intensidade; sozinha, a
-    envoltoria nao sabe fechar o labio no /m/. O piso existe porque fonema
-    surdo tem pouca energia e a boca o faz do mesmo jeito.
+    La letra sabe *que* boca hacer, el audio sabe *con cuanta fuerza*. Sola, la
+    pista de visemas recita la frase entera a la misma intensidad; sola, la
+    envolvente no sabe cerrar el labio en la /m/. El suelo existe porque el
+    fonema sordo tiene poca energia y la boca lo hace igual.
     """
     n = min(len(abertura_visema), len(energia))
-    ganho = ENERGIA_PISO + (1.0 - ENERGIA_PISO) * energia[:n]
-    return np.clip(abertura_visema[:n] * ganho, 0.0, 1.0)
+    ganancia = ENERGIA_PISO + (1.0 - ENERGIA_PISO) * energia[:n]
+    return np.clip(abertura_visema[:n] * ganancia, 0.0, 1.0)
 
 
-def render_layer(base: Base, audio: Path, out: Path, *, duracao: float,
-                 batidas: Batidas, accent: str, palavras_faladas,
-                 nome: str = "", fps: int = FPS, ffmpeg: str = "ffmpeg",
-                 trabalho: Path | None = None) -> Camada:
-    """Gera a camada do apresentador a partir do clipe base e devolve onde pousar."""
-    n = max(1, int(round(duracao * fps)))
-    energia = envoltoria(audio, n, fps, ffmpeg=ffmpeg)
-    abertura, largura = trilha(palavras_faladas, n, fps)
+def render_capa(base: Base, audio: Path, out: Path, *, duracion: float,
+                tiempos: Tiempos, accent: str, palabras_habladas,
+                nombre: str = "", fps: int = FPS, ffmpeg: str = "ffmpeg",
+                trabajo: Path | None = None) -> Capa:
+    """Genera la capa del presentador a partir del clip base y devuelve donde posar."""
+    n = max(1, int(round(duracion * fps)))
+    energia = envolvente(audio, n, fps, ffmpeg=ffmpeg)
+    abertura, anchura = pista(palabras_habladas, n, fps)
     abertura = modular(abertura, energia)
-    enc = plan(batidas)
+    esc = plan(tiempos)
 
-    quadros = Quadros(base, trabalho or out.parent, ffmpeg=ffmpeg)
-    anim = AnimadorVideo(base, quadros, accent, nome)
+    cuadros = Cuadros(base, trabajo or out.parent, ffmpeg=ffmpeg)
+    anim = AnimadorVideo(base, cuadros, accent, nombre)
     ax, ay, aw, ah = anim.area
 
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -707,21 +735,21 @@ def render_layer(base: Base, audio: Path, out: Path, *, duracao: float,
     try:
         for k in range(n):
             t = k / fps
-            img = anim.quadro(t, float(abertura[k]), float(largura[k]), enc.marcas)
+            img = anim.cuadro(t, float(abertura[k]), float(anchura[k]), esc.poses)
             proc.stdin.write(img.tobytes())
-    except BrokenPipeError:  # pragma: no cover - so com ffmpeg quebrado
+    except BrokenPipeError:  # pragma: no cover - solo con ffmpeg roto
         pass
     finally:
         proc.stdin.close()
-    erro = proc.stderr.read().decode("utf-8", "replace") if proc.stderr else ""
+    error = proc.stderr.read().decode("utf-8", "replace") if proc.stderr else ""
     if proc.wait() != 0:
-        raise RuntimeError(f"ffmpeg falhou ao gravar o apresentador: {erro[-400:]}")
-    return Camada(path=out, x=ax, y=ay, width=aw, height=ah,
-                  subtitle_y=enc.legenda_y, subtitle_start=enc.legenda_inicio,
-                  card_s=enc.cartao_s, frames=n, fps=fps, seconds=n / fps)
+        raise RuntimeError(f"ffmpeg fallo al grabar el presentador: {error[-400:]}")
+    return Capa(path=out, x=ax, y=ay, width=aw, height=ah,
+                subtitle_y=esc.leyenda_y, subtitle_start=esc.leyenda_inicio,
+                card_s=esc.tarjeta_s, frames=n, fps=fps, seconds=n / fps)
 
 
-__all__ = ["AnimadorVideo", "Base", "DENTE_MIN", "MAXILAR", "PAD_VAO",
-           "campo_maxilar", "vao_boca",
-           "Quadros", "Tons", "abrir_maxilar", "carregar_base", "espalhar_labios",
-           "falar", "indice_vaivem", "medir_tons", "modular", "render_layer"]
+__all__ = ["AnimadorVideo", "Base", "DIENTE_MIN", "MAXILAR", "MARGEN_HUECO",
+           "Cuadros", "Tonos", "abrir_maxilar", "cargar_base", "extender_labios",
+           "campo_maxilar", "hablar", "hueco_boca", "indice_vaiven", "medir_tonos",
+           "modular", "render_capa"]

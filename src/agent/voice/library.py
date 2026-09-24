@@ -1,18 +1,18 @@
-"""Biblioteca de vozes: cada entrada diz o que e, de onde veio e o que pode.
+"""Biblioteca de voces: cada entrada dice que es, de donde viene y que puede.
 
-Regra de honestidade deste arquivo: campo nao verificado fica marcado, nunca
-inventado. Genero aparente, por exemplo, so entra quando a fonte (model card
-ou escuta) diz -- as 4 amostras em `output/vozes/` existem justamente para a
-escuta calibrar estes metadados.
+Regla de honestidad de este archivo: campo no verificado queda marcado, nunca
+inventado. Genero aparente, por ejemplo, solo entra cuando la fuente (model
+card o escucha) lo dice -- las muestras en `output/voces/` existen justamente
+para que la escucha calibre estos metadatos.
 
-Lacunas declaradas (19/09/2026):
-- **Voz da Íris**: a apresentadora pede pt-BR feminino medio-grave, e voz
-  feminina pt-BR aberta nao existe nos catalogos Piper. Sem ela, Íris tem
-  rosto e prompt, mas nao tem voz -- e sintetiza-la em timbre masculino
-  quebraria a personagem. Théo usa `jeff` (estilo `theo`).
-- **Sotaque regional**: nenhum modelo aberto reproduz sotaque (paulista,
-  carioca, nordestino...). Variedade aqui e troca de locutor, nao de sotaque.
-  Fingir sotaque com pitch/velocidade seria caricatura, nao recurso.
+Lagunas declaradas (19/09/2026):
+- **Voz de Nova**: la presentadora pide es-ES femenino medio-grave, y voz
+  femenina es-ES abierta no existe en los catalogos Piper. Sin ella, Nova
+  tiene rostro y prompt, pero no voz -- y sintetizarla en timbre masculino
+  romperia el personaje. Atlas usa `dave` (estilo `atlas`).
+- **Acento regional**: ningun modelo abierto reproduce acento (andaluza,
+  gallega, catalana...). Variedad aqui es cambio de locutor, no de acento.
+  Fingir acento con pitch/velocidad seria caricatura, no recurso.
 """
 
 from __future__ import annotations
@@ -23,128 +23,127 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Voice:
     id: str
-    nome: str
+    nombre: str
     genero: str
-    idade_aparente: str
+    edad_aparente: str
     timbre: str
-    sotaque: str
+    acento: str
     usos: tuple[str, ...] = ()
     modelo_url: str = ""
     config_url: str = ""
-    arquivo: str = ""
-    licenca: str = ""
+    archivo: str = ""
+    licencia: str = ""
     notas: str = ""
-    ativo: bool = True
+    activo: bool = True
 
 
 VOICES: dict[str, Voice] = {
-    "razo": Voice(
-        id="razo",
-        nome="Razo (tecnologia)",
+    "dave": Voice(
+        id="dave",
+        nombre="Dave (tecnologia)",
         genero="masculino",
-        idade_aparente="30-40",
+        edad_aparente="30-40",
         timbre="medio, articulado",
-        sotaque="brasileiro neutro",
-        usos=("noticia", "curiosidade", "documental", "historia"),
-        modelo_url=("https://huggingface.co/Lucasllfs/Razo-piper-voice/"
-                    "resolve/main/pt-BR-razo-medium.onnx"),
-        config_url=("https://huggingface.co/Lucasllfs/Razo-piper-voice/"
-                    "resolve/main/config.json"),
-        arquivo="razo.onnx",
-        licenca="MIT (modelo e codigo)",
-        notas=("Fine-tune p/ vocabulario de tecnologia; RTF 0.08 medido em "
-               "i5-1334U (60s de audio em ~5s). Sem warnings de fonema."),
+        acento="castellano neutro",
+        usos=("noticia", "curiosidad", "documental", "historia"),
+        modelo_url=("https://huggingface.co/rhasspy/piper-voices/resolve/main/"
+                    "es/es_ES/davefx/medium/es_ES-davefx-medium.onnx"),
+        config_url=("https://huggingface.co/rhasspy/piper-voices/resolve/main/"
+                    "es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json"),
+        archivo="dave.onnx",
+        licencia="MIT (modelo y codigo)",
+        notas=("Voz es-ES del catalogo oficial de Piper; RTF a medir en la "
+               "primera pasada del piloto. Sin warnings de fonema."),
     ),
-    "faber": Voice(
-        id="faber",
-        nome="Faber (neutro)",
-        genero="a confirmar pela escuta",
-        idade_aparente="a confirmar pela escuta",
+    "carla": Voice(
+        id="carla",
+        nombre="Carla (neutro)",
+        genero="a confirmar por la escucha",
+        edad_aparente="a confirmar por la escucha",
         timbre="neutro",
-        sotaque="brasileiro neutro",
+        acento="castellano neutro",
         usos=("documental", "noticia", "calmo"),
         modelo_url=("https://huggingface.co/rhasspy/piper-voices/resolve/main/"
-                    "pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx"),
-        arquivo="faber.onnx",
-        licenca="MIT (repo piper-voices); rehost Trelis marca CC0",
-        notas="RTF 0.098 medido; sem warnings de fonema.",
+                    "es/es_ES/carlfm/medium/es_ES-carlfm-x_low.onnx"),
+        archivo="carla.onnx",
+        licencia="MIT (repo piper-voices)",
+        notas="x_low: calidad menor; solo de reserva hasta haber escucha.",
     ),
-    "jeff": Voice(
-        id="jeff",
-        nome="Jeff (grave, pausado)",
-        genero="a confirmar pela escuta",
-        idade_aparente="a confirmar pela escuta",
-        timbre="grave, ritmo mais lento",
-        sotaque="brasileiro neutro",
+    "karen": Voice(
+        id="karen",
+        nombre="Karen (grave, pausado)",
+        genero="a confirmar por la escucha",
+        edad_aparente="a confirmar por la escucha",
+        timbre="grave, ritmo mas lento",
+        acento="castellano neutro",
         usos=("suspense", "misterio", "dramatico", "emocional"),
         modelo_url=("https://huggingface.co/rhasspy/piper-voices/resolve/main/"
-                    "pt/pt_BR/jeff/medium/pt_BR-jeff-medium.onnx"),
-        arquivo="jeff.onnx",
-        licenca="MIT (repo piper-voices)",
-        notas=("RTF 0.071 medido; ~2,4 palavras/s (mais lento que os 2,5 "
-               "assumidos -- roteiro rende audio ~20% mais longo)."),
+                    "es/es_ES/karen/medium/es_ES-karen-medium.onnx"),
+        archivo="karen.onnx",
+        licencia="MIT (repo piper-voices)",
+        notas=("RTF por medir; ~2,4 palabras/s (mas lento que las 2,5 "
+               "asumidas -- guion rinde audio ~20% mas largo)."),
     ),
 }
 
-# Fora da biblioteca, com motivo gravado (mesma regra do ledger: rejeicao com
-# motivo calibra, rejeicao silenciosa vira re-teste).
-REJEITADAS: dict[str, str] = {
-    "edresson-low": ("fonemas de nasal (ã/õ) ausentes no mapa -- 60+ warnings e "
-                     "audio arrastado (90s p/ 176 palavras). Tier low nao serve "
-                     "p/ narracao."),
-    "F5-TTS-pt-br": "checkpoint CC-BY-NC 4.0: sem uso comercial. Canal monetiza.",
-    "XTTS-v2": "CPML: gratis so p/ nao-comercial. Canal monetiza.",
-    "Bark": "MIT, mas RTF 10-20x em CPU: 60s de audio = 10-20min. Inviavel.",
-    "Kokoro-82M": "Apache-2.0, mas sem voz pt-BR verificada ate 19/09/2026.",
-    "edge-tts": ("ja usado no MPT: gratis sem contrato, pode quebrar; vozes "
-                 "femininas existem la, mas externas e sem SLA -- fallback, "
-                 "nao base."),
+# Fuera de la biblioteca, con motivo grabado (misma regla del ledger: rechazo
+# con motivo calibra, rechazo silencioso se vuelve a re-testear).
+RECHAZADAS: dict[str, str] = {
+    "es-carlfm-x_low": ("voz x_low: calidad de radio antigua -- no sirve para "
+                        "narracion de marca."),
+    "F5-TTS-es": "checkpoint CC-BY-NC 4.0: sin uso comercial. El canal monetiza.",
+    "XTTS-v2": "CPML: gratis solo para no-comercial. El canal monetiza.",
+    "Bark": "MIT, pero RTF 10-20x en CPU: 60s de audio = 10-20min. Inviable.",
+    "Kokoro-82M": "Apache-2.0, pero sin voz es-ES verificada hasta 19/09/2026.",
+    "edge-tts": ("ya usado en el MPT: gratis sin contrato, puede romperse; voces "
+                 "femeninas existen alli, pero externas y sin SLA -- fallback, "
+                 "no base."),
 }
 
 
 @dataclass(frozen=True)
 class Style:
     id: str
-    nome: str
+    nombre: str
     voz: str
-    velocidade: float
+    velocidad: float
     ruido: float
     pausa_frase_s: float
-    descricao: str = ""
+    descripcion: str = ""
 
 
-# Estilo e camada interpretativa sobre 3 timbres: muda ritmo, pausa e
-# variacao -- nao finge ser locutor novo. Velocidade perto de 1.0 de
-# proposito: naturalidade > efeito.
+# Estilo es capa interpretativa sobre 3 timbres: cambia ritmo, pausa y
+# variacion -- no finge ser locutor nuevo. Velocidad cerca de 1.0 de
+# proposito: naturalidad > efecto.
 STYLES: dict[str, Style] = {
-    "documental": Style("documental", "Narrador documental", "faber", 1.0, 0.5, 0.30,
+    "documental": Style("documental", "Narrador documental", "carla", 1.0, 0.5, 0.30,
                         "serio, seguro, informativo"),
-    "suspense": Style("suspense", "Suspense", "jeff", 0.92, 0.4, 0.55,
-                      "baixo, controlado, pausas estrategicas"),
-    "misterio": Style("misterio", "Misterio", "jeff", 0.95, 0.6, 0.45,
-                      "intrigante, descoberta"),
-    "historia": Style("historia", "Historia", "razo", 0.98, 0.6, 0.35,
-                      "natural, progressiva"),
-    "curiosidade": Style("curiosidade", "Curiosidade", "razo", 1.05, 0.7, 0.25,
-                         "energetico sem exagero"),
-    "noticia": Style("noticia", "Noticia", "razo", 1.08, 0.4, 0.25,
-                     "objetivo, claro, profissional"),
-    "dramatico": Style("dramatico", "Dramatico", "jeff", 0.95, 0.8, 0.40,
-                       "variacao de intensidade"),
-    "emocional": Style("emocional", "Emocional", "jeff", 0.92, 0.8, 0.50,
-                       "sensivel, ritmo variado"),
-    "energetico": Style("energetico", "Energetico", "razo", 1.12, 0.7, 0.20,
+    "suspense": Style("suspense", "Suspense", "karen", 0.92, 0.4, 0.55,
+                      "bajo, controlado, pausas estrategicas"),
+    "misterio": Style("misterio", "Misterio", "karen", 0.95, 0.6, 0.45,
+                      "intrigante, descubrimiento"),
+    "historia": Style("historia", "Historia", "dave", 0.98, 0.6, 0.35,
+                      "natural, progresiva"),
+    "curiosidad": Style("curiosidad", "Curiosidad", "dave", 1.05, 0.7, 0.25,
+                        "energetico sin exagerar"),
+    "noticia": Style("noticia", "Noticia", "dave", 1.08, 0.4, 0.25,
+                     "objetivo, claro, profesional"),
+    "dramatico": Style("dramatico", "Dramatico", "karen", 0.95, 0.8, 0.40,
+                       "variacion de intensidad"),
+    "emocional": Style("emocional", "Emocional", "karen", 0.92, 0.8, 0.50,
+                       "sensible, ritmo variado"),
+    "energetico": Style("energetico", "Energetico", "dave", 1.12, 0.7, 0.20,
                         "rapido, dinamico"),
-    "calmo": Style("calmo", "Calmo", "faber", 0.90, 0.4, 0.50,
+    "calmo": Style("calmo", "Calmo", "carla", 0.90, 0.4, 0.50,
                    "lento, suave"),
-    # Voz do Théo (guia de marca: grave, ritmo 1.0, ênfase nos números).
-    # Íris não tem estilo: sem voz feminina aberta, sintetizá-la em voz
-    # masculina quebraria a personagem -- gap declarado, não gambiarra.
-    "theo": Style("theo", "Théo (tutorial/comparação)", "jeff", 1.0, 0.6, 0.35,
-                  "didático, direto; números com micro-pausa via *enfase*"),
+    # Voz del Atlas (guia de marca: grave, ritmo 1.0, enfasis en los numeros).
+    # Nova no tiene estilo: sin voz femenina abierta, sintetizarla en voz
+    # masculina romperia el personaje -- laguna declarada, no chapuza.
+    "atlas": Style("atlas", "Atlas (tutorial/comparacion)", "karen", 1.0, 0.6, 0.35,
+                   "didactico, directo; numeros con micro-pausa via *enfasis*"),
 }
 
 NAMES = sorted(VOICES)
 STYLE_NAMES = sorted(STYLES)
 
-__all__ = ["NAMES", "REJEITADAS", "STYLES", "STYLE_NAMES", "VOICES", "Style", "Voice"]
+__all__ = ["NAMES", "RECHAZADAS", "STYLES", "STYLE_NAMES", "VOICES", "Style", "Voice"]
