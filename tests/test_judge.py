@@ -167,7 +167,7 @@ class TestMedirAntesDeJuzgar:
         informe_r, _ = juzgar(informe(), script=inventado)
         no_evaluados = [s.criterion for s in informe_r.review.scores if not s.evaluated]
         assert set(no_evaluados) == {
-            Criterion.hook, Criterion.punto_de_vista, Criterion.idioma, Criterion.cta,
+            Criterion.hook, Criterion.punto_de_vista, Criterion.es_es, Criterion.cta,
         }
         assert informe_r.review.short_circuited
         assert "reprobo antes en fuente" in informe_r.review.by_criterion[Criterion.hook].reason
@@ -202,12 +202,12 @@ class TestMedirAntesDeJuzgar:
 class TestReglaDeAprobacion:
     def test_corte_en_el_limite_aprueba(self):
         """11/14 con ningun cero y ningun veto."""
-        informe_r, _ = juzgar(informe(hook=1, punto_de_vista=1, idioma=1))
+        informe_r, _ = juzgar(informe(hook=1, punto_de_vista=1, es_es=1))
         assert informe_r.review.total == RUBRIC_CUTOFF
         assert informe_r.approved
 
     def test_debajo_del_corte_reprueba(self):
-        informe_r, _ = juzgar(informe(hook=1, punto_de_vista=1, idioma=1, cta=1))
+        informe_r, _ = juzgar(informe(hook=1, punto_de_vista=1, es_es=1, cta=1))
         assert informe_r.review.total == RUBRIC_CUTOFF - 1
         assert not informe_r.approved
 

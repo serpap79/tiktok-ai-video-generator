@@ -106,7 +106,7 @@ def test_informe_interrumpido_es_identificable_despues(store):
     notas += [
         CriterionScore(criterion=c, score=0, reason="no evaluado: reprobo antes",
                        evaluated=False)
-        for c in (Criterion.hook, Criterion.punto_de_vista, Criterion.idioma, Criterion.cta)
+        for c in (Criterion.hook, Criterion.punto_de_vista, Criterion.es_es, Criterion.cta)
     ]
     store.record_review(
         Review(topic="t", scores=notas, reviewed_at=AHORA), usage=(0, 0), latency_s=0.0

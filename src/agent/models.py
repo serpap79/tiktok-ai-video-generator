@@ -11,10 +11,9 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
-# Ritmo de habla de la narracion es-ES. Usado solo para estimacion antes del
-# TTS; la duracion real viene del renderizador. Referencia: las voces de
-# edge-tts es-ES rondan 2,5-2,7 palabras/s; se recalibra con la primera medida
-# real del renderizador propio.
+# Ritmo de habla de la narración es-ES. Se usa solo para estimación antes del TTS;
+# la duración real viene del renderizador. Medido el 20/09/2026 en las voces del
+# renderizador propio (Francisca -4%, Antonio +4%): 2,57 palabras/s en ambas.
 WORDS_PER_SECOND = 2.57
 
 # Franja exigida por el Creator Rewards: un video por debajo de 60s no es
@@ -149,14 +148,14 @@ class Script(BaseModel):
 
 
 class Criterion(StrEnum):
-    """Los criterios de las rubricas del juez.
+    """Los criterios de las rúbricas del juez.
 
-    Son StrEnum y no cadena libre porque la rubrica es un contrato: el eval del
-    M5 compara proveedores criterio a criterio, y una nota grabada con el nombre
-    del criterio escrito de dos formas no se agrega.
+    Son StrEnum y no string libre porque la rúbrica es un contrato: la evaluación M5
+    compara proveedores criterio a criterio y la nota registrada con el nombre del
+    criterio escrito de dos formas no se agrega.
 
-    `flujo` es solo del carrusel (hilo narrativo entre slides); el video usa
-    los otros siete.
+    `flujo` es solo para el carrusel (hilo narrativo entre diapositivas); el vídeo
+    usa los otros siete.
     """
 
     hook = "hook"
@@ -164,7 +163,7 @@ class Criterion(StrEnum):
     duracion = "duracion"
     punto_de_vista = "punto_de_vista"
     politica = "politica"
-    idioma = "idioma"
+    es_es = "es_es"
     cta = "cta"
     flujo = "flujo"
 

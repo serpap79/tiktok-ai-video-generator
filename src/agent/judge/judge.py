@@ -61,7 +61,7 @@ MAX_INTENTOS = 2
 
 # Criterios que dependen de lectura. El orden es el de la rubrica original.
 JULGADOS = (Criterion.hook, Criterion.fuente, Criterion.punto_de_vista,
-            Criterion.idioma, Criterion.cta)
+            Criterion.es_es, Criterion.cta)
 
 DESCRIPCIONES: dict[Criterion, str] = {
     Criterion.hook: (
@@ -81,7 +81,7 @@ DESCRIPCIONES: dict[Criterion, str] = {
         "ofrece lectura, contraste o apunta lo que las fuentes NO dicen; 1 = "
         "casi solo recuento, con un comentario; 0 = resumen de la noticia."
     ),
-    Criterion.idioma: (
+    Criterion.es_es: (
         "Es castellano hablado? 2 = frase corta, voz activa, suena natural "
         "leido en voz alta; 1 = pasajes demasiado escritos, jerga sin explicar "
         "o numeros en secuencia (ficha tecnica leida en voz alta); 0 = trabado, "
