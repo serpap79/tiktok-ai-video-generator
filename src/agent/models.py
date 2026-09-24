@@ -11,9 +11,9 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
-# Ritmo de fala da narracao pt-BR. Usado apenas para estimativa antes do TTS;
-# a duracao real vem do renderizador. Medido em 20/09/2026 nas vozes do
-# renderizador proprio (Francisca -4%, Antonio +4%): 2,57 palavras/s nas duas.
+# Ritmo de habla de la narración es-ES. Se usa solo para estimativa antes del TTS;
+# la duración real viene del renderizador. Medido el 20/09/2026 en las voces del
+# renderizador propio (Francisca -4%, Antonio +4%): 2,57 palabras/s en ambas.
 WORDS_PER_SECOND = 2.57
 
 # Faixa exigida pelo Creator Rewards: video abaixo de 60s nao e elegivel a
@@ -145,14 +145,14 @@ class Script(BaseModel):
 
 
 class Criterion(StrEnum):
-    """Os critérios das rubricas do juiz.
+    """Los criterios de las rúbricas del juez.
 
-    Sao StrEnum e nao string livre porque a rubrica e um contrato: o eval do M5
-    compara provedores criterio a criterio, e nota gravada com o nome do
-    criterio escrito de duas formas nao se agrega.
+    Son StrEnum y no string libre porque la rúbrica es un contrato: el eval del M5
+    compara proveedores criterio a criterio, y la nota registrada con el nombre del
+    criterio escrito de dos formas no se agrega.
 
-    `fluxo` e so do carrossel (fio narrativo entre slides); o video usa os
-    outros sete.
+    `fluxo` es solo para el carrusel (hilo narrativo entre diapositivas); el video
+    usa los otros siete.
     """
 
     hook = "hook"
@@ -160,7 +160,7 @@ class Criterion(StrEnum):
     duracao = "duracao"
     ponto_de_vista = "ponto_de_vista"
     politica = "politica"
-    pt_br = "pt_br"
+    es_es = "es_es"
     cta = "cta"
     fluxo = "fluxo"
 
